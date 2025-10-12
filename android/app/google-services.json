@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "1057888993825",
+    "project_id": "sistem-proyect-44d70",
+    "storage_bucket": "sistem-proyect-44d70.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:1057888993825:android:90dc23aa3b5800f9861960",
+        "android_client_info": {
+          "package_name": "com.example.sistem_proyect"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyC1RCPmX3zdQvXlfzca6WE4vIGj8Q5mFlM"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

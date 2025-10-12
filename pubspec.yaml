@@ -1,0 +1,30 @@
+name: sistem_proyect
+description: Sistema de Gestion de Proyectos para UNIMET.
+# Evita la publicación accidental en pub.dev
+publish_to: 'none' 
+
+version: 1.0.0+1
+
+environment:
+  sdk: '>=3.0.0 <4.0.0'
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Dependencias de Firebase para la Autenticación y Base de Datos
+  firebase_core: ^4.1.1 # Inicialización de Firebase
+  firebase_auth: ^6.1.0 # Autenticación (Email, Google, etc.)
+  cloud_firestore: ^6.0.2 # Base de datos Firestore
+
+  # Utilidades
+  cupertino_icons: ^1.0.2
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+# Secciones específicas para Flutter (mantener indentación correcta)
+flutter:
+  uses-material-design: true
