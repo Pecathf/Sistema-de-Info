@@ -11,6 +11,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  provider: ^6.0.5
 
   # Dependencias de Firebase para la Autenticación y Base de Datos
   firebase_core: ^4.1.1 # Inicialización de Firebase

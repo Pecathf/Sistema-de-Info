@@ -11,7 +11,8 @@
         "cupertino_icons",
         "firebase_auth",
         "firebase_core",
-        "flutter"
+        "flutter",
+        "provider"
       ],
       "devDependencies": [
         "flutter_lints",
@@ -81,6 +82,15 @@
         "firebase_core_web",
         "flutter",
         "meta"
+      ]
+    },
+    {
+      "name": "provider",
+      "version": "6.1.5+1",
+      "dependencies": [
+        "collection",
+        "flutter",
+        "nested"
       ]
     },
     {
@@ -256,6 +266,13 @@
         "flutter_web_plugins",
         "meta",
         "web"
+      ]
+    },
+    {
+      "name": "nested",
+      "version": "1.0.0",
+      "dependencies": [
+        "flutter"
       ]
     },
     {
