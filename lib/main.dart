@@ -5,10 +5,13 @@ import 'funcionalidades/autenticacion/pantalla_registro.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // INICIALIZAR FIREBASE
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-  runApp(const MyApp());
+
+  runApp(MyApp());
 }
 
 class MyApp extends StatelessWidget {
