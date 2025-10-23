@@ -39,18 +39,15 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
     });
 
     try {
-      // Crear usuario en Firebase Authentication
       final UserCredential userCredential =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
 
-      // Actualizar el nombre del usuario
       await userCredential.user
           ?.updateDisplayName(_nombreController.text.trim());
 
-      // Intentar guardar información adicional en Firestore (opcional)
       try {
         await FirebaseFirestore.instance
             .collection('usuarios')
@@ -67,8 +64,7 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
       }
 
       if (!mounted) return;
-
-      // Mostrar mensaje de éxito
+     //aqui mostrams mensaje de exito muchachos
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('¡Registro exitoso!'),
@@ -77,7 +73,6 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
         ),
       );
 
-      // Esperar un momento y regresar a la pantalla anterior
       await Future.delayed(const Duration(milliseconds: 500));
       if (!mounted) return;
       Navigator.pop(context);
@@ -299,7 +294,7 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
                         : () {
                             Navigator.pop(context);
                           },
-                    child: const Text('Cancelar'),
+                    child: const Text('Regresar'),
                   ),
                 ],
               ),
