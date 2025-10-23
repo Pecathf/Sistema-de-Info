@@ -3,9 +3,14 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
 
-class PantallaPrincipal extends StatelessWidget {
+class PantallaPrincipal extends StatefulWidget {
   const PantallaPrincipal({super.key});
 
+  @override
+  State<PantallaPrincipal> createState() => _PantallaPrincipalState();
+}
+
+class _PantallaPrincipalState extends State<PantallaPrincipal> {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
@@ -114,11 +119,16 @@ class PantallaPrincipal extends StatelessWidget {
   }
 
   Widget _buildStatisticsGrid(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      return _buildEmptyStatistics();
+    }
+
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('proyectos')
-          .where('miembros',
-              arrayContains: FirebaseAuth.instance.currentUser?.uid)
+          .where('miembros', arrayContains: user.uid)
           .snapshots(),
       builder: (context, snapshot) {
         final proyectosCount = snapshot.data?.docs.length ?? 0;
@@ -130,8 +140,7 @@ class PantallaPrincipal extends StatelessWidget {
         return StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
               .collection('tareas')
-              .where('asignadoA',
-                  isEqualTo: FirebaseAuth.instance.currentUser?.uid)
+              .where('asignadoA', isEqualTo: user.uid)
               .snapshots(),
           builder: (context, tareasSnapshot) {
             final tareasPendientes = tareasSnapshot.data?.docs
@@ -179,6 +188,24 @@ class PantallaPrincipal extends StatelessWidget {
           },
         );
       },
+    );
+  }
+
+  Widget _buildEmptyStatistics() {
+    return GridView.count(
+      crossAxisCount: 2,
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      crossAxisSpacing: 16,
+      mainAxisSpacing: 16,
+      children: [
+        _buildStatCard(
+            'PROYECTOS TOTALES', '0', 'Total de proyectos', Colors.blue),
+        _buildStatCard('PROYECTOS ACTIVOS', '0', 'En progreso', Colors.green),
+        _buildStatCard(
+            'TAREAS PENDIENTES', '0', 'Por completar', Colors.orange),
+        _buildStatCard('COMPLETADOS', '0', 'Finalizados', Colors.purple),
+      ],
     );
   }
 
@@ -234,6 +261,12 @@ class PantallaPrincipal extends StatelessWidget {
   }
 
   Widget _buildRecentProjects(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+
+    if (user == null) {
+      return _buildEmptyProjects();
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -249,8 +282,7 @@ class PantallaPrincipal extends StatelessWidget {
         StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
               .collection('proyectos')
-              .where('miembros',
-                  arrayContains: FirebaseAuth.instance.currentUser?.uid)
+              .where('miembros', arrayContains: user.uid)
               .orderBy('fechaCreacion', descending: true)
               .limit(4)
               .snapshots(),
@@ -280,6 +312,29 @@ class PantallaPrincipal extends StatelessWidget {
               }).toList(),
             );
           },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildEmptyProjects() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Proyectos Recientes',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildProjectCard(
+          'No hay proyectos',
+          'Inicia sesión para ver tus proyectos',
+          0,
+          0,
         ),
       ],
     );
