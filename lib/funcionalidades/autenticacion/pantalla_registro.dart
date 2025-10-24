@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_inicio_sesion.dart';
 
 class PantallaRegistro extends StatefulWidget {
   const PantallaRegistro({super.key});
@@ -15,6 +16,7 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
   final _passwordController = TextEditingController();
   final _confirmPasswordController = TextEditingController();
   final _nombreController = TextEditingController();
+  final _cedulaController = TextEditingController();
 
   bool _obscurePassword = true;
   bool _obscureConfirmPassword = true;
@@ -26,6 +28,7 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
     _passwordController.dispose();
     _confirmPasswordController.dispose();
     _nombreController.dispose();
+    _cedulaController.dispose();
     super.dispose();
   }
 
@@ -39,15 +42,18 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
     });
 
     try {
+      // Crear usuario en Firebase Authentication
       final UserCredential userCredential =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
 
+      // Actualizar el nombre del usuario
       await userCredential.user
           ?.updateDisplayName(_nombreController.text.trim());
 
+      // Guardar información adicional en Firestore
       try {
         await FirebaseFirestore.instance
             .collection('usuarios')
@@ -55,16 +61,17 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
             .set({
           'nombre': _nombreController.text.trim(),
           'email': _emailController.text.trim(),
+          'cedula': _cedulaController.text.trim(),
           'fechaCreacion': FieldValue.serverTimestamp(),
         });
       } catch (firestoreError) {
-        // Si Firestore falla, continuar de todos modos
         debugPrint(
             'Advertencia: No se pudo guardar en Firestore: $firestoreError');
       }
 
       if (!mounted) return;
-     //aqui mostrams mensaje de exito muchachos
+
+      // Mostrar mensaje de éxito
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
           content: Text('¡Registro exitoso!'),
@@ -73,6 +80,7 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
         ),
       );
 
+      // Esperar y regresar a la pantalla anterior
       await Future.delayed(const Duration(milliseconds: 500));
       if (!mounted) return;
       Navigator.pop(context);
@@ -126,9 +134,18 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.grey[50],
       appBar: AppBar(
-        title: const Text('Registro de Usuario'),
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        title: Text(
+          'ProyectApp',
+          style: TextStyle(
+            color: Colors.grey[800],
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
       ),
       body: SafeArea(
         child: Center(
@@ -140,23 +157,32 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
                 mainAxisAlignment: MainAxisAlignment.center,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  Icon(
-                    Icons.person_add_alt_1,
-                    size: 80,
-                    color: Theme.of(context).colorScheme.primary,
+                  // Título Registro
+                  Text(
+                    'Registro',
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.grey[800],
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Crea tu cuenta en ProyectApp',
+                    style: TextStyle(
+                      fontSize: 16,
+                      color: Colors.grey[600],
+                    ),
+                    textAlign: TextAlign.center,
                   ),
                   const SizedBox(height: 32),
 
-                  // Campo de Nombre
-                  TextFormField(
+                  // Campo de Nombre completo
+                  _buildCustomTextField(
                     controller: _nombreController,
-                    decoration: InputDecoration(
-                      labelText: 'Nombre completo',
-                      prefixIcon: const Icon(Icons.person),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
+                    labelText: 'Nombre completo',
+                    hintText: 'Juan del Carmen',
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Por favor ingrese su nombre';
@@ -169,17 +195,12 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Campo de Email
-                  TextFormField(
+                  // Campo de Correo Electrónico
+                  _buildCustomTextField(
                     controller: _emailController,
+                    labelText: 'Correo Electrónico',
+                    hintText: 'ejemplo@correo.com',
                     keyboardType: TextInputType.emailAddress,
-                    decoration: InputDecoration(
-                      labelText: 'Correo electrónico',
-                      prefixIcon: const Icon(Icons.email),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Por favor ingrese su correo';
@@ -193,29 +214,30 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
                   ),
                   const SizedBox(height: 16),
 
+                  // Campo de Cédula
+                  _buildCustomTextField(
+                    controller: _cedulaController,
+                    labelText: 'Cédula',
+                    hintText: 'V3DB00220',
+                    validator: (value) {
+                      if (value == null || value.isEmpty) {
+                        return 'Por favor ingrese su cédula';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 16),
+
                   // Campo de Contraseña
-                  TextFormField(
+                  _buildPasswordField(
                     controller: _passwordController,
+                    labelText: 'Contraseña',
                     obscureText: _obscurePassword,
-                    decoration: InputDecoration(
-                      labelText: 'Contraseña',
-                      prefixIcon: const Icon(Icons.lock),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscurePassword
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _obscurePassword = !_obscurePassword;
-                          });
-                        },
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
+                    onToggle: () {
+                      setState(() {
+                        _obscurePassword = !_obscurePassword;
+                      });
+                    },
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Por favor ingrese una contraseña';
@@ -229,28 +251,15 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
                   const SizedBox(height: 16),
 
                   // Campo de Confirmar Contraseña
-                  TextFormField(
+                  _buildPasswordField(
                     controller: _confirmPasswordController,
+                    labelText: 'Confirmar contraseña',
                     obscureText: _obscureConfirmPassword,
-                    decoration: InputDecoration(
-                      labelText: 'Confirmar contraseña',
-                      prefixIcon: const Icon(Icons.lock_outline),
-                      suffixIcon: IconButton(
-                        icon: Icon(
-                          _obscureConfirmPassword
-                              ? Icons.visibility_off
-                              : Icons.visibility,
-                        ),
-                        onPressed: () {
-                          setState(() {
-                            _obscureConfirmPassword = !_obscureConfirmPassword;
-                          });
-                        },
-                      ),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                    ),
+                    onToggle: () {
+                      setState(() {
+                        _obscureConfirmPassword = !_obscureConfirmPassword;
+                      });
+                    },
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Por favor confirme su contraseña';
@@ -263,38 +272,118 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
                   ),
                   const SizedBox(height: 32),
 
-                  // Botón de Registro
-                  ElevatedButton(
-                    onPressed: _isLoading ? null : _registrarUsuario,
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 16),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
-                      ),
+                  // Botón de Crear Cuenta
+                  Container(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.blue.shade100,
+                          blurRadius: 8,
+                          offset: const Offset(0, 4),
+                        ),
+                      ],
                     ),
-                    child: _isLoading
-                        ? const SizedBox(
-                            height: 20,
-                            width: 20,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
+                    child: ElevatedButton(
+                      onPressed: _isLoading ? null : _registrarUsuario,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: Colors.blue[600],
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        elevation: 0,
+                      ),
+                      child: _isLoading
+                          ? const SizedBox(
+                              height: 20,
+                              width: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : const Text(
+                              'Crear Cuenta',
+                              style: TextStyle(
+                                fontSize: 16,
+                                fontWeight: FontWeight.w600,
+                              ),
                             ),
-                          )
-                        : const Text(
-                            'Registrarse',
-                            style: TextStyle(fontSize: 16),
-                          ),
+                    ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 24),
 
-                  // Botón de Cancelar
-                  TextButton(
-                    onPressed: _isLoading
-                        ? null
-                        : () {
-                            Navigator.pop(context);
-                          },
-                    child: const Text('Regresar'),
+                  // Footer informativo
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(12),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.grey.shade200,
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
+                    ),
+                    child: Column(
+                      children: [
+                        Text(
+                          'ProyectApp',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: Colors.grey[800],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Gestión de Proyectos',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[600],
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              '¿Ya tienes cuenta?',
+                              style: TextStyle(
+                                fontSize: 14,
+                                color: Colors.grey[600],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            GestureDetector(
+                              onTap: _isLoading
+                                  ? null
+                                  : () {
+                                      Navigator.pushReplacement(
+                                        context,
+                                        MaterialPageRoute(
+                                          builder: (context) =>
+                                              const PantallaInicioSesion(),
+                                        ),
+                                      );
+                                    },
+                              child: Text(
+                                'Iniciar sesión aquí',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w600,
+                                  color: Colors.blue[600],
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
                   ),
                 ],
               ),
@@ -302,6 +391,109 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
           ),
         ),
       ),
+    );
+  }
+
+  Widget _buildCustomTextField({
+    required TextEditingController controller,
+    required String labelText,
+    required String hintText,
+    TextInputType? keyboardType,
+    required String? Function(String?) validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          labelText,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey[700],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.shade200,
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: TextFormField(
+            controller: controller,
+            keyboardType: keyboardType,
+            decoration: InputDecoration(
+              hintText: hintText,
+              hintStyle: TextStyle(color: Colors.grey[500]),
+              border: InputBorder.none,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+            ),
+            validator: validator,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildPasswordField({
+    required TextEditingController controller,
+    required String labelText,
+    required bool obscureText,
+    required VoidCallback onToggle,
+    required String? Function(String?) validator,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          labelText,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: Colors.grey[700],
+          ),
+        ),
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(12),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.grey.shade200,
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: TextFormField(
+            controller: controller,
+            obscureText: obscureText,
+            decoration: InputDecoration(
+              hintText: '••••••••',
+              hintStyle: TextStyle(color: Colors.grey[500]),
+              border: InputBorder.none,
+              contentPadding:
+                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  obscureText ? Icons.visibility_off : Icons.visibility,
+                  color: Colors.grey[500],
+                ),
+                onPressed: onToggle,
+              ),
+            ),
+            validator: validator,
+          ),
+        ),
+      ],
     );
   }
 }
