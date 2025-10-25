@@ -30,3 +30,7 @@ dev_dependencies:
 # Secciones específicas para Flutter (mantener indentación correcta)
 flutter:
   uses-material-design: true
+  # DECLARACIÓN DE ASSETS
+  assets:
+    - assets/
+  

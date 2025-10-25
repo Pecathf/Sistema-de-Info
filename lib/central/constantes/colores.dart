@@ -1,18 +1,14 @@
 import 'package:flutter/material.dart';
 
-const Color colorPrimario = Color(0xFF003366); 
-
-// Color de Acento (NARANJA UNIMET - Para botones, iconos, y elementos interactivos clave)
-const Color colorAcento = Color(0xFFFF9900); 
-
-// Color de Fondo (Para el cuerpo principal de las pantallas)
-const Color colorFondo = Color(0xFFF7F7F7); // Gris muy claro, casi blanco
-
-// Color de Tarjetas/Contenedores (Para contrastar con el fondo)
-const Color colorTarjeta = Color(0xFFFFFFFF); // Blanco puro
-
-// Color de Texto Claro (Para usar sobre colorPrimario)
-const Color colorTextoClaro = Color(0xFFFFFFFF);
-
-// Color de Texto Oscuro (Para usar sobre colorTarjeta/colorFondo)
-const Color colorTextoOscuro = Color(0xFF333333);
+class AppColors {
+  // Color Naranja Principal (El color de los botones y el panel lateral)
+  static const Color primaryOrange = Color(0xFFFF6633); 
+  // Color de fondo oscuro (Para texto principal y fondos oscuros)
+  static const Color darkBackground = Color(0xFF2E2E2E);
+  // Color de Fondo claro para los formularios
+  static const Color lightBackground = Colors.white; 
+  // Color del texto de la marca y enlaces
+  static const Color accentColor = Color(0xFF3366FF); 
+  // Color para campos de texto/bordes grises suaves
+  static const Color lightGrey = Color(0xFFE0E0E0);
+}
