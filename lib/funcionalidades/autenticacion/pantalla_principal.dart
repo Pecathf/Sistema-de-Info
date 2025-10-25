@@ -25,6 +25,64 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   }
 
   // **********************************************
+// MÉTODO PARA EDITAR PERFIL
+// **********************************************
+  void _editarPerfil() {
+    // TODO: Implementar navegación a pantalla de editar perfil
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Función de editar perfil próximamente'),
+        duration: Duration(seconds: 2),
+      ),
+    );
+  }
+
+// **********************************************
+// MÉTODO PARA MOSTRAR EL MENÚ DE PERFIL
+// **********************************************
+  void _mostrarMenuPerfil(BuildContext context, Offset offset) {
+    showMenu(
+      context: context,
+      position: RelativeRect.fromLTRB(
+        offset.dx - 150,
+        offset.dy + 10,
+        offset.dx,
+        offset.dy,
+      ),
+      items: [
+        PopupMenuItem(
+          child: Row(
+            children: const [
+              Icon(Icons.edit, color: Colors.black87, size: 20),
+              SizedBox(width: 12),
+              Text('Editar Perfil'),
+            ],
+          ),
+          onTap: () {
+            Future.delayed(Duration.zero, () => _editarPerfil());
+          },
+        ),
+        PopupMenuItem(
+          child: Row(
+            children: const [
+              Icon(Icons.logout, color: Colors.red, size: 20),
+              SizedBox(width: 12),
+              Text('Cerrar Sesión', style: TextStyle(color: Colors.red)),
+            ],
+          ),
+          onTap: () {
+            Future.delayed(Duration.zero, () => _cerrarSesion(context));
+          },
+        ),
+      ],
+      elevation: 8,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(8),
+      ),
+    );
+  }
+
+  // **********************************************
   // MÉTODOS AUXILIARES DEL DASHBOARD
   // **********************************************
 
@@ -757,16 +815,21 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                   style: TextStyle(color: Colors.black87))),
           const SizedBox(width: 20),
           GestureDetector(
-            onTap: () => _cerrarSesion(context),
-            child: Container(
-              padding: const EdgeInsets.all(8),
-              decoration: const BoxDecoration(
-                color: _naranjaPrincipal,
-                shape: BoxShape.circle,
+            onTapDown: (TapDownDetails details) {
+              _mostrarMenuPerfil(context, details.globalPosition);
+            },
+            child: MouseRegion(
+              cursor: SystemMouseCursors.click,
+              child: Container(
+                padding: const EdgeInsets.all(8),
+                decoration: const BoxDecoration(
+                  color: _naranjaPrincipal,
+                  shape: BoxShape.circle,
+                ),
+                child: Text(userInitial,
+                    style: const TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
               ),
-              child: Text(userInitial,
-                  style: const TextStyle(
-                      color: Colors.white, fontWeight: FontWeight.bold)),
             ),
           ),
           const SizedBox(width: 20),
@@ -788,7 +851,9 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             },
           ),
           GestureDetector(
-            onTap: () => _cerrarSesion(context),
+            onTapDown: (TapDownDetails details) {
+              _mostrarMenuPerfil(context, details.globalPosition);
+            },
             child: Padding(
               padding: const EdgeInsets.only(right: 16.0),
               child: Container(

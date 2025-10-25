@@ -6,7 +6,6 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'funcionalidades/autenticacion/firebase_options.dart';
 
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
-
 import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_principal.dart';
 import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_inicio_sesion.dart';
 

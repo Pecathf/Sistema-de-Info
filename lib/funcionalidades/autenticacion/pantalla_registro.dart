@@ -405,8 +405,8 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
                                         ),
                                       ),
                                       const SizedBox(width: 4),
-                                      GestureDetector(
-                                        onTap: _isLoading
+                                      TextButton(
+                                        onPressed: _isLoading
                                             ? null
                                             : () {
                                                 Navigator.of(context)
@@ -424,7 +424,6 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
                                           style: TextStyle(
                                             fontSize: 14,
                                             fontWeight: FontWeight.w600,
-                                            // 8. USO DE AppColors.primaryOrange
                                             color: AppColors.primaryOrange,
                                           ),
                                         ),
