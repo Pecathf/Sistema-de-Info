@@ -1,12 +1,7 @@
 #!/bin/sh
 # This is a generated file; do not edit or check into version control.
-<<<<<<< HEAD
 export "FLUTTER_ROOT=C:\dev\flutter"
 export "FLUTTER_APPLICATION_PATH=C:\Users\User\Desktop\Hito2\Sistema-de-Info"
-=======
-export "FLUTTER_ROOT=C:\Users\soyte\Downloads\flutter_windows_3.35.3-stable\flutter"
-export "FLUTTER_APPLICATION_PATH=C:\Users\soyte\sistem_proyect"
->>>>>>> Gloria
 export "COCOAPODS_PARALLEL_CODE_SIGN=true"
 export "FLUTTER_BUILD_DIR=build"
 export "FLUTTER_BUILD_NAME=1.0.0"
