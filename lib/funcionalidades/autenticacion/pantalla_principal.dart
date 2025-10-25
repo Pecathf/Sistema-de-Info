@@ -62,7 +62,10 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   Widget _buildSearchBar() {
     // Definición de Color con opacidad 0.05
     Color boxShadowColor = Color.fromRGBO(
-        Colors.grey.red, Colors.grey.green, Colors.grey.blue, 0.05);
+        (Colors.grey.r * 255.0).round() & 0xff,
+        (Colors.grey.g * 255.0).round() & 0xff,
+        (Colors.grey.b * 255.0).round() & 0xff,
+        0.05);
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -187,8 +190,11 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
 
   Widget _buildStatCard(
       String title, String value, String subtitle, Color color) {
-    Color boxShadowColor =
-        Color.fromRGBO(color.red, color.green, color.blue, 0.05);
+    Color boxShadowColor = Color.fromRGBO(
+        (color.r * 255.0).round() & 0xff,
+        (color.g * 255.0).round() & 0xff,
+        (color.b * 255.0).round() & 0xff,
+        0.05);
 
     return Container(
       decoration: BoxDecoration(
@@ -358,7 +364,10 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     ];
 
     Color boxShadowColor = Color.fromRGBO(
-        Colors.grey.red, Colors.grey.green, Colors.grey.blue, 0.1);
+        (Colors.grey.r * 255.0).round() & 0xff,
+        (Colors.grey.g * 255.0).round() & 0xff,
+        (Colors.grey.b * 255.0).round() & 0xff,
+        0.1);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -432,7 +441,10 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     ];
 
     Color boxShadowColor = Color.fromRGBO(
-        Colors.grey.red, Colors.grey.green, Colors.grey.blue, 0.1);
+        (Colors.grey.r * 255.0).round() & 0xff,
+        (Colors.grey.g * 255.0).round() & 0xff,
+        (Colors.grey.b * 255.0).round() & 0xff,
+        0.1);
 
     return Container(
       padding: const EdgeInsets.all(20),
@@ -473,8 +485,11 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   }
 
   Widget _buildTaskRow(String name, String status, String date, Color color) {
-    Color statusBgColor =
-        Color.fromRGBO(color.red, color.green, color.blue, 0.1);
+    Color statusBgColor = Color.fromRGBO(
+        (color.r * 255.0).round() & 0xff,
+        (color.g * 255.0).round() & 0xff,
+        (color.b * 255.0).round() & 0xff,
+        0.1);
 
     return Padding(
       padding: const EdgeInsets.only(bottom: 12.0),
@@ -558,8 +573,11 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
           style: TextStyle(
             fontSize: 14,
             // CORRECCIÓN: Reemplazar withOpacity con Color.fromRGBO
-            color: Color.fromRGBO(footerTextColor.red, footerTextColor.green,
-                footerTextColor.blue, 0.8),
+            color: Color.fromRGBO(
+                (footerTextColor.r * 255.0).round() & 0xff,
+                (footerTextColor.g * 255.0).round() & 0xff,
+                (footerTextColor.b * 255.0).round() & 0xff,
+                0.8),
           ),
         ),
       ],
@@ -576,15 +594,21 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             // CORRECCIÓN: Reemplazar withOpacity con Color.fromRGBO
             child: Text('Cerrar Sesión',
                 style: TextStyle(
-                    color: Color.fromRGBO(footerTextColor.red,
-                        footerTextColor.green, footerTextColor.blue, 0.8)))),
+                    color: Color.fromRGBO(
+                        (footerTextColor.r * 255.0).round() & 0xff,
+                        (footerTextColor.g * 255.0).round() & 0xff,
+                        (footerTextColor.b * 255.0).round() & 0xff,
+                        0.8)))),
         TextButton(
             onPressed: () {},
             // CORRECCIÓN: Reemplazar withOpacity con Color.fromRGBO
             child: Text('Mi Perfil',
                 style: TextStyle(
-                    color: Color.fromRGBO(footerTextColor.red,
-                        footerTextColor.green, footerTextColor.blue, 0.8)))),
+                    color: Color.fromRGBO(
+                        (footerTextColor.r * 255.0).round() & 0xff,
+                        (footerTextColor.g * 255.0).round() & 0xff,
+                        (footerTextColor.b * 255.0).round() & 0xff,
+                        0.8)))),
       ],
     );
 
@@ -601,8 +625,11 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
               // CORRECCIÓN: Reemplazar withOpacity con Color.fromRGBO
               TextStyle(
                   fontSize: 12,
-                  color: Color.fromRGBO(footerTextColor.red,
-                      footerTextColor.green, footerTextColor.blue, 0.8)),
+                  color: Color.fromRGBO(
+                      (footerTextColor.r * 255.0).round() & 0xff,
+                      (footerTextColor.g * 255.0).round() & 0xff,
+                      (footerTextColor.b * 255.0).round() & 0xff,
+                      0.8)),
         ),
         Text(
           'Contacto: 0202020200202',
@@ -610,8 +637,11 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
               // CORRECCIÓN: Reemplazar withOpacity con Color.fromRGBO
               TextStyle(
                   fontSize: 12,
-                  color: Color.fromRGBO(footerTextColor.red,
-                      footerTextColor.green, footerTextColor.blue, 0.8)),
+                  color: Color.fromRGBO(
+                      (footerTextColor.r * 255.0).round() & 0xff,
+                      (footerTextColor.g * 255.0).round() & 0xff,
+                      (footerTextColor.b * 255.0).round() & 0xff,
+                      0.8)),
         ),
         const SizedBox(height: 10),
         Icon(Icons.support_agent, color: footerTextColor, size: 24),
@@ -621,7 +651,10 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     // Color para el texto final del footer
     Color finalTextColor = Colors.white;
     Color finalTextColorWithOpacity = Color.fromRGBO(
-        finalTextColor.red, finalTextColor.green, finalTextColor.blue, 0.8);
+        (finalTextColor.r * 255.0).round() & 0xff,
+        (finalTextColor.g * 255.0).round() & 0xff,
+        (finalTextColor.b * 255.0).round() & 0xff,
+        0.8);
 
     return Container(
       width: double.infinity,
