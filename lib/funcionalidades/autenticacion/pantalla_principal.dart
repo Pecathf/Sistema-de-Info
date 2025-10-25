@@ -14,6 +14,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
     final userName = user?.displayName ?? 'Usuario';
+    final userInitials = _getUserInitials(userName);
 
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -29,6 +30,30 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
           ),
         ),
         actions: [
+          GestureDetector(
+            onTap: () {
+              // Navegar a editar perfil después
+            },
+            child: Container(
+              margin: const EdgeInsets.only(right: 16),
+              width: 40,
+              height: 40,
+              decoration: BoxDecoration(
+                color: const Color(0xFFFF6B35),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Center(
+                child: Text(
+                  userInitials,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+              ),
+            ),
+          ),
           IconButton(
             icon: Icon(Icons.notifications, color: Colors.grey[600]),
             onPressed: () {},
@@ -44,28 +69,31 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Header de bienvenida
             _buildWelcomeHeader(userName),
             const SizedBox(height: 20),
-
-            // Barra de búsqueda
             _buildSearchBar(),
             const SizedBox(height: 24),
-
-            // Estadísticas
             _buildStatisticsGrid(),
             const SizedBox(height: 32),
-
-            // Proyectos recientes
             _buildRecentProjects(),
             const SizedBox(height: 32),
-
-            // Footer informativo
+            _buildPendingTasks(),
+            const SizedBox(height: 32),
             _buildFooter(),
           ],
         ),
       ),
     );
+  }
+
+  String _getUserInitials(String userName) {
+    final names = userName.split(' ');
+    if (names.length >= 2) {
+      return '${names[0][0]}${names[1][0]}'.toUpperCase();
+    } else if (userName.isNotEmpty) {
+      return userName.substring(0, 1).toUpperCase();
+    }
+    return 'U';
   }
 
   Widget _buildWelcomeHeader(String userName) {
@@ -99,7 +127,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.shade200, // ✅ SOLUCIÓN - Sin withOpacity
+            color: Colors.grey.shade200,
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -125,12 +153,14 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       crossAxisSpacing: 16,
       mainAxisSpacing: 16,
       children: [
+        _buildStatCard('PROYECTOS TOTALES', '12', 'Total de proyectos',
+            const Color(0xFFFF6B35)),
         _buildStatCard(
-            'PROYECTOS TOTALES', '12', 'Total de proyectos', Colors.blue),
-        _buildStatCard('PROYECTOS ACTIVOS', '8', 'En progreso', Colors.green),
+            'PROYECTOS ACTIVOS', '8', 'En progreso', const Color(0xFFFF6B35)),
+        _buildStatCard('TAREAS PENDIENTES', '24', 'Por completar',
+            const Color(0xFFFF6B35)),
         _buildStatCard(
-            'TAREAS PENDIENTES', '24', 'Por completar', Colors.orange),
-        _buildStatCard('COMPLETADOS', '4', 'Finalizados', Colors.purple),
+            'COMPLETADOS', '4', 'Finalizados', const Color(0xFFFF6B35)),
       ],
     );
   }
@@ -143,7 +173,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.shade200, // ✅ SOLUCIÓN - Sin withOpacity
+            color: Colors.grey.shade200,
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -200,29 +230,12 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
         ),
         const SizedBox(height: 16),
         _buildProjectCard(
-          'Integración de Sistemas Automatizados',
-          '18 Sep 2025',
-          5,
-          12,
-        ),
+            'Integración de Sistemas Automatizados', '15 Sep 2023', 5, 12),
         _buildProjectCard(
-          'Migración a la Nube Empresarial',
-          '10 Sep 2025',
-          3,
-          6,
-        ),
-        _buildProjectCard(
-          'Desarrollo de Protocolos de Seguridad Informática',
-          '5 Sep 2025',
-          4,
-          15,
-        ),
-        _buildProjectCard(
-          'Rediseño de Base de Datos',
-          '1 Sep 2025',
-          2,
-          6,
-        ),
+            'Migración a la Nube Empresarial', '10 Sep 2023', 9, 6),
+        _buildProjectCard('Desarrollo de Protocolos de Seguridad Informática',
+            '5 Sep 2023', 4, 15),
+        _buildProjectCard('Rediseño de Base de Datos', '1 Sep 2023', 2, 6),
       ],
     );
   }
@@ -237,7 +250,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.shade200, // ✅ SOLUCIÓN - Sin withOpacity
+            color: Colors.grey.shade200,
             blurRadius: 6,
             offset: const Offset(0, 2),
           ),
@@ -258,7 +271,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             ),
             const SizedBox(height: 8),
             Text(
-              'Creado: $fecha - $miembros miembros - $tareas tareas',
+              'Creado: $fecha + $miembros miembros + $tareas tareas',
               style: const TextStyle(
                 fontSize: 14,
                 color: Colors.grey,
@@ -266,6 +279,84 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildPendingTasks() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        const Text(
+          'Tareas Pendientes',
+          style: TextStyle(
+            fontSize: 18,
+            fontWeight: FontWeight.bold,
+            color: Colors.black87,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _buildTaskItem('Diseño de interfaz Completo', '10.0 Incremento', false),
+        _buildTaskItem('Integración con CMS', 'Pendiente Máxima', false),
+        _buildTaskItem('Desarrollo del frontend', 'Urgente 11:00 pm', true),
+      ],
+    );
+  }
+
+  Widget _buildTaskItem(String task, String details, bool isCompleted) {
+    return Container(
+      width: double.infinity,
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(8),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.shade200,
+            blurRadius: 4,
+            offset: const Offset(0, 1),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          Checkbox(
+            value: isCompleted,
+            onChanged: (bool? value) {
+              setState(() {
+                // Lógica para cambiar estado
+              });
+            },
+            activeColor: const Color(0xFFFF6B35),
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  task,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.black87,
+                    decoration: isCompleted
+                        ? TextDecoration.lineThrough
+                        : TextDecoration.none,
+                  ),
+                ),
+                Text(
+                  details,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    color: Colors.grey,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -279,7 +370,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.shade200, // ✅ SOLUCIÓN - Sin withOpacity
+            color: Colors.grey.shade200,
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -298,7 +389,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
           ),
           const SizedBox(height: 8),
           const Text(
-            'Sistema de Gestión de proyectos para Ingeniería en la Universidad Intergrediana',
+            'Sistema de Gestión de proyectos para Ingeniería en la Universidad Metropolitana',
             style: TextStyle(
               fontSize: 14,
               color: Colors.grey,
@@ -314,7 +405,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Ayudita',
+                    'ProyectApp',
                     style: TextStyle(
                       fontWeight: FontWeight.w600,
                       color: Colors.black87,
@@ -322,11 +413,11 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                   ),
                   SizedBox(height: 4),
                   Text(
-                    'Email: ayudita@proyectApp.usfirmet.edu.vn',
+                    'Email: proyecta@proyectApp.unimar.edu.vn',
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                   Text(
-                    'Contacto: 01010121000002',
+                    'Contacto: 01023000000023',
                     style: TextStyle(fontSize: 12, color: Colors.grey),
                   ),
                 ],
@@ -336,11 +427,17 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                 children: [
                   TextButton(
                     onPressed: () {},
-                    child: const Text('Iniciar Sesión'),
+                    child: const Text('Inicio'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFFFF6B35),
+                    ),
                   ),
                   TextButton(
                     onPressed: () {},
                     child: const Text('Registro'),
+                    style: TextButton.styleFrom(
+                      foregroundColor: const Color(0xFFFF6B35),
+                    ),
                   ),
                 ],
               ),
