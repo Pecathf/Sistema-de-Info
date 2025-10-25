@@ -4,12 +4,16 @@ import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
 import 'firebase_options.dart';
+
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
+
+import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_principal.dart';
 import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_inicio_sesion.dart';
-import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_principal.dart'; // Mismo nombre
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // INICIALIZAR FIREBASE
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
@@ -50,7 +54,7 @@ class AuthWrapper extends StatelessWidget {
     if (user == null) {
       return const PantallaInicioSesion();
     } else {
-      return const PantallaPrincipal(); // ✅ NUEVA PANTALLA PRINCIPAL MEJORADA
+      return PantallaPrincipal();
     }
   }
 }

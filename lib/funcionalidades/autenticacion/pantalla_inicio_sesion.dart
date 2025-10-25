@@ -1,9 +1,15 @@
+// Asegúrate de que este import apunte a tu pantalla principal real.
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart'; 
+import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
 import 'pantalla_registro.dart';
 // Importamos los colores
-import 'package:sistem_proyect/central/constantes/colores.dart'; 
+import 'package:sistem_proyect/central/constantes/colores.dart';
+
+// ***** IMPORTAR PANTALLA PRINCIPAL (NECESARIO PARA LA NAVEGACIÓN) *****
+// Si no tienes esta pantalla aún, deberás crearla.
+import 'pantalla_principal.dart';
+// *********************************************************************
 
 class PantallaInicioSesion extends StatefulWidget {
   const PantallaInicioSesion({super.key});
@@ -16,7 +22,7 @@ class _PantallaInicioSesionState extends State<PantallaInicioSesion> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  final AuthService _authService = AuthService(); 
+  final AuthService _authService = AuthService();
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -37,21 +43,45 @@ class _PantallaInicioSesionState extends State<PantallaInicioSesion> {
     });
 
     try {
+      // 1. Intentar iniciar sesión
       await _authService.signIn(
         _emailController.text.trim(),
         _passwordController.text,
       );
+
+      // ***** CAMBIO CLAVE: Lógica de navegación tras éxito *****
+      // Si la llamada a _authService.signIn se completa sin error,
+      // la autenticación fue exitosa.
+      print('Inicio de sesión exitoso. Navegando...');
+
+      // La mejor práctica es usar un StreamBuilder global para manejar el estado de autenticación.
+      // Sin embargo, si ese listener no existe, debes agregar esta línea para
+      // navegar manualmente a tu pantalla principal.
+
+      // Usamos pushReplacement para que el usuario no pueda volver a la pantalla de login con el botón de retroceso.
+      Navigator.of(context).pushReplacement(
+        MaterialPageRoute(
+          // REEMPLAZA 'PantallaPrincipal()' CON EL CONSTRUCTOR DE TU PANTALLA PRINCIPAL REAL
+          builder: (context) => const PantallaPrincipal(),
+        ),
+      );
+      // *******************************************************
     } on FirebaseAuthException catch (e) {
       String message = 'Ocurrió un error inesperado.';
       if (e.code == 'user-not-found' || e.code == 'wrong-password') {
         message = 'Credenciales inválidas. Verifica email y contraseña.';
       } else if (e.code == 'invalid-email') {
         message = 'El formato del email es incorrecto.';
+      } else if (e.code == 'too-many-requests') {
+        message =
+            'Se han bloqueado todos los intentos de esta cuenta debido a demasiados intentos fallidos.';
       }
+      print('Error de FirebaseAuth: ${e.code}');
       setState(() {
         _errorMessage = message;
       });
     } catch (e) {
+      print('Error General: ${e.toString()}');
       setState(() {
         _errorMessage = 'Error: ' + e.toString();
       });
@@ -72,7 +102,8 @@ class _PantallaInicioSesionState extends State<PantallaInicioSesion> {
             return Center(
               child: Card(
                 elevation: 10,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(15)),
                 child: Container(
                   width: 800,
                   height: 550,
@@ -83,10 +114,11 @@ class _PantallaInicioSesionState extends State<PantallaInicioSesion> {
                   child: Row(
                     children: [
                       Expanded(
-                        child: Center( 
-                          child: ConstrainedBox( 
-                            constraints: const BoxConstraints(maxWidth: 350), 
-                            child: _buildFormContent(context, title: 'Inicio de Sesión'),
+                        child: Center(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 350),
+                            child: _buildFormContent(context,
+                                title: 'Inicio de Sesión'),
                           ),
                         ),
                       ),
@@ -134,49 +166,58 @@ class _PantallaInicioSesionState extends State<PantallaInicioSesion> {
           children: <Widget>[
             Text(
               title,
-              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.darkBackground),
-              textAlign: TextAlign.center, 
+              style: const TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.darkBackground),
+              textAlign: TextAlign.center,
             ),
             const SizedBox(height: 25),
 
             _buildTextField(
-                controller: _emailController, 
-                labelText: 'Correo Electrónico', 
-                keyboardType: TextInputType.emailAddress, 
-                icon: Icons.email,
-                validator: (value) => value == null || value.isEmpty ? 'Introduce tu correo' : null,
+              controller: _emailController,
+              labelText: 'Correo Electrónico',
+              keyboardType: TextInputType.emailAddress,
+              icon: Icons.email,
+              validator: (value) =>
+                  value == null || value.isEmpty ? 'Introduce tu correo' : null,
             ),
             const SizedBox(height: 15),
 
             _buildTextField(
-                controller: _passwordController, 
-                labelText: 'Contraseña', 
-                obscureText: true, 
+                controller: _passwordController,
+                labelText: 'Contraseña',
+                obscureText: true,
                 icon: Icons.lock,
                 validator: (value) {
-                  if (value == null || value.isEmpty) return 'Introduce tu contraseña';
+                  if (value == null || value.isEmpty)
+                    return 'Introduce tu contraseña';
                   return null;
                 }),
             const SizedBox(height: 20),
 
-            // algunas validaciones 
-            if (_errorMessage != null) 
+            // algunas validaciones
+            if (_errorMessage != null)
               Padding(
                 padding: const EdgeInsets.only(bottom: 15),
-                child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+                child: Text(_errorMessage!,
+                    style: const TextStyle(color: Colors.red)),
               ),
 
             // Botón de Entrar
             ElevatedButton(
-              onPressed: _isLoading ? null : _handleSignIn, 
+              onPressed: _isLoading ? null : _handleSignIn,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryOrange,
                 padding: const EdgeInsets.symmetric(vertical: 16),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8)),
               ),
               child: _isLoading
-                  ? const CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
-                  : const Text('Iniciar Sesión', style: TextStyle(fontSize: 18, color: Colors.white)),
+                  ? const CircularProgressIndicator(
+                      strokeWidth: 2, color: Colors.white)
+                  : const Text('Iniciar Sesión',
+                      style: TextStyle(fontSize: 18, color: Colors.white)),
             ),
             const SizedBox(height: 25),
 
@@ -191,17 +232,23 @@ class _PantallaInicioSesionState extends State<PantallaInicioSesion> {
               ),
             ),
             TextButton(
-              onPressed: _isLoading ? null : () {
-                Navigator.push(context, MaterialPageRoute(builder: (context) => const PantallaRegistro()));
-              },
-              child: const Text('¿No tienes cuenta? Regístrate aquí', style: TextStyle(color: AppColors.darkBackground)),
+              onPressed: _isLoading
+                  ? null
+                  : () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) => const PantallaRegistro()));
+                    },
+              child: const Text('¿No tienes cuenta? Regístrate aquí',
+                  style: TextStyle(color: AppColors.darkBackground)),
             ),
           ],
         ),
       ),
     );
   }
-  
+
   // Función auxiliar para los campos de texto estilizados
   Widget _buildTextField({
     required TextEditingController controller,
@@ -229,9 +276,11 @@ class _PantallaInicioSesionState extends State<PantallaInicioSesion> {
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: const BorderSide(color: AppColors.primaryOrange, width: 2),
+          borderSide:
+              const BorderSide(color: AppColors.primaryOrange, width: 2),
         ),
-        contentPadding: const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
+        contentPadding:
+            const EdgeInsets.symmetric(horizontal: 15, vertical: 15),
       ),
     );
   }
