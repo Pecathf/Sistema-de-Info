@@ -37,26 +37,39 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
       return;
     }
 
+    // Comprobación de que las contraseñas coincidan
+    if (_passwordController.text != _confirmPasswordController.text) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Las contraseñas no coinciden'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+
     setState(() {
       _isLoading = true;
     });
 
     try {
-      // Crear usuario en Firebase Authentication
+      // 1. Crear usuario en Firebase Authentication (MÉTODO DIRECTO)
       final UserCredential userCredential =
           await FirebaseAuth.instance.createUserWithEmailAndPassword(
         email: _emailController.text.trim(),
         password: _passwordController.text,
       );
 
-      // Actualizar el nombre del usuario
+      // 2. Actualizar el nombre del usuario
       await userCredential.user
           ?.updateDisplayName(_nombreController.text.trim());
 
-      // Guardar información adicional en Firestore
+      // 3. Guardar información adicional en Firestore
       try {
         await FirebaseFirestore.instance
-            .collection('usuarios')
+            .collection('usuarios') // Colección usada en la versión anterior
             .doc(userCredential.user!.uid)
             .set({
           'nombre': _nombreController.text.trim(),
@@ -69,21 +82,33 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
             'Advertencia: No se pudo guardar en Firestore: $firestoreError');
       }
 
+      // 4. CERRAR SESIÓN INMEDIATAMENTE después del registro
+      await FirebaseAuth.instance.signOut();
+
       if (!mounted) return;
 
-      // Mostrar mensaje de éxito
+      // 5. Mostrar mensaje de éxito
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('¡Registro exitoso!'),
+          content: Text('¡Registro exitoso! Ahora puedes iniciar sesión.'),
           backgroundColor: Colors.green,
-          duration: Duration(seconds: 2),
+          duration: Duration(seconds: 3),
         ),
       );
 
-      // Esperar y regresar a la pantalla anterior
+      // 6. Redirigir a la pantalla de Inicio de Sesión
       await Future.delayed(const Duration(milliseconds: 500));
       if (!mounted) return;
-      Navigator.pop(context);
+
+      // CAMBIO CLAVE: Usar pushAndRemoveUntil para eliminar TODAS las rutas anteriores
+      // Esto asegura que la PantallaInicioSesion sea la nueva raíz, simulando el "inicio desde 0".
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(
+          builder: (context) => const PantallaInicioSesion(),
+        ),
+        (Route<dynamic> route) =>
+            false, // Predicado que siempre retorna falso, eliminando todas las rutas.
+      );
     } on FirebaseAuthException catch (e) {
       String mensaje = 'Error al registrar usuario';
 
@@ -133,367 +158,391 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
 
   @override
   Widget build(BuildContext context) {
+    // Definir la imagen de fondo con un filtro oscuro
+    const String backgroundImage =
+        'assets/fondo_login.jpg'; // Reemplaza con tu imagen de fondo
+
     return Scaffold(
-      backgroundColor: Colors.grey[50],
-      appBar: AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        title: Text(
-          'ProyectApp',
-          style: TextStyle(
-            color: Colors.grey[800],
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
+      body: Stack(
+        children: [
+          // Fondo de imagen
+          Positioned.fill(
+            child: Image.asset(
+              backgroundImage,
+              fit: BoxFit.cover,
+            ),
           ),
-        ),
-      ),
-      body: SafeArea(
-        child: Center(
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.stretch,
+          // Capa de color oscuro semitransparente sobre la imagen de fondo
+          Positioned.fill(
+            child: Container(
+              color: Colors.black
+                  .withOpacity(0.5), // Ajusta la opacidad si es necesario
+            ),
+          ),
+          Center(
+            child: Container(
+              // Contenedor principal que agrupa los dos cuadros
+              constraints: const BoxConstraints(
+                  maxWidth: 800,
+                  maxHeight: 600), // Limita el tamaño total del módulo
+              decoration: BoxDecoration(
+                color: Colors
+                    .white, // Color de fallback, aunque los hijos lo cubrirán
+                borderRadius: BorderRadius.circular(10),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.1),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
+              ),
+              child: Row(
                 children: [
-                  // Título Registro
-                  Text(
-                    'Registro',
-                    style: TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.grey[800],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Crea tu cuenta en ProyectApp',
-                    style: TextStyle(
-                      fontSize: 16,
-                      color: Colors.grey[600],
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Campo de Nombre completo
-                  _buildCustomTextField(
-                    controller: _nombreController,
-                    labelText: 'Nombre completo',
-                    hintText: 'Juan del Carmen',
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor ingrese su nombre';
-                      }
-                      if (value.length < 3) {
-                        return 'El nombre debe tener al menos 3 caracteres';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Campo de Correo Electrónico
-                  _buildCustomTextField(
-                    controller: _emailController,
-                    labelText: 'Correo Electrónico',
-                    hintText: 'ejemplo@correo.com',
-                    keyboardType: TextInputType.emailAddress,
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor ingrese su correo';
-                      }
-                      if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
-                          .hasMatch(value)) {
-                        return 'Ingrese un correo válido';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Campo de Cédula
-                  _buildCustomTextField(
-                    controller: _cedulaController,
-                    labelText: 'Cédula',
-                    hintText: 'V3DB00220',
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor ingrese su cédula';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Campo de Contraseña
-                  _buildPasswordField(
-                    controller: _passwordController,
-                    labelText: 'Contraseña',
-                    obscureText: _obscurePassword,
-                    onToggle: () {
-                      setState(() {
-                        _obscurePassword = !_obscurePassword;
-                      });
-                    },
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor ingrese una contraseña';
-                      }
-                      if (value.length < 6) {
-                        return 'La contraseña debe tener al menos 6 caracteres';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-
-                  // Campo de Confirmar Contraseña
-                  _buildPasswordField(
-                    controller: _confirmPasswordController,
-                    labelText: 'Confirmar contraseña',
-                    obscureText: _obscureConfirmPassword,
-                    onToggle: () {
-                      setState(() {
-                        _obscureConfirmPassword = !_obscureConfirmPassword;
-                      });
-                    },
-                    validator: (value) {
-                      if (value == null || value.isEmpty) {
-                        return 'Por favor confirme su contraseña';
-                      }
-                      if (value != _passwordController.text) {
-                        return 'Las contraseñas no coinciden';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 32),
-
-                  // Botón de Crear Cuenta
-                  Container(
-                    decoration: BoxDecoration(
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.blue.shade100,
-                          blurRadius: 8,
-                          offset: const Offset(0, 4),
+                  // Lado Izquierdo (Naranja)
+                  Expanded(
+                    flex: 1, // Ocupa 1/3 del espacio
+                    child: Container(
+                      decoration: const BoxDecoration(
+                        color: Color(0xFFFF7A00), // Naranja del diseño
+                        borderRadius: BorderRadius.only(
+                          topLeft: Radius.circular(10),
+                          bottomLeft: Radius.circular(10),
                         ),
-                      ],
-                    ),
-                    child: ElevatedButton(
-                      onPressed: _isLoading ? null : _registrarUsuario,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.blue[600],
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        elevation: 0,
                       ),
-                      child: _isLoading
-                          ? const SizedBox(
-                              height: 20,
-                              width: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'Crear Cuenta',
-                              style: TextStyle(
-                                fontSize: 16,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                      child: const Center(
+                        child: Text(
+                          '¡Crea una cuenta!',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 32,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 24),
+                  // Lado Derecho (Formulario Blanco)
+                  Expanded(
+                    flex: 2, // Ocupa 2/3 del espacio
+                    child: Container(
+                      padding: const EdgeInsets.all(40.0),
+                      decoration: const BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.only(
+                          topRight: Radius.circular(10),
+                          bottomRight: Radius.circular(10),
+                        ),
+                      ),
+                      child: SingleChildScrollView(
+                        child: Form(
+                          key: _formKey,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize
+                                .min, // Para que la columna no ocupe más espacio del necesario
+                            children: [
+                              _buildSectionTitle('Registro'),
+                              const SizedBox(height: 24),
 
-                  // Footer informativo
-                  Container(
-                    padding: const EdgeInsets.all(20),
-                    decoration: BoxDecoration(
-                      color: Colors.white,
-                      borderRadius: BorderRadius.circular(12),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.grey.shade200,
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
-                        ),
-                      ],
-                    ),
-                    child: Column(
-                      children: [
-                        Text(
-                          'ProyectApp',
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.bold,
-                            color: Colors.grey[800],
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        Text(
-                          'Gestión de Proyectos',
-                          style: TextStyle(
-                            fontSize: 14,
-                            color: Colors.grey[600],
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Row(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Text(
-                              '¿Ya tienes cuenta?',
-                              style: TextStyle(
-                                fontSize: 14,
-                                color: Colors.grey[600],
+                              _buildLabel('Nombre completo'),
+                              const SizedBox(height: 8),
+                              _buildCustomTextField(
+                                controller: _nombreController,
+                                hintText: 'Juana del Carmen',
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Por favor ingrese su nombre';
+                                  }
+                                  return null;
+                                },
                               ),
-                            ),
-                            const SizedBox(width: 8),
-                            GestureDetector(
-                              onTap: _isLoading
-                                  ? null
-                                  : () {
-                                      Navigator.pushReplacement(
-                                        context,
-                                        MaterialPageRoute(
-                                          builder: (context) =>
-                                              const PantallaInicioSesion(),
-                                        ),
-                                      );
-                                    },
-                              child: Text(
-                                'Iniciar sesión aquí',
-                                style: TextStyle(
-                                  fontSize: 14,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.blue[600],
+                              const SizedBox(height: 16),
+
+                              _buildLabel('Correo Electrónico'),
+                              const SizedBox(height: 8),
+                              _buildCustomTextField(
+                                controller: _emailController,
+                                hintText: 'ejemplo@correo.com',
+                                keyboardType: TextInputType.emailAddress,
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Por favor ingrese su correo';
+                                  }
+                                  if (!RegExp(
+                                          r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
+                                      .hasMatch(value)) {
+                                    return 'Ingrese un correo válido';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 16),
+
+                              _buildLabel('Cédula'),
+                              const SizedBox(height: 8),
+                              _buildCustomTextField(
+                                controller: _cedulaController,
+                                hintText: 'V30980220',
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Por favor ingrese su cédula';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 16),
+
+                              _buildLabel('Contraseña'),
+                              const SizedBox(height: 8),
+                              _buildPasswordField(
+                                controller: _passwordController,
+                                obscureText: _obscurePassword,
+                                onToggle: () {
+                                  setState(() {
+                                    _obscurePassword = !_obscurePassword;
+                                  });
+                                },
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Por favor ingrese una contraseña';
+                                  }
+                                  if (value.length < 6) {
+                                    return 'La contraseña debe tener al menos 6 caracteres';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 16),
+
+                              _buildLabel('Confirmar contraseña'),
+                              const SizedBox(height: 8),
+                              _buildPasswordField(
+                                controller: _confirmPasswordController,
+                                obscureText: _obscureConfirmPassword,
+                                onToggle: () {
+                                  setState(() {
+                                    _obscureConfirmPassword =
+                                        !_obscureConfirmPassword;
+                                  });
+                                },
+                                validator: (value) {
+                                  if (value == null || value.isEmpty) {
+                                    return 'Por favor confirme su contraseña';
+                                  }
+                                  if (value != _passwordController.text) {
+                                    return 'Las contraseñas no coinciden';
+                                  }
+                                  return null;
+                                },
+                              ),
+                              const SizedBox(height: 24),
+
+                              SizedBox(
+                                width: double.infinity,
+                                child: ElevatedButton(
+                                  onPressed:
+                                      _isLoading ? null : _registrarUsuario,
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: const Color(
+                                        0xFFFF7A00), // Naranja para el botón
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                        vertical: 16),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    elevation: 0,
+                                    textStyle: const TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                  child: _isLoading
+                                      ? const SizedBox(
+                                          height: 20,
+                                          width: 20,
+                                          child: CircularProgressIndicator(
+                                            strokeWidth: 2,
+                                            color: Colors.white,
+                                          ),
+                                        )
+                                      : const Text('Crear Cuenta'),
                                 ),
                               ),
-                            ),
-                          ],
+                              const SizedBox(
+                                  height: 32), // Espacio antes del footer
+
+                              // Footer del formulario
+                              Column(
+                                children: [
+                                  Text(
+                                    'ProyectApp',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.grey[800],
+                                    ),
+                                  ),
+                                  Text(
+                                    'Gestión de Proyectos',
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.grey[600],
+                                    ),
+                                  ),
+                                  const SizedBox(height: 16),
+                                  Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Text(
+                                        '¿Ya tienes cuenta?',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          color: Colors.grey[600],
+                                        ),
+                                      ),
+                                      const SizedBox(width: 4),
+                                      GestureDetector(
+                                        onTap: _isLoading
+                                            ? null
+                                            : () {
+                                                // Usar pushAndRemoveUntil aquí también para asegurar un estado limpio
+                                                Navigator.of(context)
+                                                    .pushAndRemoveUntil(
+                                                  MaterialPageRoute(
+                                                    builder: (context) =>
+                                                        const PantallaInicioSesion(),
+                                                  ),
+                                                  (Route<dynamic> route) =>
+                                                      false,
+                                                );
+                                              },
+                                        child: const Text(
+                                          'Iniciar sesión aquí',
+                                          style: TextStyle(
+                                            fontSize: 14,
+                                            fontWeight: FontWeight.w600,
+                                            color: Color(
+                                                0xFFFF7A00), // Naranja para el enlace
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
                         ),
-                      ],
+                      ),
                     ),
                   ),
                 ],
               ),
             ),
           ),
-        ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionTitle(String text) {
+    return Text(
+      text,
+      style: const TextStyle(
+        fontSize: 24,
+        fontWeight: FontWeight.bold,
+        color: Colors.black,
+      ),
+    );
+  }
+
+  Widget _buildLabel(String text) {
+    return Text(
+      text,
+      style: TextStyle(
+        fontSize: 14,
+        fontWeight: FontWeight.w600,
+        color: Colors.grey[700],
       ),
     );
   }
 
   Widget _buildCustomTextField({
     required TextEditingController controller,
-    required String labelText,
     required String hintText,
     TextInputType? keyboardType,
     required String? Function(String?) validator,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          labelText,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey[700],
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: Colors.grey[300]!,
+          width: 1,
+        ),
+      ),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+          border: InputBorder.none,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          errorStyle: const TextStyle(
+            fontSize: 12,
           ),
         ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.shade200,
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: TextFormField(
-            controller: controller,
-            keyboardType: keyboardType,
-            decoration: InputDecoration(
-              hintText: hintText,
-              hintStyle: TextStyle(color: Colors.grey[500]),
-              border: InputBorder.none,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-            ),
-            validator: validator,
-          ),
-        ),
-      ],
+        style: const TextStyle(fontSize: 14),
+        validator: validator,
+      ),
     );
   }
 
   Widget _buildPasswordField({
     required TextEditingController controller,
-    required String labelText,
     required bool obscureText,
     required VoidCallback onToggle,
     required String? Function(String?) validator,
   }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          labelText,
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.w600,
-            color: Colors.grey[700],
-          ),
+    return Container(
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: Colors.grey[300]!,
+          width: 1,
         ),
-        const SizedBox(height: 8),
-        Container(
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.shade200,
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: TextFormField(
-            controller: controller,
-            obscureText: obscureText,
-            decoration: InputDecoration(
-              hintText: '••••••••',
-              hintStyle: TextStyle(color: Colors.grey[500]),
-              border: InputBorder.none,
-              contentPadding:
-                  const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
-              suffixIcon: IconButton(
-                icon: Icon(
-                  obscureText ? Icons.visibility_off : Icons.visibility,
-                  color: Colors.grey[500],
-                ),
-                onPressed: onToggle,
-              ),
+      ),
+      child: TextFormField(
+        controller: controller,
+        obscureText: obscureText,
+        decoration: InputDecoration(
+          hintText: '••••••••',
+          hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+          border: InputBorder.none,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          suffixIcon: IconButton(
+            icon: Icon(
+              obscureText ? Icons.visibility_off : Icons.visibility,
+              color: Colors.grey[500],
+              size: 20,
             ),
-            validator: validator,
+            onPressed: onToggle,
+          ),
+          errorStyle: const TextStyle(
+            fontSize: 12,
           ),
         ),
-      ],
+        style: const TextStyle(fontSize: 14, letterSpacing: 1.5),
+        validator: validator,
+      ),
     );
   }
 }
