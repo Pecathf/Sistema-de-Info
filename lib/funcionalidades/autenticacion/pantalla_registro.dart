@@ -292,7 +292,7 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
                   ),
                   const SizedBox(height: 16),
 
-                  // Botón de Cancelar
+                  // Botón de volver atras
                   TextButton(
                     onPressed: _isLoading
                         ? null

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
-import 'package:firebase_auth/firebase_auth.dart'; 
-import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart'; 
-import 'pantalla_registro.dart'; 
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
+import 'pantalla_registro.dart';
 
 class PantallaInicioSesion extends StatefulWidget {
   const PantallaInicioSesion({super.key});
@@ -14,10 +14,9 @@ class _PantallaInicioSesionState extends State<PantallaInicioSesion> {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
-  
-  
-  final AuthService _authService = AuthService(); 
-  
+
+  final AuthService _authService = AuthService();
+
   bool _isLoading = false;
   String? _errorMessage;
 
@@ -37,29 +36,25 @@ class _PantallaInicioSesionState extends State<PantallaInicioSesion> {
     });
 
     try {
-     
       await _authService.signIn(
         _emailController.text.trim(),
         _passwordController.text,
       );
-      
-
     } on FirebaseAuthException catch (e) {
       String message = 'Ocurrió un error inesperado.';
-      
+
       if (e.code == 'user-not-found' || e.code == 'wrong-password') {
         message = 'Credenciales inválidas. Verifica tu email y contraseña.';
       } else if (e.code == 'invalid-email') {
         message = 'El formato del email es incorrecto.';
-      } 
-      
+      }
+
       setState(() {
         _errorMessage = message;
       });
-      
     } catch (e) {
       setState(() {
-        _errorMessage = 'Error: ' + e.toString();
+        _errorMessage = 'Error: $e';
       });
     } finally {
       setState(() {
@@ -70,7 +65,7 @@ class _PantallaInicioSesionState extends State<PantallaInicioSesion> {
 
   @override
   Widget build(BuildContext context) {
-    // La Vista 
+    // La Vista
     return Scaffold(
       appBar: AppBar(title: const Text('Iniciar Sesión')),
       body: Center(
@@ -84,51 +79,58 @@ class _PantallaInicioSesionState extends State<PantallaInicioSesion> {
               children: <Widget>[
                 const Icon(Icons.lock, size: 80, color: Colors.deepPurple),
                 const SizedBox(height: 32),
-                
-                
+
                 TextFormField(
                   controller: _emailController,
                   decoration: const InputDecoration(labelText: 'Email'),
                   keyboardType: TextInputType.emailAddress,
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'Introduce tu email';
+                    if (value == null || value.isEmpty)
+                      return 'Introduce tu email';
                     return null;
                   },
                 ),
                 const SizedBox(height: 15),
 
-                
                 TextFormField(
                   controller: _passwordController,
                   decoration: const InputDecoration(labelText: 'Contraseña'),
                   obscureText: true,
                   validator: (value) {
-                    if (value == null || value.isEmpty) return 'Introduce tu contraseña';
+                    if (value == null || value.isEmpty)
+                      return 'Introduce tu contraseña';
                     return null;
                   },
                 ),
                 const SizedBox(height: 25),
 
-                
-                if (_errorMessage != null) 
+                if (_errorMessage != null)
                   Padding(
                     padding: const EdgeInsets.only(bottom: 15),
-                    child: Text(_errorMessage!, style: const TextStyle(color: Colors.red)),
+                    child: Text(_errorMessage!,
+                        style: const TextStyle(color: Colors.red)),
                   ),
 
                 ElevatedButton(
-                  onPressed: _isLoading ? null : _handleSignIn, 
+                  onPressed: _isLoading ? null : _handleSignIn,
                   child: _isLoading
-                      ? const CircularProgressIndicator(strokeWidth: 2, color: Colors.white)
+                      ? const CircularProgressIndicator(
+                          strokeWidth: 2, color: Colors.white)
                       : const Text('Entrar', style: TextStyle(fontSize: 16)),
                 ),
                 const SizedBox(height: 20),
 
                 // Botón para ir a Registro
                 TextButton(
-                  onPressed: _isLoading ? null : () {
-                    Navigator.push(context, MaterialPageRoute(builder: (context) => const PantallaRegistro()));
-                  },
+                  onPressed: _isLoading
+                      ? null
+                      : () {
+                          Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) =>
+                                      const PantallaRegistro()));
+                        },
                   child: const Text('¿No tienes cuenta? Regístrate aquí.'),
                 ),
               ],

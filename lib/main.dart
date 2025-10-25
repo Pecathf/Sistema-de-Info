@@ -1,15 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:provider/provider.dart';        
-import 'package:firebase_auth/firebase_auth.dart'; 
+import 'package:provider/provider.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'firebase_options.dart';
 
-import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart'; 
+import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
 
-import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_principal.dart'; 
-import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_inicio_sesion.dart'; 
-
+import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_principal.dart';
+import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_inicio_sesion.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -18,19 +17,15 @@ void main() async {
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
-<<<<<<< HEAD
-
-  runApp(MyApp());
-=======
-  
+  // Envolvemos la aplicación con un StreamProvider que expone el estado de
+  // autenticación (User) a través de la jerarquía de widgets.
   runApp(
-    StreamProvider<User?>.value( 
-      value: AuthService().authStateChanges, 
-      initialData: null, 
+    StreamProvider<User?>.value(
+      value: AuthService().authStateChanges,
+      initialData: null,
       child: const MyApp(),
     ),
   );
->>>>>>> Gloria
 }
 
 class MyApp extends StatelessWidget {
@@ -45,7 +40,7 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      home: const AuthWrapper(), 
+      home: const AuthWrapper(),
     );
   }
 }
@@ -55,12 +50,12 @@ class AuthWrapper extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<User?>(); 
+    final user = context.watch<User?>();
 
     if (user == null) {
-      return const PantallaInicioSesion(); 
+      return const PantallaInicioSesion();
     } else {
-      return new PantallaPrincipal();
+      return PantallaPrincipal();
     }
   }
 }
