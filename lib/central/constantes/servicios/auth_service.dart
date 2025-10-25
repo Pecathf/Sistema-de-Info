@@ -7,40 +7,33 @@ class AuthService {
 
   Stream<User?> get authStateChanges => _firebaseAuth.authStateChanges();
 
-
   Future<void> signIn(String email, String password) async {
-    try {
-      await _firebaseAuth.signInWithEmailAndPassword(
-        email: email,
-        password: password,
-      );
-    } on FirebaseAuthException catch (e) {
-      throw Exception(e.code); 
-    }
+    await _firebaseAuth.signInWithEmailAndPassword(
+      email: email,
+      password: password,
+    );
   }
 
-
-  Future<void> signUpAndSaveUser(String nombre, String email, String password) async {
+  Future<void> signUpAndSaveUser(
+      String nombre, String email, String password) async {
     try {
-      UserCredential userCredential = await _firebaseAuth.createUserWithEmailAndPassword(
+      UserCredential userCredential =
+          await _firebaseAuth.createUserWithEmailAndPassword(
         email: email,
         password: password,
       );
 
-     
       await _firestore.collection('users').doc(userCredential.user!.uid).set({
         'uid': userCredential.user!.uid,
         'email': email,
         'nombre': nombre,
-        'role': 'usuario', 
+        'role': 'usuario',
         'timestamp': FieldValue.serverTimestamp(),
       });
-      
     } on FirebaseAuthException catch (e) {
       throw Exception(e.code);
     }
   }
-
 
   // 🔑 4. CERRAR SESIÓN (Logout)
   Future<void> signOut() async {
