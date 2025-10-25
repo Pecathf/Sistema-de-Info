@@ -400,7 +400,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   Widget _buildFooter() {
     return Container(
       width: double.infinity,
-      color: _fondoFooter, 
+      color: const Color.fromARGB(255, 185, 188, 196), 
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
@@ -419,7 +419,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                         style: TextStyle(
                           fontSize: 18,
                           fontWeight: FontWeight.bold,
-                          color: _textoFooter,
+                          color: Color.fromARGB(255, 0, 0, 0),
                         ),
                       ),
                       const SizedBox(height: 8),
@@ -427,7 +427,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                         'Sistema de Gestión de proyectos para Ingeniería en la Universidad Metropolitana.',
                         style: TextStyle(
                           fontSize: 14,
-                          color: _textoFooter.withOpacity(0.8),
+                          color: const Color.fromARGB(255, 0, 0, 0).withOpacity(0.8),
                         ),
                       ),
                     ],
@@ -438,9 +438,9 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Links', style: TextStyle(fontWeight: FontWeight.bold, color: _textoFooter)),
-                      TextButton(onPressed: () {}, child: Text('Iniciar Sesión', style: TextStyle(color: _textoFooter.withOpacity(0.8)))),
-                      TextButton(onPressed: () {}, child: Text('Registro', style: TextStyle(color: _textoFooter.withOpacity(0.8)))),
+                      const Text('Links', style: TextStyle(fontWeight: FontWeight.bold, color: Color.fromARGB(255, 0, 0, 0))),
+                      TextButton(onPressed: () {}, child: Text('Iniciar Sesión', style: TextStyle(color: const Color.fromARGB(255, 0, 0, 0).withOpacity(0.8)))),
+                      TextButton(onPressed: () {}, child: Text('Registro', style: TextStyle(color: const Color.fromARGB(255, 0, 0, 0).withOpacity(0.8)))),
                     ],
                   ),
                 ),
@@ -448,18 +448,18 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      const Text('Ayuda', style: TextStyle(fontWeight: FontWeight.bold, color: _textoFooter)),
+                      const Text('Ayuda', style: TextStyle(fontWeight: FontWeight.bold, color: Color.fromARGB(255, 0, 0, 0))),
                       const SizedBox(height: 8),
                       Text(
                         'Email: ayuda@proyectapp.unimet.edu.ve',
-                        style: TextStyle(fontSize: 12, color: _textoFooter.withOpacity(0.8)),
+                        style: TextStyle(fontSize: 12, color: const Color.fromARGB(255, 0, 0, 0).withOpacity(0.8)),
                       ),
                       Text(
                         'Contacto: 0202020200202',
-                        style: TextStyle(fontSize: 12, color: _textoFooter.withOpacity(0.8)),
+                        style: TextStyle(fontSize: 12, color: const Color.fromARGB(255, 0, 0, 0).withOpacity(0.8)),
                       ),
                       const SizedBox(height: 10),
-                      const Icon(Icons.camera_alt, color: _textoFooter, size: 24),
+                      const Icon(Icons.camera_alt, color: Color.fromARGB(255, 0, 0, 0), size: 24),
                     ],
                   ),
                 ),
@@ -473,7 +473,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             child: Center(
               child: Text(
                 '2025 ProyectApp UNIMET. Derechos Reservados.',
-                style: TextStyle(color: _textoFooter.withOpacity(0.8), fontSize: 12),
+                style: TextStyle(color: const Color.fromARGB(255, 0, 0, 0).withOpacity(0.8), fontSize: 12),
               ),
             ),
           ),
