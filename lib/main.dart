@@ -3,7 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 
-import 'firebase_options.dart';
+import 'funcionalidades/autenticacion/firebase_options.dart';
 
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
 
