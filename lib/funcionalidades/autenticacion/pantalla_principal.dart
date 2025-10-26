@@ -16,6 +16,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   final AuthService _authService = AuthService();
   bool _isProfileHovered = false;
 
+  // Cierra la sesión del usuario y redirige al login
   Future<void> _cerrarSesion() async {
     try {
       await _authService.signOut();
@@ -33,6 +34,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     }
   }
 
+  // Navega a la pantalla de edición de perfil
   void _editarPerfil() {
     Navigator.push(
       context,
@@ -40,6 +42,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     );
   }
 
+  // Muestra el menú contextual del perfil
   void _mostrarMenuPerfil(BuildContext context, Offset offset) {
     showMenu(
       context: context,
@@ -66,9 +69,11 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     );
   }
 
+  // Obtiene la inicial del nombre de usuario
   String _getUserInitial(String? userName) =>
       userName?.isNotEmpty == true ? userName![0].toUpperCase() : 'U';
 
+  // Construye el AppBar con navegación adaptativa
   PreferredSizeWidget _buildAppBar(String userInitial, bool isDesktop) {
     final profileWidget = MouseRegion(
       onEnter: (_) => setState(() => _isProfileHovered = true),
@@ -115,20 +120,27 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             fontSize: 20,
           ),
         ),
+        centerTitle: false,
         actions: [
-          TextButton(
-              onPressed: () {},
-              child: const Text('Proyectos',
-                  style: TextStyle(color: Colors.black87))),
-          TextButton(
-              onPressed: () {},
-              child: const Text('Calendario',
-                  style: TextStyle(color: Colors.black87))),
-          TextButton(
-              onPressed: () {},
-              child: const Text('Estadísticas',
-                  style: TextStyle(color: Colors.black87))),
-          const SizedBox(width: 20),
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextButton(
+                    onPressed: () {},
+                    child: const Text('Proyectos',
+                        style: TextStyle(color: Colors.black87))),
+                TextButton(
+                    onPressed: () {},
+                    child: const Text('Calendario',
+                        style: TextStyle(color: Colors.black87))),
+                TextButton(
+                    onPressed: () {},
+                    child: const Text('Estadísticas',
+                        style: TextStyle(color: Colors.black87))),
+              ],
+            ),
+          ),
           profileWidget,
         ],
       );
@@ -150,6 +162,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     }
   }
 
+  // Encabezado de bienvenida con nombre del usuario
   Widget _buildWelcomeHeader(String userName) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -174,6 +187,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     );
   }
 
+  // Barra de búsqueda con filtro de estados
   Widget _buildSearchBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -216,6 +230,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     );
   }
 
+  // Grid de tarjetas con estadísticas de proyectos
   Widget _buildStatisticsGrid(BuildContext context, bool isDesktop) {
     if (FirebaseAuth.instance.currentUser == null) {
       return const Center(child: Text('Cargando estadísticas...'));
@@ -254,6 +269,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     }
   }
 
+  // Lista de proyectos recientes con su información
   Widget _buildRecentProjectsList() {
     if (FirebaseAuth.instance.currentUser == null) {
       return const Center(child: Text('Cargando proyectos...'));
@@ -297,7 +313,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     );
   }
 
-  // Nuevo Footer al estilo de la pantalla de bienvenida
+  // Footer con información de contacto y enlaces
   Widget _buildFooter(BuildContext context, bool isMobile) {
     return Container(
       padding: const EdgeInsets.only(top: 40, bottom: 20),
@@ -319,7 +335,6 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                   ? CrossAxisAlignment.center
                   : CrossAxisAlignment.start,
               children: [
-                // Columna 1: Información de ProyectApp
                 _buildFooterSection(
                   'ProyectApp',
                   [
@@ -330,16 +345,12 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                   isTitleBold: true,
                 ),
                 SizedBox(height: isMobile ? 30 : 0, width: isMobile ? 0 : 50),
-
-                // Columna 2: Links
                 _buildFooterSection(
                   'Links',
                   ['Proyectos', 'Calendario', 'Estadísticas'],
                   isMobile,
                 ),
                 SizedBox(height: isMobile ? 30 : 0, width: isMobile ? 0 : 50),
-
-                // Columna 3: Ayuda y Contacto
                 _buildFooterSection(
                   'Ayuda',
                   [
@@ -350,8 +361,6 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                   isContact: true,
                 ),
                 SizedBox(height: isMobile ? 30 : 0, width: isMobile ? 0 : 50),
-
-                // Columna 4: Icono de Red Social
                 Column(
                   children: [
                     const Icon(
@@ -367,11 +376,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
               ],
             ),
           ),
-
           const SizedBox(height: 20),
           Divider(color: Colors.grey[300]),
-
-          // Derechos de autor
           const Text(
             '2025 ProyectApp UNIMET. Derechos Reservados.',
             style: TextStyle(color: Colors.black54, fontSize: 12),
@@ -382,7 +388,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     );
   }
 
-  // Sección genérica del Footer
+  // Sección individual del footer
   Widget _buildFooterSection(String title, List<String> items, bool isMobile,
       {bool isTitleBold = false, bool isContact = false}) {
     return Column(
@@ -478,7 +484,6 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                       ],
                     ),
                   ),
-                  // Footer fuera del padding
                   _buildFooter(context, false),
                 ],
               ),
@@ -512,7 +517,6 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                       ],
                     ),
                   ),
-                  // Footer fuera del padding
                   _buildFooter(context, true),
                 ],
               ),
