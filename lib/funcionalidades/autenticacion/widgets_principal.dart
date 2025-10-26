@@ -1,21 +1,14 @@
 import 'package:flutter/material.dart';
 
-// --- TU MÓDULO DE COLORES (Integrado aquí para simplicidad) ---
 class AppColors {
-  // Color Naranja Principal (El color de los botones y el panel lateral)
   static const Color primaryOrange = Color(0xFFFF6633); 
-  // Color de fondo oscuro (Para texto principal y fondos oscuros)
   static const Color darkBackground = Color(0xFF2E2E2E);
-  // Color de Fondo claro para los formularios
   static const Color lightBackground = Colors.white; 
-  // Color del texto de la marca y enlaces
   static const Color accentColor = Color(0xFF3366FF); 
-  // Color para campos de texto/bordes grises suaves
   static const Color lightGrey = Color(0xFFE0E0E0);
 }
 
-// --- CONSTANTES Y DATOS DUMMY (Usando tus colores) ---
-const Color _naranjaPrincipal = AppColors.primaryOrange;  // Ahora usa tu color rojizo
+const Color _naranjaPrincipal = AppColors.primaryOrange;  
 
 const List<Map<String, dynamic>> statData = [
   {'title': 'PROYECTOS TOTALES', 'value': '12', 'subtitle': 'Total de proyectos', 'color': _naranjaPrincipal},

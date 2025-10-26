@@ -11,4 +11,6 @@ class AppColors {
   static const Color accentColor = Color(0xFF3366FF); 
   // Color para campos de texto/bordes grises suaves
   static const Color lightGrey = Color(0xFFE0E0E0);
+  static const Color softOrange = Color(0xFFFF8C66); // Un tono más suave para el botón de Iniciar Sesión
+
 }
