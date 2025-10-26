@@ -87,34 +87,7 @@ class PantallaBienvenida extends StatelessWidget {
             fontWeight: FontWeight.w900,
           ),
         ),
-
-        // Simulación de Botones de Navegación
-        if (MediaQuery.of(context).size.width > 900)
-          Row(
-            children: [
-              _buildTextButton('Acerca de', () {}),
-              _buildTextButton('Servicios', () {}),
-              _buildTextButton('Contacto', () {}),
-            ],
-          ),
       ],
-    );
-  }
-
-  // Botón de Texto Reutilizable para la barra superior
-  Widget _buildTextButton(String text, VoidCallback onTap) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 20),
-      child: TextButton(
-        onPressed: onTap,
-        child: Text(
-          text,
-          style: const TextStyle(
-            color: Colors.white,
-            fontSize: 16,
-          ),
-        ),
-      ),
     );
   }
 
@@ -198,8 +171,7 @@ class PantallaBienvenida extends StatelessWidget {
 
   // Cuadrícula de Módulos (Características)
   Widget _buildModulesGrid(BuildContext context) {
-    // Lista de módulos con iconos y nombres basados en el Figma
-    // Se corrige la tipificación para evitar el error de null-safety en tiempo de compilación/análisis
+    // Lista de módulos con iconos y nombres
     final List<Map<String, dynamic>> modules = [
       {'icon': Icons.trending_up, 'title': 'Gestión de proyectos'},
       {'icon': Icons.assignment, 'title': 'Panel de Tareas'},
@@ -209,23 +181,22 @@ class PantallaBienvenida extends StatelessWidget {
       {'icon': Icons.schedule, 'title': 'Calendario e hitos'},
     ];
 
+    final isMobile = MediaQuery.of(context).size.width < 800;
+
     return Container(
       constraints: const BoxConstraints(maxWidth: 1000),
       child: GridView.builder(
         shrinkWrap: true,
         physics: const NeverScrollableScrollPhysics(),
         itemCount: modules.length,
-        gridDelegate: SliverGridDelegateWithMaxCrossAxisExtent(
-          maxCrossAxisExtent: 250.0, // Tamaño máximo de la tarjeta
+        gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
+          crossAxisCount: isMobile ? 2 : 3, // 3 columnas en desktop, 2 en móvil
           mainAxisSpacing: 30,
           crossAxisSpacing: 30,
           childAspectRatio: 1.0, // Tarjetas cuadradas
         ),
         itemBuilder: (context, index) {
           final module = modules[index];
-          // Se utiliza as String y as IconData para asegurar el tipo,
-          // aunque el uso de '!' sigue siendo necesario si los tipos en el mapa fueran Map<String, dynamic?>
-          // Con la tipificación explícita de List<Map<String, dynamic>>, el error debería desaparecer.
           return _buildModuleCard(
               module['title'] as String, module['icon'] as IconData);
         },
