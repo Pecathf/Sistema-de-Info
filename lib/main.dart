@@ -2,18 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
-
 import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_bienvenida.dart';
-import 'funcionalidades/autenticacion/pantalla_inicio_sesion.dart';
 import 'package:sistem_proyect/central/constantes/colores.dart';
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
-import 'package:flutter/material.dart';
-import 'package:firebase_core/firebase_core.dart';
-import 'package:firebase_auth/firebase_auth.dart';
-import 'funcionalidades/autenticacion/pantalla_inicio_sesion.dart';
 import 'funcionalidades/autenticacion/pantalla_principal.dart';
-import 'funcionalidades/autenticacion/pantalla_bienvenida.dart';
-import 'central/constantes/colores.dart';
 import 'funcionalidades/autenticacion/firebase_options.dart';
 
 void main() async {
