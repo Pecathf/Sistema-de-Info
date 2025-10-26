@@ -1,31 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
-import 'package:provider/provider.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:provider/provider.dart';
 
-import 'firebase_options.dart';
-
+import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_bienvenida.dart';
+import 'funcionalidades/autenticacion/pantalla_inicio_sesion.dart';
+import 'package:sistem_proyect/central/constantes/colores.dart';
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
-
-import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_principal.dart';
-import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_inicio_sesion.dart';
+import 'package:flutter/material.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'funcionalidades/autenticacion/pantalla_inicio_sesion.dart';
+import 'funcionalidades/autenticacion/pantalla_principal.dart';
+import 'funcionalidades/autenticacion/pantalla_bienvenida.dart';
+import 'central/constantes/colores.dart';
+import 'funcionalidades/autenticacion/firebase_options.dart';
 
 void main() async {
+  // 1. Inicialización de Widgets y Firebase
   WidgetsFlutterBinding.ensureInitialized();
 
-  // INICIALIZAR FIREBASE
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
 
   runApp(
-    StreamProvider<User?>.value(
-      value: AuthService().authStateChanges,
-      initialData: null,
+    // 2. MultiProvider para inyectar el AuthService
+    MultiProvider(
+      providers: [
+        Provider<AuthService>(
+          create: (_) => AuthService(),
+        ),
+      ],
       child: const MyApp(),
     ),
   );
 }
+
+// WIDGET PRINCIPAL DE LA APLICACIÓN
 
 class MyApp extends StatelessWidget {
   const MyApp({super.key});
@@ -33,28 +45,57 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'Sistema Proyecto MVC Sencillo',
+      title: 'ProyectApp',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        // Configuración del tema usando los colores definidos
+        primaryColor: AppColors.primaryOrange,
+        scaffoldBackgroundColor: AppColors.lightBackground,
+        fontFamily: 'Inter',
+        colorScheme: ColorScheme.fromSwatch(
+          primarySwatch: Colors.orange,
+        ).copyWith(
+          secondary: AppColors.primaryOrange,
+        ),
         useMaterial3: true,
       ),
+      // AuthWrapper decide la pantalla inicial
       home: const AuthWrapper(),
     );
   }
 }
+
+// WIDGET DE GESTIÓN DE AUTENTICACIÓN
 
 class AuthWrapper extends StatelessWidget {
   const AuthWrapper({super.key});
 
   @override
   Widget build(BuildContext context) {
-    final user = context.watch<User?>();
+    return StreamBuilder<User?>(
+      stream: FirebaseAuth.instance.authStateChanges(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(color: AppColors.primaryOrange),
+            ),
+          );
+        }
 
-    if (user == null) {
-      return const PantallaInicioSesion();
-    } else {
-      return PantallaPrincipal();
-    }
+        final User? user = snapshot.data;
+
+        // 2. Lógica de Redirección
+        // Si el usuario NO está autenticado, muestra la Pantalla de Bienvenida
+        if (user == null) {
+          return const PantallaBienvenida(); // Redirige a la pantalla de bienvenida
+        }
+
+        // Si el usuario SÍ está autenticado, muestra la Pantalla Principal
+        else {
+          return const PantallaPrincipal(); // Redirige a la pantalla principal
+        }
+      },
+    );
   }
 }

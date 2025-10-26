@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_inicio_sesion.dart';
+import 'package:sistem_proyect/central/constantes/colores.dart';
 
 class PantallaRegistro extends StatefulWidget {
   const PantallaRegistro({super.key});
@@ -101,7 +102,6 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
       if (!mounted) return;
 
       // CAMBIO CLAVE: Usar pushAndRemoveUntil para eliminar TODAS las rutas anteriores
-      // Esto asegura que la PantallaInicioSesion sea la nueva raíz, simulando el "inicio desde 0".
       Navigator.of(context).pushAndRemoveUntil(
         MaterialPageRoute(
           builder: (context) => const PantallaInicioSesion(),
@@ -159,8 +159,7 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
   @override
   Widget build(BuildContext context) {
     // Definir la imagen de fondo con un filtro oscuro
-    const String backgroundImage =
-        'assets/fondo_login.jpg'; // Reemplaza con tu imagen de fondo
+    const String backgroundImage = 'assets/Imagen login.JPG';
 
     return Scaffold(
 <<<<<<< HEAD
@@ -397,23 +396,22 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
           // Capa de color oscuro semitransparente sobre la imagen de fondo
           Positioned.fill(
             child: Container(
-              color: Colors.black
-                  .withOpacity(0.5), // Ajusta la opacidad si es necesario
+              // 2. CORRECCIÓN de withOpacity (50%)
+              color: const Color(0x80000000), // Negro con 50% de opacidad
             ),
           ),
           Center(
             child: Container(
               // Contenedor principal que agrupa los dos cuadros
-              constraints: const BoxConstraints(
-                  maxWidth: 800,
-                  maxHeight: 600), // Limita el tamaño total del módulo
+              constraints: const BoxConstraints(maxWidth: 800, maxHeight: 600),
               decoration: BoxDecoration(
-                color: Colors
-                    .white, // Color de fallback, aunque los hijos lo cubrirán
+                // 3. USO DE AppColors.lightBackground
+                color: AppColors.lightBackground,
                 borderRadius: BorderRadius.circular(10),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.black.withOpacity(0.1),
+                    // 4. CORRECCIÓN de withOpacity (10%) para sombra
+                    color: const Color(0x1A000000),
                     blurRadius: 20,
                     offset: const Offset(0, 10),
                   ),
@@ -423,10 +421,11 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
                 children: [
                   // Lado Izquierdo (Naranja)
                   Expanded(
-                    flex: 1, // Ocupa 1/3 del espacio
+                    flex: 1,
                     child: Container(
                       decoration: const BoxDecoration(
-                        color: Color(0xFFFF7A00), // Naranja del diseño
+                        // 5. USO DE AppColors.primaryOrange
+                        color: AppColors.primaryOrange,
                         borderRadius: BorderRadius.only(
                           topLeft: Radius.circular(10),
                           bottomLeft: Radius.circular(10),
@@ -447,11 +446,12 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
                   ),
                   // Lado Derecho (Formulario Blanco)
                   Expanded(
-                    flex: 2, // Ocupa 2/3 del espacio
+                    flex: 2,
                     child: Container(
                       padding: const EdgeInsets.all(40.0),
                       decoration: const BoxDecoration(
-                        color: Colors.white,
+                        // 6. USO DE AppColors.lightBackground
+                        color: AppColors.lightBackground,
                         borderRadius: BorderRadius.only(
                           topRight: Radius.circular(10),
                           bottomRight: Radius.circular(10),
@@ -462,12 +462,12 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
                           key: _formKey,
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize
-                                .min, // Para que la columna no ocupe más espacio del necesario
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               _buildSectionTitle('Registro'),
                               const SizedBox(height: 24),
 
+                              // CAMPOS DEL FORMULARIO
                               _buildLabel('Nombre completo'),
                               const SizedBox(height: 8),
                               _buildCustomTextField(
@@ -507,6 +507,7 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
                               _buildCustomTextField(
                                 controller: _cedulaController,
                                 hintText: 'V30980220',
+                                keyboardType: TextInputType.number,
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
                                     return 'Por favor ingrese su cédula';
@@ -561,14 +562,15 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
                               ),
                               const SizedBox(height: 24),
 
+                              // Botón de Registro
                               SizedBox(
                                 width: double.infinity,
                                 child: ElevatedButton(
                                   onPressed:
                                       _isLoading ? null : _registrarUsuario,
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: const Color(
-                                        0xFFFF7A00), // Naranja para el botón
+                                    // 7. USO DE AppColors.primaryOrange
+                                    backgroundColor: AppColors.primaryOrange,
                                     foregroundColor: Colors.white,
                                     padding: const EdgeInsets.symmetric(
                                         vertical: 16),
@@ -593,10 +595,9 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
                                       : const Text('Crear Cuenta'),
                                 ),
                               ),
-                              const SizedBox(
-                                  height: 32), // Espacio antes del footer
+                              const SizedBox(height: 32),
 
-                              // Footer del formulario
+                              // Footer del formulario (Ya tienes cuenta)
                               Column(
                                 children: [
                                   Text(
@@ -626,11 +627,10 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
                                         ),
                                       ),
                                       const SizedBox(width: 4),
-                                      GestureDetector(
-                                        onTap: _isLoading
+                                      TextButton(
+                                        onPressed: _isLoading
                                             ? null
                                             : () {
-                                                // Usar pushAndRemoveUntil aquí también para asegurar un estado limpio
                                                 Navigator.of(context)
                                                     .pushAndRemoveUntil(
                                                   MaterialPageRoute(
@@ -646,8 +646,7 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
                                           style: TextStyle(
                                             fontSize: 14,
                                             fontWeight: FontWeight.w600,
-                                            color: Color(
-                                                0xFFFF7A00), // Naranja para el enlace
+                                            color: AppColors.primaryOrange,
                                           ),
                                         ),
                                       ),
@@ -670,6 +669,8 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
       ),
     );
   }
+
+  // --- WIDGETS DE CONSTRUCCIÓN AUXILIARES ---
 
   Widget _buildSectionTitle(String text) {
     return Text(
@@ -723,10 +724,12 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        // 9. USO DE AppColors.lightBackground
+        color: AppColors.lightBackground,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: Colors.grey[300]!,
+          // 10. USO DE AppColors.lightGrey
+          color: AppColors.lightGrey,
           width: 1,
         ),
       ),
@@ -757,10 +760,12 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
   }) {
     return Container(
       decoration: BoxDecoration(
-        color: Colors.white,
+        // 11. USO DE AppColors.lightBackground
+        color: AppColors.lightBackground,
         borderRadius: BorderRadius.circular(6),
         border: Border.all(
-          color: Colors.grey[300]!,
+          // 12. USO DE AppColors.lightGrey
+          color: AppColors.lightGrey,
           width: 1,
         ),
       ),
