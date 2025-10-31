@@ -35,8 +35,33 @@ class AuthService {
     }
   }
 
-  // 🔑 4. CERRAR SESIÓN (Logout)
   Future<void> signOut() async {
     await _firebaseAuth.signOut();
+  }
+
+  // Obtener el rol del usuario actual desde Firestore
+  Future<String?> getUserRole() async {
+    try {
+      final user = _firebaseAuth.currentUser;
+      if (user == null) return null;
+
+      final userDoc =
+          await _firestore.collection('usuarios').doc(user.uid).get();
+
+      if (userDoc.exists) {
+        final data = userDoc.data();
+        final rol = data?['rol'] as String?;
+        return rol?.trim();
+      }
+      return null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // Verificar si el usuario actual es admin
+  Future<bool> isAdmin() async {
+    final rol = await getUserRole();
+    return rol == 'admin';
   }
 }

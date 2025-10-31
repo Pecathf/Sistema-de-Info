@@ -15,6 +15,25 @@ class PantallaPrincipal extends StatefulWidget {
 class _PantallaPrincipalState extends State<PantallaPrincipal> {
   final AuthService _authService = AuthService();
   bool _isProfileHovered = false;
+  bool _isAdmin = false; // Variable para almacenar si el usuario es admin
+  bool _isLoadingRole = true; // Para saber si aún estamos cargando el rol
+
+  @override
+  void initState() {
+    super.initState();
+    _checkIfAdmin(); // Verificar si es admin al iniciar
+  }
+
+  // Verificar si el usuario actual es admin
+  Future<void> _checkIfAdmin() async {
+    final isAdmin = await _authService.isAdmin();
+    if (mounted) {
+      setState(() {
+        _isAdmin = isAdmin;
+        _isLoadingRole = false;
+      });
+    }
+  }
 
   // Cierra la sesión del usuario y redirige al login
   Future<void> _cerrarSesion() async {
@@ -75,6 +94,9 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
 
   // Construye el AppBar con navegación adaptativa
   PreferredSizeWidget _buildAppBar(String userInitial, bool isDesktop) {
+    // Determinar el color del avatar según el rol
+    final Color avatarColor = _isAdmin ? AppColors.accentColor : AppColors.primaryOrange;
+
     final profileWidget = MouseRegion(
       onEnter: (_) => setState(() => _isProfileHovered = true),
       onExit: (_) => setState(() => _isProfileHovered = false),
@@ -87,12 +109,12 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
           padding: const EdgeInsets.all(8),
           margin: EdgeInsets.only(right: isDesktop ? 20 : 16),
           decoration: BoxDecoration(
-            color: AppColors.primaryOrange,
+            color: avatarColor,
             shape: BoxShape.circle,
             boxShadow: _isProfileHovered
                 ? [
                     BoxShadow(
-                      color: AppColors.primaryOrange.withValues(alpha: 0.5),
+                      color: avatarColor.withValues(alpha: 0.5),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
@@ -171,13 +193,36 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Hola, $userName',
-          style: const TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w500,
-            color: Colors.black87,
-          ),
+        Row(
+          children: [
+            Text(
+              'Hola, $userName',
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+            if (_isAdmin) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.accentColor.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: AppColors.accentColor, width: 1),
+                ),
+                child: const Text(
+                  'Admin',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.accentColor,
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
         const SizedBox(height: 4),
         const Text(
@@ -430,6 +475,15 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     final String userName =
         user?.displayName ?? user?.email?.split('@').first ?? 'Usuario';
     final String userInitial = _getUserInitial(userName);
+
+    // Mostrar indicador de carga mientras se verifica el rol
+    if (_isLoadingRole) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
 
     return LayoutBuilder(
       builder: (context, constraints) {
