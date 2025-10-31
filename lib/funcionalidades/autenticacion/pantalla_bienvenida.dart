@@ -65,7 +65,7 @@ class PantallaBienvenida extends StatelessWidget {
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
             // Overlay oscuro para hacer el texto legible
-            AppColors.darkBackground.withOpacity(0.7),
+            AppColors.darkBackground.withValues(alpha:0.7),
             BlendMode.darken,
           ),
         ),
@@ -138,7 +138,7 @@ class PantallaBienvenida extends StatelessWidget {
               _buildActionButton(
                 context,
                 'Iniciar Sesión',
-                AppColors.primaryOrange.withOpacity(0.8),
+                AppColors.primaryOrange.withValues(alpha:0.8),
                 // Navega a Inicio de Sesión
                 () => Navigator.push(
                     context,
@@ -307,7 +307,7 @@ class PantallaBienvenida extends StatelessWidget {
                     ),
                     const SizedBox(height: 5),
                     Text('Instagram',
-                        style: TextStyle(color: Colors.white.withOpacity(0.8))),
+                        style: TextStyle(color: Colors.white.withValues(alpha:0.8))),
                   ],
                 ),
               ],
@@ -355,13 +355,12 @@ class PantallaBienvenida extends StatelessWidget {
                     style: TextStyle(
                       color: isContact
                           ? Colors.white70
-                          : Colors.white.withOpacity(0.8),
+                          : Colors.white.withValues(alpha:0.8),
                       fontSize: 14,
                     ),
                     textAlign: isMobile ? TextAlign.center : TextAlign.left,
                   ),
                 ))
-            .toList(),
       ],
     );
   }

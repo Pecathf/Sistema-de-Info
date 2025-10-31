@@ -92,14 +92,18 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             boxShadow: _isProfileHovered
                 ? [
                     BoxShadow(
-                      color: AppColors.primaryOrange.withOpacity(0.5),
+                      color: AppColors.primaryOrange.withValues(alpha: 0.5),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
                   ]
                 : [],
           ),
-          transform: Matrix4.identity()..scale(_isProfileHovered ? 1.05 : 1.0),
+          transform: Matrix4.diagonal3Values(
+            _isProfileHovered ? 1.05 : 1.0,
+            _isProfileHovered ? 1.05 : 1.0,
+            1.0,
+          ),
           child: Text(userInitial,
               style: const TextStyle(
                   color: Colors.white, fontWeight: FontWeight.bold)),
@@ -197,7 +201,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
         border: Border.all(color: AppColors.lightGrey),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 1),
           ),
@@ -293,7 +297,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             borderRadius: BorderRadius.circular(8),
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withOpacity(0.1),
+                color: Colors.grey.withValues(alpha: 0.1),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
@@ -405,19 +409,17 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
           textAlign: isMobile ? TextAlign.center : TextAlign.left,
         ),
         const SizedBox(height: 10),
-        ...items
-            .map((item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4.0),
-                  child: Text(
-                    item,
-                    style: TextStyle(
-                      color: isContact ? Colors.black54 : Colors.black87,
-                      fontSize: 14,
-                    ),
-                    textAlign: isMobile ? TextAlign.center : TextAlign.left,
-                  ),
-                ))
-            .toList(),
+        ...items.map((item) => Padding(
+              padding: const EdgeInsets.only(bottom: 4.0),
+              child: Text(
+                item,
+                style: TextStyle(
+                  color: isContact ? Colors.black54 : Colors.black87,
+                  fontSize: 14,
+                ),
+                textAlign: isMobile ? TextAlign.center : TextAlign.left,
+              ),
+            ))
       ],
     );
   }

@@ -165,7 +165,7 @@ class _PantallaInicioSesionState extends State<PantallaInicioSesion> {
                               const SizedBox(height: 8),
                               _buildCustomTextField(
                                 controller: _emailController,
-                                hintText: 'ejemplo@correo.com',
+                                hintText: 'ejemplo@correo.unimet.edu.ve',
                                 keyboardType: TextInputType.emailAddress,
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
@@ -175,6 +175,10 @@ class _PantallaInicioSesionState extends State<PantallaInicioSesion> {
                                           r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$')
                                       .hasMatch(value)) {
                                     return 'Ingrese un correo válido';
+                                  }
+                                  if (!value
+                                      .endsWith('@correo.unimet.edu.ve')) {
+                                    return 'Debe usar un correo institucional (@correo.unimet.edu.ve)';
                                   }
                                   return null;
                                 },
