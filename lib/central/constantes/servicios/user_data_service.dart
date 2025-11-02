@@ -1,41 +1,47 @@
-// Archivo: servicios/user_data_service.dart
+// Archivo: user_data_service.dart
 
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../modelos/project_model.dart'; // Importamos el modelo
+// Asegúrate de que tu modelo de usuario sea correcto
+import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart'; 
 
 class UserDataService {
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
-  // Colección principal para los proyectos
-  late final CollectionReference _proyectosRef;
-
-  UserDataService() {
-    // Apunta a una subcolección de 'usuarios/{userId}/proyectos'
-    // Deberías obtener el ID del usuario actualmente logueado.
-    // Por simplicidad, aquí usamos un ID de placeholder. 
-    // Asegúrate de reemplazar 'current_user_id' con el ID de FirebaseAuth.
-    String userId = 'current_user_id_placeholder'; 
-    
-    // **NOTA IMPORTANTE:** Reemplaza 'current_user_id_placeholder' por el ID del usuario real
-    // (ej: FirebaseAuth.instance.currentUser?.uid) en tu aplicación.
-    _proyectosRef = _db.collection('usuarios').doc(userId).collection('proyectos');
-  }
-
-  // Obtiene un stream de todos los proyectos del usuario
-  Stream<List<Proyecto>> getProyectosStream() {
-    return _proyectosRef
-        .orderBy('fechaCreacion', descending: true)
+  // Stream para obtener TODOS los usuarios (necesario para la asignación de proyectos)
+  Stream<List<Usuario>> getAllUsuariosStream() {
+    return _firestore
+        .collection('usuarios')
+        .orderBy('nombre') 
         .snapshots()
         .map((snapshot) {
-      return snapshot.docs.map((doc) {
-        return Proyecto.fromMap(doc.data() as Map<String, dynamic>, doc.id);
-      }).toList();
-    });
+          return snapshot.docs.map((doc) {
+            // Asume que tienes un factory 'fromFirestore' en tu modelo Usuario
+            return Usuario.fromFirestore(doc); 
+          }).toList();
+        });
   }
+  
+  // Si tu código antiguo usaba addProject, ignora esta función, ahora usamos ProjectService.
+  // Future<void> addProject(Map<String, dynamic> data) async { ... }
+}
 
-  // Método para añadir un nuevo proyecto (ejemplo)
-  Future<void> addProyecto(Proyecto proyecto) {
-    // Usamos el toMap del modelo para subir a Firestore
-    return _proyectosRef.add(proyecto.toMap());
+// Modelado base para 'usuario_model.dart' (Necesario para el Stream)
+// Debes asegurar que este modelo existe en la ruta correcta.
+/*
+class Usuario {
+  final String uid;
+  final String nombre;
+  final String email;
+
+  Usuario({required this.uid, required this.nombre, required this.email});
+
+  factory Usuario.fromFirestore(DocumentSnapshot doc) {
+    final data = doc.data() as Map<String, dynamic>;
+    return Usuario(
+      uid: doc.id,
+      nombre: data['nombre'] ?? '',
+      email: data['email'] ?? '',
+    );
   }
 }
+*/

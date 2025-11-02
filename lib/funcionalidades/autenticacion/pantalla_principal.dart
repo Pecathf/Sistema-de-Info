@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'widgets_principal.dart';  // Importa widgets y colores
+import 'widgets_principal.dart';
+import 'pantalla_editar_perfil.dart';
+// ✅ Importación necesaria para la navegación de Proyectos
+import 'pantalla_listado_proyectos.dart'; 
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
-import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_inicio_sesion.dart'; // RUTA ACTUALIZADA
-
-
+import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_inicio_sesion.dart';
 
 class PantallaPrincipal extends StatefulWidget {
   const PantallaPrincipal({super.key});
@@ -12,58 +13,124 @@ class PantallaPrincipal extends StatefulWidget {
   @override
   State<PantallaPrincipal> createState() => _PantallaPrincipalState();
 }
+
 class _PantallaPrincipalState extends State<PantallaPrincipal> {
-  
   final AuthService _authService = AuthService();
+  bool _isProfileHovered = false;
+  bool _isAdmin = false;
+  bool _isLoadingRole = true;
 
-  Future<void> _cerrarSesion(BuildContext context) async {
-    // 1. Cierra la sesión en Firebase
-    await _authService.signOut();
-
-    // 2. Navega a la pantalla de Login (PantallaInicioSesion) y elimina todas las rutas anteriores
-    // Esto asegura que el usuario no pueda volver a la principal con el botón de retroceso.
-    Navigator.of(context).pushAndRemoveUntil(
-      // Se asume que PantallaInicioSesion existe y es la clase correcta para la ruta:
-      MaterialPageRoute(builder: (context) => const PantallaInicioSesion()), 
-      (Route<dynamic> route) => false, // La condición (false) elimina todas las rutas
-    );
+  @override
+  void initState() {
+    super.initState();
+    _checkIfAdmin();
   }
+
+  Future<void> _checkIfAdmin() async {
+    final isAdmin = await _authService.isAdmin();
+    if (mounted) {
+      setState(() {
+        _isAdmin = isAdmin;
+        _isLoadingRole = false;
+      });
+    }
+  }
+
+  // Cierra la sesión del usuario y redirige al login
+  Future<void> _cerrarSesion() async {
+    try {
+      await _authService.signOut();
+      if (!mounted) return;
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (context) => const PantallaInicioSesion()),
+        (Route<dynamic> route) => false,
+      );
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al cerrar sesión: $e')),
+        );
+      }
+    }
+  }
+
+  // Navega a la pantalla de edición de perfil
   void _editarPerfil() {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Función de editar perfil próximamente')),
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (context) => const PantallaEditarPerfil()),
     );
   }
 
+  // Muestra el menú contextual del perfil
   void _mostrarMenuPerfil(BuildContext context, Offset offset) {
     showMenu(
       context: context,
-      position: RelativeRect.fromLTRB(offset.dx - 150, offset.dy + 10, offset.dx, offset.dy),
+      position: RelativeRect.fromLTRB(
+          offset.dx - 150, offset.dy + 50, offset.dx, offset.dy),
       items: [
         PopupMenuItem(
           onTap: () => Future.delayed(Duration.zero, _editarPerfil),
-          child: const Row(children: [Icon(Icons.edit, size: 20), SizedBox(width: 12), Text('Editar Perfil')]),
+          child: const Row(children: [
+            Icon(Icons.edit, size: 20),
+            SizedBox(width: 12),
+            Text('Editar Perfil')
+          ]),
         ),
         PopupMenuItem(
-          onTap: () => Future.delayed(Duration.zero, () => _cerrarSesion(context)),
-          child: const Row(children: [Icon(Icons.logout, color: Colors.red, size: 20), SizedBox(width: 12), Text('Cerrar Sesión', style: TextStyle(color: Colors.red))]),
+          onTap: () => Future.delayed(Duration.zero, _cerrarSesion),
+          child: const Row(children: [
+            Icon(Icons.logout, color: Colors.red, size: 20),
+            SizedBox(width: 12),
+            Text('Cerrar Sesión', style: TextStyle(color: Colors.red))
+          ]),
         ),
       ],
     );
   }
 
-  String _getUserInitial(String? userName) => userName?.isNotEmpty == true ? userName![0].toUpperCase() : 'U';
+  // Obtiene la inicial del nombre de usuario
+  String _getUserInitial(String? userName) =>
+      userName?.isNotEmpty == true ? userName![0].toUpperCase() : 'U';
 
+  // Construye el AppBar con navegación adaptativa
   PreferredSizeWidget _buildAppBar(String userInitial, bool isDesktop) {
-    final profileWidget = GestureDetector(
-      onTapDown: (details) => _mostrarMenuPerfil(context, details.globalPosition),
-      child: Container(
-        padding: const EdgeInsets.all(8),
-        margin: EdgeInsets.only(right: isDesktop ? 20 : 16),
-        decoration: BoxDecoration(
-          color: AppColors.primaryOrange,  // CORREGIDO: Usa AppColors.primaryOrange directamente
-          shape: BoxShape.circle,
+    // Determinar el color del avatar según el rol
+    final Color avatarColor = _isAdmin ? AppColors.accentColor : AppColors.primaryOrange;
+
+    final profileWidget = MouseRegion(
+      onEnter: (_) => setState(() => _isProfileHovered = true),
+      onExit: (_) => setState(() => _isProfileHovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTapDown: (details) =>
+            _mostrarMenuPerfil(context, details.globalPosition),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(8),
+          margin: EdgeInsets.only(right: isDesktop ? 20 : 16),
+          decoration: BoxDecoration(
+            color: avatarColor,
+            shape: BoxShape.circle,
+            boxShadow: _isProfileHovered
+                ? [
+                    BoxShadow(
+                      color: avatarColor.withOpacity(0.5),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : [],
+          ),
+          transform: Matrix4.diagonal3Values(
+            _isProfileHovered ? 1.05 : 1.0,
+            _isProfileHovered ? 1.05 : 1.0,
+            1.0,
+          ),
+          child: Text(userInitial,
+              style: const TextStyle(
+                  color: Colors.white, fontWeight: FontWeight.bold)),
         ),
-        child: Text(userInitial, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
       ),
     );
 
@@ -75,16 +142,39 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
         title: Text(
           'ProyectApp',
           style: TextStyle(
-            color: AppColors.primaryOrange,  // CORREGIDO: Usa AppColors.primaryOrange directamente
+            color: AppColors.primaryOrange,
             fontWeight: FontWeight.bold,
             fontSize: 20,
           ),
         ),
+        centerTitle: false,
         actions: [
-          TextButton(onPressed: () {}, child: const Text('Proyectos', style: TextStyle(color: Colors.black87))),
-          TextButton(onPressed: () {}, child: const Text('Calendario', style: TextStyle(color: Colors.black87))),
-          TextButton(onPressed: () {}, child: const Text('Estadísticas', style: TextStyle(color: Colors.black87))),
-          const SizedBox(width: 20),
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                TextButton(
+                    // ✅ Lógica de navegación implementada aquí
+                    onPressed: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  const PantallaListadoProyectos()));
+                    }, 
+                    child: const Text('Proyectos',
+                        style: TextStyle(color: Colors.black87))),
+                TextButton(
+                    onPressed: () {},
+                    child: const Text('Calendario',
+                        style: TextStyle(color: Colors.black87))),
+                TextButton(
+                    onPressed: () {},
+                    child: const Text('Estadísticas',
+                        style: TextStyle(color: Colors.black87))),
+              ],
+            ),
+          ),
           profileWidget,
         ],
       );
@@ -92,7 +182,9 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       return AppBar(
         backgroundColor: Colors.white,
         elevation: 1,
-        title: const Text('Dashboard', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+        title: const Text('Dashboard',
+            style:
+                TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
         actions: [
           IconButton(
             icon: const Icon(Icons.search, color: Colors.black54),
@@ -104,17 +196,41 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     }
   }
 
+  // Encabezado de bienvenida con nombre del usuario
   Widget _buildWelcomeHeader(String userName) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Hola, $userName',
-          style: const TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w500,
-            color: Colors.black87,
-          ),
+        Row(
+          children: [
+            Text(
+              'Hola, $userName',
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+            if (_isAdmin) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.accentColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: AppColors.accentColor, width: 1),
+                ),
+                child: const Text(
+                  'Admin',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.accentColor,
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
         const SizedBox(height: 4),
         const Text(
@@ -128,13 +244,14 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     );
   }
 
+  // Barra de búsqueda con filtro de estados
   Widget _buildSearchBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10),
       decoration: BoxDecoration(
-        color: AppColors.lightBackground,  // Usa tu color de fondo claro
+        color: AppColors.lightBackground,
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: AppColors.lightGrey),  // Usa tu gris suave
+        border: Border.all(color: AppColors.lightGrey),
         boxShadow: [
           BoxShadow(
             color: Colors.grey.withOpacity(0.1),
@@ -157,10 +274,12 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
           ),
           TextButton.icon(
             onPressed: () {},
-            icon: const Icon(Icons.filter_list, color: Colors.black54, size: 20),
+            icon:
+                const Icon(Icons.filter_list, color: Colors.black54, size: 20),
             label: const Text(
               'Todos los estados',
-              style: TextStyle(color: Colors.black54, fontWeight: FontWeight.w500),
+              style:
+                  TextStyle(color: Colors.black54, fontWeight: FontWeight.w500),
             ),
           ),
         ],
@@ -168,35 +287,47 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     );
   }
 
+  // Grid de tarjetas con estadísticas de proyectos
   Widget _buildStatisticsGrid(BuildContext context, bool isDesktop) {
     if (FirebaseAuth.instance.currentUser == null) {
       return const Center(child: Text('Cargando estadísticas...'));
     }
 
-    final children = statData.map((stat) =>
-        StatCard(
-          title: stat['title'] as String,
-          value: stat['value'] as String,
-          subtitle: stat['subtitle'] as String,
-          color: stat['color'] as Color,
-        ),
-    ).toList();
+    // Nota: StatCard y statData deben estar definidos en widgets_principal.dart
+    final children = statData
+        .map(
+          (stat) => StatCard(
+            title: stat['title'] as String,
+            value: stat['value'] as String,
+            subtitle: stat['subtitle'] as String,
+            color: stat['color'] as Color,
+          ),
+        )
+        .toList();
 
     if (isDesktop) {
       return Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: children.map((card) => Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 8.0), child: card))).toList(),
+        children: children
+            .map((card) => Expanded(
+                child: Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 8.0),
+                    child: card)))
+            .toList(),
       );
     } else {
       final double cardWidth = (MediaQuery.of(context).size.width / 2) - 40;
       return Wrap(
         spacing: 16.0,
         runSpacing: 16.0,
-        children: children.map((card) => SizedBox(width: cardWidth, child: card)).toList(),
+        children: children
+            .map((card) => SizedBox(width: cardWidth, child: card))
+            .toList(),
       );
     }
   }
 
+  // Lista de proyectos recientes con su información
   Widget _buildRecentProjectsList() {
     if (FirebaseAuth.instance.currentUser == null) {
       return const Center(child: Text('Cargando proyectos...'));
@@ -216,7 +347,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
         const SizedBox(height: 16),
         Container(
           decoration: BoxDecoration(
-            color: AppColors.lightBackground,  // Usa tu fondo claro
+            color: AppColors.lightBackground,
             borderRadius: BorderRadius.circular(8),
             boxShadow: [
               BoxShadow(
@@ -227,6 +358,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             ],
           ),
           child: Column(
+            // Nota: ProjectRow y recentProjects deben estar definidos en widgets_principal.dart
             children: recentProjects.map((project) {
               return ProjectRow(
                 title: project['name'] as String,
@@ -240,109 +372,224 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     );
   }
 
+  // Footer con información de contacto y enlaces
+  Widget _buildFooter(BuildContext context, bool isMobile) {
+    return Container(
+      padding: const EdgeInsets.only(top: 40, bottom: 20),
+      decoration: BoxDecoration(
+        color: Colors.grey[100],
+        border: const Border(
+            top: BorderSide(color: AppColors.primaryOrange, width: 4)),
+      ),
+      child: Column(
+        children: [
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20.0),
+            child: Flex(
+              direction: isMobile ? Axis.vertical : Axis.horizontal,
+              mainAxisAlignment: isMobile
+                  ? MainAxisAlignment.center
+                  : MainAxisAlignment.spaceBetween,
+              crossAxisAlignment: isMobile
+                  ? CrossAxisAlignment.center
+                  : CrossAxisAlignment.start,
+              children: [
+                _buildFooterSection(
+                  'ProyectApp',
+                  [
+                    'Sistema de gestión de proyectos para ingeniería',
+                    'en la Universidad Metropolitana'
+                  ],
+                  isMobile,
+                  isTitleBold: true,
+                ),
+                SizedBox(height: isMobile ? 30 : 0, width: isMobile ? 0 : 50),
+                _buildFooterSection(
+                  'Links',
+                  ['Proyectos', 'Calendario', 'Estadísticas'],
+                  isMobile,
+                ),
+                SizedBox(height: isMobile ? 30 : 0, width: isMobile ? 0 : 50),
+                _buildFooterSection(
+                  'Ayuda',
+                  [
+                    'Email: ayudalog@proyectapp.unimet.edu.ve',
+                    'Contacto: 0202020200202'
+                  ],
+                  isMobile,
+                  isContact: true,
+                ),
+                SizedBox(height: isMobile ? 30 : 0, width: isMobile ? 0 : 50),
+                Column(
+                  children: [
+                    const Icon(
+                      Icons.camera_alt,
+                      color: Colors.black87,
+                      size: 30,
+                    ),
+                    const SizedBox(height: 5),
+                    const Text('Instagram',
+                        style: TextStyle(color: Colors.black54)),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 20),
+          Divider(color: Colors.grey[300]),
+          const Text(
+            '2025 ProyectApp UNIMET. Derechos Reservados.',
+            style: TextStyle(color: Colors.black54, fontSize: 12),
+            textAlign: TextAlign.center,
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Sección individual del footer
+  Widget _buildFooterSection(String title, List<String> items, bool isMobile,
+      {bool isTitleBold = false, bool isContact = false}) {
+    return Column(
+      crossAxisAlignment:
+          isMobile ? CrossAxisAlignment.center : CrossAxisAlignment.start,
+      children: [
+        Text(
+          title,
+          style: TextStyle(
+            color: isContact ? AppColors.accentColor : Colors.black87,
+            fontSize: 18,
+            fontWeight: isTitleBold ? FontWeight.bold : FontWeight.w500,
+          ),
+          textAlign: isMobile ? TextAlign.center : TextAlign.left,
+        ),
+        const SizedBox(height: 10),
+        ...items.map((item) => Padding(
+              padding: const EdgeInsets.only(bottom: 4.0),
+              child: Text(
+                item,
+                style: TextStyle(
+                  color: isContact ? Colors.black54 : Colors.black87,
+                  fontSize: 14,
+                ),
+                textAlign: isMobile ? TextAlign.center : TextAlign.left,
+              ),
+            ))
+      ],
+    );
+  }
+
   @override
-Widget build(BuildContext context) {
-  final user = FirebaseAuth.instance.currentUser;
-  final String userName = user?.displayName ?? user?.email?.split('@').first ?? 'Usuario';
-  final String userInitial = _getUserInitial(userName);
+  Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
+    final String userName =
+        user?.displayName ?? user?.email?.split('@').first ?? 'Usuario';
+    final String userInitial = _getUserInitial(userName);
 
-  return LayoutBuilder(
-    builder: (context, constraints) {
-      final bool isDesktop = constraints.maxWidth > 800;
-      final double horizontalPadding = isDesktop ? 40.0 : 20.0;
-      final double verticalSpacing = isDesktop ? 40.0 : 30.0;
+    if (_isLoadingRole) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
 
-      // NUEVO: Layout horizontal para desktop
-      if (isDesktop) {
-        return Scaffold(
-          backgroundColor: Colors.grey[50],
-          appBar: _buildAppBar(userInitial, isDesktop),
-          body: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 30.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildWelcomeHeader(userName),
-                      SizedBox(height: verticalSpacing),
-                      _buildSearchBar(),
-                      SizedBox(height: verticalSpacing),
-                      // Layout horizontal: Izquierda (estadísticas + proyectos), Derecha (tareas)
-                      Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Expanded(
-                            flex: 2,  // Más espacio para izquierda
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                _buildStatisticsGrid(context, isDesktop),
-                                SizedBox(height: verticalSpacing),
-                                _buildRecentProjectsList(),
-                              ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool isDesktop = constraints.maxWidth > 800;
+        final double horizontalPadding = isDesktop ? 40.0 : 20.0;
+        final double verticalSpacing = isDesktop ? 40.0 : 30.0;
+
+        if (isDesktop) {
+          return Scaffold(
+            backgroundColor: Colors.grey[50],
+            appBar: _buildAppBar(userInitial, isDesktop),
+            body: SingleChildScrollView(
+              padding: EdgeInsets.zero,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding, vertical: 30.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildWelcomeHeader(userName),
+                        SizedBox(height: verticalSpacing),
+                        _buildSearchBar(),
+                        SizedBox(height: verticalSpacing),
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Expanded(
+                              flex: 2,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  _buildStatisticsGrid(context, isDesktop),
+                                  SizedBox(height: verticalSpacing),
+                                  _buildRecentProjectsList(),
+                                ],
+                              ),
                             ),
-                          ),
-                          SizedBox(width: verticalSpacing),  // Espacio entre columnas
-                          Expanded(
-                            flex: 1,  // Menos espacio para derecha
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                const PendingTasksCard(),
-                                // Opcional: Agrega TaskCalendar aquí si lo quieres
-                              ],
+                            SizedBox(width: verticalSpacing),
+                            Expanded(
+                              flex: 1,
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  // Nota: PendingTasksCard debe estar definido en widgets_principal.dart
+                                  const PendingTasksCard(),
+                                ],
+                              ),
                             ),
-                          ),
-                        ],
-                      ),
-                    ],
+                          ],
+                        ),
+                        SizedBox(height: verticalSpacing),
+                      ],
+                    ),
                   ),
-                ),
+                  _buildFooter(context, false),
+                ],
               ),
-              AppFooter(
-                isDesktop: isDesktop,
-                onSignOut: _cerrarSesion,
-              ),
-            ],
-          ),
-        );
-      } else {
-        // Layout vertical para móvil/tablet (igual que antes)
-        return Scaffold(
-          backgroundColor: Colors.grey[50],
-          appBar: _buildAppBar(userInitial, isDesktop),
-          body: Column(
-            children: [
-              Expanded(
-                child: SingleChildScrollView(
-                  padding: EdgeInsets.symmetric(horizontal: horizontalPadding, vertical: 30.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      _buildWelcomeHeader(userName),
-                      SizedBox(height: verticalSpacing),
-                      _buildSearchBar(),
-                      SizedBox(height: verticalSpacing),
-                      _buildStatisticsGrid(context, isDesktop),
-                      SizedBox(height: verticalSpacing),
-                      _buildRecentProjectsList(),
-                      SizedBox(height: verticalSpacing),
-                      const PendingTasksCard(),
-                    ],
+            ),
+          );
+        } else {
+          return Scaffold(
+            backgroundColor: Colors.grey[50],
+            appBar: _buildAppBar(userInitial, isDesktop),
+            body: SingleChildScrollView(
+              padding: EdgeInsets.zero,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: EdgeInsets.symmetric(
+                        horizontal: horizontalPadding, vertical: 30.0),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        _buildWelcomeHeader(userName),
+                        SizedBox(height: verticalSpacing),
+                        _buildSearchBar(),
+                        SizedBox(height: verticalSpacing),
+                        _buildStatisticsGrid(context, isDesktop),
+                        SizedBox(height: verticalSpacing),
+                        _buildRecentProjectsList(),
+                        SizedBox(height: verticalSpacing),
+                        const PendingTasksCard(),
+                        SizedBox(height: verticalSpacing),
+                      ],
+                    ),
                   ),
-                ),
+                  _buildFooter(context, true),
+                ],
               ),
-              AppFooter(
-                isDesktop: isDesktop,
-                onSignOut: _cerrarSesion,
-              ),
-            ],
-          ),
-        );
-      }
-    },
-  );
-}
+            ),
+          );
+        }
+      },
+    );
+  }
 }

@@ -54,7 +54,7 @@ class StatCard extends StatelessWidget {
         border: Border.all(color: AppColors.lightGrey),  // Usa tu gris suave
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha:0.1),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -127,7 +127,7 @@ class ProjectRow extends StatelessWidget {
         baseColor = Colors.grey.shade700;
         break;
     }
-    return isBackground ? baseColor.withOpacity(0.1) : baseColor;
+    return isBackground ? baseColor.withValues(alpha:0.1) : baseColor;
   }
 
   @override
@@ -222,7 +222,7 @@ class TaskRow extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha:0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
@@ -336,7 +336,7 @@ class AppFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     Color footerColor = const Color.fromARGB(255, 211, 215, 219);  // Usa tu fondo oscuro
     Color footerTextColor = const Color.fromARGB(255, 0, 0, 0);
-    Color secondaryTextColor = footerTextColor.withOpacity(0.8);
+    Color secondaryTextColor = footerTextColor.withValues(alpha:0.8);
 
     Widget mainContent = Column(
       crossAxisAlignment: CrossAxisAlignment.start,

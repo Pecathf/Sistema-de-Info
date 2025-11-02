@@ -14,3 +14,4 @@ class AppColors {
   static const Color softOrange = Color(0xFFFF8C66); // Un tono más suave para el botón de Iniciar Sesión
 
 }
+

@@ -1,10 +1,13 @@
+// Archivo: pantalla_listado_proyectos.dart
+
 import 'package:flutter/material.dart';
-// Ajusta las rutas según donde tengas estos archivos
-import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart'; 
+// Asegúrate de que todas estas rutas sean correctas
 import 'package:sistem_proyect/central/constantes/modelos/project_model.dart'; 
-import 'pantalla_crear_proyecto.dart'; // Importación de la pantalla de creación
-// Asumo que AppColors se encuentra aquí
-import 'package:sistem_proyect/central/constantes/colores.dart'; 
+import 'pantalla_crear_proyecto.dart'; 
+import 'package:sistem_proyect/central/constantes/colores.dart'; // Asumiendo que AppColors está aquí
+import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart'; 
+import 'package:sistem_proyect/central/constantes/servicios/project_service.dart'; 
+
 
 class PantallaListadoProyectos extends StatefulWidget {
   const PantallaListadoProyectos({super.key});
@@ -14,109 +17,118 @@ class PantallaListadoProyectos extends StatefulWidget {
 }
 
 class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
-  // Instanciamos el servicio para la interacción con los datos
-  // **RECUERDA:** UserDataService debe obtener el ID del usuario real para funcionar correctamente.
-  final UserDataService _userDataService = UserDataService(); 
+  final ProjectService _projectService = ProjectService();
+  final AuthService _authService = AuthService();
+  
+  bool _isAdmin = false;
+  bool _isLoadingRole = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkIfAdmin(); 
+  }
+
+  // Función para verificar el rol
+  Future<void> _checkIfAdmin() async {
+    final isAdmin = await _authService.isAdmin();
+    if (mounted) {
+      setState(() {
+        _isAdmin = isAdmin;
+        _isLoadingRole = false;
+      });
+    }
+  }
+
+  String _formatDate(DateTime date) {
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(
-          'Listado de Proyectos',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
-        ),
-        backgroundColor: AppColors.primaryOrange,
+        title: const Text('Listado de Proyectos', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+        // Usando AppColors de tu archivo widgets_principal.dart
+        backgroundColor: Color(0xFFFF6633), 
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       
-      // StreamBuilder para escuchar los cambios en los proyectos desde Firestore
-      body: StreamBuilder<List<Proyecto>>(
-        stream: _userDataService.getProyectosStream(),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const Center(child: CircularProgressIndicator());
-          }
-          
-          if (snapshot.hasError) {
-            // Muestra el error de Firebase/Firestore si ocurre
-            return Center(
-              child: Padding(
-                padding: const EdgeInsets.all(16.0),
-                child: Text(
-                  'Error al cargar los proyectos: ${snapshot.error.toString()}',
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(color: Colors.red),
-                ),
-              ),
-            );
-          }
+      body: _isLoadingRole
+          ? const Center(child: CircularProgressIndicator())
+          : StreamBuilder<List<Proyecto>>(
+              // 🎯 Usa ProjectService, que ya incluye el filtro de admin
+              stream: _projectService.getProyectosStream(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+                if (snapshot.hasError) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Text(
+                        'Error al cargar proyectos: ${snapshot.error}',
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.red),
+                      ),
+                    ),
+                  );
+                }
+                final proyectos = snapshot.data ?? [];
+                
+                if (proyectos.isEmpty && !_isAdmin) {
+                    return const Center(
+                        child: Text('Solo el Administrador tiene permiso para ver y crear proyectos.', style: TextStyle(fontSize: 16, color: Colors.grey), textAlign: TextAlign.center,),
+                    );
+                }
+                if (proyectos.isEmpty && _isAdmin) {
+                    return const Center(
+                        child: Text('No hay proyectos creados.', style: TextStyle(fontSize: 16, color: Colors.grey)),
+                    );
+                }
 
-          final proyectos = snapshot.data;
-
-          if (proyectos == null || proyectos.isEmpty) {
-            // Estado si no hay proyectos
-            return const Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.folder_open, size: 60, color: Colors.grey),
-                  SizedBox(height: 10),
-                  Text('Aún no tienes proyectos creados.', style: TextStyle(fontSize: 18, color: Colors.grey)),
-                  SizedBox(height: 20),
-                ],
-              ),
-            );
-          }
-
-          // Si hay datos, mostramos la lista
-          return ListView.builder(
-            padding: const EdgeInsets.all(16.0),
-            itemCount: proyectos.length,
-            itemBuilder: (context, index) {
-              final proyecto = proyectos[index];
-              return Card(
-                margin: const EdgeInsets.only(bottom: 12.0),
-                elevation: 2,
-                child: ListTile(
-                  leading: const Icon(Icons.workspaces_filled, color: AppColors.primaryOrange),
-                  title: Text(proyecto.nombre, style: const TextStyle(fontWeight: FontWeight.bold)),
-                  // Mostramos la descripción y la fecha de creación formateada
-                  subtitle: Text(
-                    '${proyecto.descripcion}\nEstado: ${proyecto.estado} - Creado: ${_formatDate(proyecto.fechaCreacion)}',
-                  ),
-                  trailing: const Icon(Icons.arrow_forward_ios, size: 16),
-                  isThreeLine: true,
-                  onTap: () {
-                    // TODO: Implementar navegación a la Pantalla de Detalle del Proyecto
-                    // Navigator.push(context, MaterialPageRoute(builder: (context) => PantallaDetalleProyecto(proyecto: proyecto)));
+                return ListView.builder(
+                  itemCount: proyectos.length,
+                  itemBuilder: (context, index) {
+                    final proyecto = proyectos[index];
+                    return Card(
+                      elevation: 1,
+                      margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 15),
+                      child: ListTile(
+                        title: Text(proyecto.nombre, style: const TextStyle(fontWeight: FontWeight.bold)),
+                        subtitle: Text(
+                          '${proyecto.descripcion}\nEstado: ${proyecto.estado} - Creado: ${_formatDate(proyecto.fechaCreacion)}',
+                        ),
+                        trailing: const Icon(Icons.arrow_forward_ios, size: 16),
+                        isThreeLine: true,
+                        onTap: () {
+                          // Implementar navegación a detalle (solo el admin podrá leer)
+                        },
+                      ),
+                    );
                   },
-                ),
-              );
-            },
-          );
-        },
-      ),
-
-      // Botón flotante para crear un nuevo proyecto
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          // 🚀 NAVEGACIÓN ACTIVA a la PantallaCrearProyecto
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder: (context) => const PantallaCrearProyecto(),
+                );
+              },
             ),
-          );
-        },
-        backgroundColor: AppColors.primaryOrange,
-        child: const Icon(Icons.add, color: Colors.white),
-      ),
-    );
-  }
 
-  // Función auxiliar para formatear la fecha
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+      // 🎯 Botón flotante CONDICIONAL
+      floatingActionButton: _isLoadingRole
+          ? null
+          : _isAdmin
+              ? FloatingActionButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const PantallaCrearProyecto(),
+                      ),
+                    );
+                  },
+                  backgroundColor: Color(0xFFFF6633), // AppColors.primaryOrange
+                  child: const Icon(Icons.add, color: Colors.white),
+                )
+              : null, 
+    );
   }
 }

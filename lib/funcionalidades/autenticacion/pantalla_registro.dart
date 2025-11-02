@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_inicio_sesion.dart';
@@ -264,7 +265,7 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
                               const SizedBox(height: 8),
                               _buildCustomTextField(
                                 controller: _emailController,
-                                hintText: 'ejemplo@correo.com',
+                                hintText: 'ejemplo@correo.unimet.edu.ve',
                                 keyboardType: TextInputType.emailAddress,
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
@@ -275,6 +276,10 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
                                       .hasMatch(value)) {
                                     return 'Ingrese un correo válido';
                                   }
+                                  if (!value
+                                      .endsWith('@correo.unimet.edu.ve')) {
+                                    return 'Debe usar un correo institucional (@correo.unimet.edu.ve)';
+                                  }
                                   return null;
                                 },
                               ),
@@ -282,13 +287,16 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
 
                               _buildLabel('Cédula'),
                               const SizedBox(height: 8),
-                              _buildCustomTextField(
+                              _buildCedulaField(
                                 controller: _cedulaController,
-                                hintText: 'V30980220',
-                                keyboardType: TextInputType.number,
+                                hintText: 'V12345678',
                                 validator: (value) {
                                   if (value == null || value.isEmpty) {
                                     return 'Por favor ingrese su cédula';
+                                  }
+                                  // Validar que tenga el formato correcto (V + 7-8 dígitos)
+                                  if (!RegExp(r'^V\d{7,8}$').hasMatch(value)) {
+                                    return 'Formato inválido. Use: V seguido de 7-8 dígitos';
                                   }
                                   return null;
                                 },
@@ -497,6 +505,76 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
           border: InputBorder.none,
           contentPadding:
               const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          errorStyle: const TextStyle(
+            fontSize: 12,
+          ),
+        ),
+        style: const TextStyle(fontSize: 14),
+        validator: validator,
+      ),
+    );
+  }
+
+  // Nuevo método específico para el campo de cédula
+  Widget _buildCedulaField({
+    required TextEditingController controller,
+    required String hintText,
+    required String? Function(String?) validator,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: AppColors.lightBackground,
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(
+          color: AppColors.lightGrey,
+          width: 1,
+        ),
+      ),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        maxLength: 9, // V + 8 dígitos
+        inputFormatters: [
+          TextInputFormatter.withFunction((oldValue, newValue) {
+            // Permitir solo dígitos después de remover la V
+            String text = newValue.text;
+
+            // Si está vacío, permitir
+            if (text.isEmpty) return newValue;
+
+            // Remover la V si existe para contar solo dígitos
+            String digitsOnly = text.replaceAll('V', '').replaceAll('v', '');
+
+            // Filtrar solo números
+            digitsOnly = digitsOnly.replaceAll(RegExp(r'[^0-9]'), '');
+
+            // Limitar a 8 dígitos
+            if (digitsOnly.length > 8) {
+              digitsOnly = digitsOnly.substring(0, 8);
+            }
+
+            // Si no hay dígitos, devolver vacío
+            if (digitsOnly.isEmpty) {
+              return const TextEditingValue(text: '');
+            }
+
+            // Construir el texto final con V
+            String finalText = 'V$digitsOnly';
+
+            // Mantener el cursor al final
+            return TextEditingValue(
+              text: finalText,
+              selection: TextSelection.collapsed(offset: finalText.length),
+            );
+          }),
+        ],
+        decoration: InputDecoration(
+          hintText: hintText,
+          hintStyle: TextStyle(color: Colors.grey[500], fontSize: 14),
+          border: InputBorder.none,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 12),
+          counterText: '', // Oculta el contador de caracteres
           errorStyle: const TextStyle(
             fontSize: 12,
           ),
