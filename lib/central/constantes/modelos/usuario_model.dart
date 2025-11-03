@@ -1,37 +1,33 @@
 // Archivo: usuario_model.dart
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class Usuario {
   final String uid;
-  final String email;
   final String nombre;
-  final String cedula;
-  final String rol;
+  final String email;
 
   Usuario({
     required this.uid,
-    required this.email,
     required this.nombre,
-    required this.cedula,
-    required this.rol,
+    required this.email,
   });
 
-  // 🛠️ Factory Constructor: Mapea DocumentSnapshot a Usuario
   factory Usuario.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>?;
 
-    if (data == null) {
-      throw StateError('Documento de usuario no contiene datos.');
-    }
-
+    // 🎯 CORRECCIÓN CLAVE: Usar ?? para proporcionar valores por defecto
+    // '??' se asegura de que si el valor es nulo, se use una cadena vacía ('') en su lugar.
     return Usuario(
-      uid: doc.id,
-      email: data['email'] ?? 'sin_correo@app.com',
-      nombre: data['nombre'] ?? 'Usuario Desconocido',
-      cedula: data['cedula'] ?? 'N/A',
-      // Asumo que tu colección de usuarios tiene un campo 'rol'
-      rol: data['rol'] ?? 'usuario', 
+      uid: doc.id, // El ID siempre existe en el DocumentSnapshot
+      nombre: data?['nombre'] ?? '', // Usa '' si 'nombre' es null
+      email: data?['email'] ?? 'Sin email', // Usa 'Sin email' si 'email' es null
     );
+  }
+
+  Map<String, dynamic> toFirestore() {
+    return {
+      'nombre': nombre,
+      'email': email,
+    };
   }
 }
