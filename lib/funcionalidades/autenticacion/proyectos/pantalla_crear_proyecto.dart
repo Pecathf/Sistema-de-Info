@@ -10,7 +10,7 @@ import 'package:sistem_proyect/central/constantes/servicios/project_service.dart
 import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart';
 import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_inicio_sesion.dart'; 
 import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_editar_perfil.dart'; 
-import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_listado_proyectos.dart'; 
+import 'package:sistem_proyect/funcionalidades/autenticacion/proyectos/pantalla_listado_proyectos.dart'; 
 import 'package:sistem_proyect/funcionalidades/autenticacion/proyectos/member_selection_dialog.dart'; 
 
 

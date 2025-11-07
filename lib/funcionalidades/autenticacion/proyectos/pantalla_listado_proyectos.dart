@@ -6,10 +6,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sistem_proyect/central/constantes/modelos/project_model.dart'; 
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart'; 
 import 'package:sistem_proyect/central/constantes/servicios/project_service.dart'; 
-import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_crear_proyecto.dart'; 
+import 'package:sistem_proyect/funcionalidades/autenticacion/proyectos/pantalla_crear_proyecto.dart'; 
 import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_editar_perfil.dart'; 
 import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_inicio_sesion.dart'; 
-import 'package:sistem_proyect/funcionalidades/autenticacion/project_card_widget.dart'; 
+import 'package:sistem_proyect/funcionalidades/autenticacion/proyectos/project_card_widget.dart'; 
 // Importaciones adicionales que podrías necesitar para navegación (ejemplo)
 // import 'package:sistem_proyect/funcionalidades/principal/pantalla_principal.dart'; 
 

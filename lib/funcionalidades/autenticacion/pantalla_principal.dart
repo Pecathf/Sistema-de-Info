@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'widgets_principal.dart';
 import 'pantalla_editar_perfil.dart';
 // ✅ Importación necesaria para la navegación de Proyectos
-import 'pantalla_listado_proyectos.dart'; 
+import 'package:sistem_proyect/funcionalidades/autenticacion/proyectos/pantalla_listado_proyectos.dart'; 
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
 import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_inicio_sesion.dart';
 
