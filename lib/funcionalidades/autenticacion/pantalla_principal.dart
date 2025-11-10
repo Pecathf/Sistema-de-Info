@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'widgets_principal.dart';
 import 'pantalla_editar_perfil.dart';
+// ✅ Importación necesaria para la navegación de Proyectos
+import 'package:sistem_proyect/funcionalidades/autenticacion/proyectos/pantalla_listado_proyectos.dart'; 
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
 import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_inicio_sesion.dart';
 
@@ -15,6 +17,24 @@ class PantallaPrincipal extends StatefulWidget {
 class _PantallaPrincipalState extends State<PantallaPrincipal> {
   final AuthService _authService = AuthService();
   bool _isProfileHovered = false;
+  bool _isAdmin = false;
+  bool _isLoadingRole = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _checkIfAdmin();
+  }
+
+  Future<void> _checkIfAdmin() async {
+    final isAdmin = await _authService.isAdmin();
+    if (mounted) {
+      setState(() {
+        _isAdmin = isAdmin;
+        _isLoadingRole = false;
+      });
+    }
+  }
 
   // Cierra la sesión del usuario y redirige al login
   Future<void> _cerrarSesion() async {
@@ -75,6 +95,9 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
 
   // Construye el AppBar con navegación adaptativa
   PreferredSizeWidget _buildAppBar(String userInitial, bool isDesktop) {
+    // Determinar el color del avatar según el rol
+    final Color avatarColor = _isAdmin ? AppColors.accentColor : AppColors.primaryOrange;
+
     final profileWidget = MouseRegion(
       onEnter: (_) => setState(() => _isProfileHovered = true),
       onExit: (_) => setState(() => _isProfileHovered = false),
@@ -87,19 +110,23 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
           padding: const EdgeInsets.all(8),
           margin: EdgeInsets.only(right: isDesktop ? 20 : 16),
           decoration: BoxDecoration(
-            color: AppColors.primaryOrange,
+            color: avatarColor,
             shape: BoxShape.circle,
             boxShadow: _isProfileHovered
                 ? [
                     BoxShadow(
-                      color: AppColors.primaryOrange.withOpacity(0.5),
+                      color: avatarColor.withOpacity(0.5),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
                     ),
                   ]
                 : [],
           ),
-          transform: Matrix4.identity()..scale(_isProfileHovered ? 1.05 : 1.0),
+          transform: Matrix4.diagonal3Values(
+            _isProfileHovered ? 1.05 : 1.0,
+            _isProfileHovered ? 1.05 : 1.0,
+            1.0,
+          ),
           child: Text(userInitial,
               style: const TextStyle(
                   color: Colors.white, fontWeight: FontWeight.bold)),
@@ -127,7 +154,14 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 TextButton(
-                    onPressed: () {},
+                    // ✅ Lógica de navegación implementada aquí
+                    onPressed: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  const PantallaListadoProyectos()));
+                    }, 
                     child: const Text('Proyectos',
                         style: TextStyle(color: Colors.black87))),
                 TextButton(
@@ -167,13 +201,36 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          'Hola, $userName',
-          style: const TextStyle(
-            fontSize: 28,
-            fontWeight: FontWeight.w500,
-            color: Colors.black87,
-          ),
+        Row(
+          children: [
+            Text(
+              'Hola, $userName',
+              style: const TextStyle(
+                fontSize: 28,
+                fontWeight: FontWeight.w500,
+                color: Colors.black87,
+              ),
+            ),
+            if (_isAdmin) ...[
+              const SizedBox(width: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.accentColor.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(4),
+                  border: Border.all(color: AppColors.accentColor, width: 1),
+                ),
+                child: const Text(
+                  'Admin',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.accentColor,
+                  ),
+                ),
+              ),
+            ],
+          ],
         ),
         const SizedBox(height: 4),
         const Text(
@@ -236,6 +293,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
       return const Center(child: Text('Cargando estadísticas...'));
     }
 
+    // Nota: StatCard y statData deben estar definidos en widgets_principal.dart
     final children = statData
         .map(
           (stat) => StatCard(
@@ -300,6 +358,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             ],
           ),
           child: Column(
+            // Nota: ProjectRow y recentProjects deben estar definidos en widgets_principal.dart
             children: recentProjects.map((project) {
               return ProjectRow(
                 title: project['name'] as String,
@@ -405,19 +464,17 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
           textAlign: isMobile ? TextAlign.center : TextAlign.left,
         ),
         const SizedBox(height: 10),
-        ...items
-            .map((item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4.0),
-                  child: Text(
-                    item,
-                    style: TextStyle(
-                      color: isContact ? Colors.black54 : Colors.black87,
-                      fontSize: 14,
-                    ),
-                    textAlign: isMobile ? TextAlign.center : TextAlign.left,
-                  ),
-                ))
-            .toList(),
+        ...items.map((item) => Padding(
+              padding: const EdgeInsets.only(bottom: 4.0),
+              child: Text(
+                item,
+                style: TextStyle(
+                  color: isContact ? Colors.black54 : Colors.black87,
+                  fontSize: 14,
+                ),
+                textAlign: isMobile ? TextAlign.center : TextAlign.left,
+              ),
+            ))
       ],
     );
   }
@@ -428,6 +485,14 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     final String userName =
         user?.displayName ?? user?.email?.split('@').first ?? 'Usuario';
     final String userInitial = _getUserInitial(userName);
+
+    if (_isLoadingRole) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+    }
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -474,6 +539,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
+                                  // Nota: PendingTasksCard debe estar definido en widgets_principal.dart
                                   const PendingTasksCard(),
                                 ],
                               ),

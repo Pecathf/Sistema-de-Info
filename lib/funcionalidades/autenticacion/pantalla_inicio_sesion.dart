@@ -47,13 +47,11 @@ class _PantallaInicioSesionState extends State<PantallaInicioSesion> {
         _passwordController.text,
       );
 
-      // Si el login fue exitoso, desactivamos el indicador ANTES de navegar.
       if (!mounted) return;
       setState(() {
         _isLoading = false;
       });
 
-      // 2. Navegar a la Pantalla Principal
       if (!context.mounted) return;
       Navigator.of(context).pushReplacement(
         MaterialPageRoute(

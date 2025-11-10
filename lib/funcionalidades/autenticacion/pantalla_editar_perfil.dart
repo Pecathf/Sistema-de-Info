@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sistem_proyect/central/constantes/colores.dart';
@@ -15,12 +16,17 @@ class _PantallaEditarPerfilState extends State<PantallaEditarPerfil> {
   final TextEditingController _nombreController = TextEditingController();
   final TextEditingController _correoController = TextEditingController();
   final TextEditingController _cedulaController = TextEditingController();
-  final TextEditingController _contrasenaController = TextEditingController();
+  final TextEditingController _contrasenaActualController =
+      TextEditingController();
+  final TextEditingController _contrasenaNuevaController =
+      TextEditingController();
   final TextEditingController _confirmarContrasenaController =
       TextEditingController();
 
   bool _isLoading = true;
-  bool _obscurePassword = true;
+  bool _isSaving = false;
+  bool _obscureCurrentPassword = true;
+  bool _obscureNewPassword = true;
   bool _obscureConfirmPassword = true;
 
   @override
@@ -49,7 +55,6 @@ class _PantallaEditarPerfilState extends State<PantallaEditarPerfil> {
           if (data != null) {
             if (mounted) {
               setState(() {
-                // Actualizar campos con datos de Firestore
                 _nombreController.text =
                     data['nombre'] ?? user.displayName ?? '';
                 _correoController.text = data['email'] ?? user.email ?? '';
@@ -93,118 +98,253 @@ class _PantallaEditarPerfilState extends State<PantallaEditarPerfil> {
     _nombreController.dispose();
     _correoController.dispose();
     _cedulaController.dispose();
-    _contrasenaController.dispose();
+    _contrasenaActualController.dispose();
+    _contrasenaNuevaController.dispose();
     _confirmarContrasenaController.dispose();
     super.dispose();
   }
 
+  // Verifica que la contraseña actual sea correcta
+  Future<bool> _verificarContrasenaActual(String contrasenaActual) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null || user.email == null) {
+        return false;
+      }
+
+      // Intentar iniciar sesión con las credenciales para verificar
+      await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: user.email!,
+        password: contrasenaActual,
+      );
+
+      return true;
+    } catch (e) {
+      debugPrint('Error al verificar contraseña: $e');
+      return false;
+    }
+  }
+
   // Guarda los cambios del perfil en Firebase Auth y Firestore
   void _guardarCambios() async {
-    if (_formKey.currentState!.validate()) {
-      // Verificar que las contraseñas coincidan si se proporcionó una nueva
-      if (_contrasenaController.text.trim().isNotEmpty &&
-          _contrasenaController.text != _confirmarContrasenaController.text) {
+    if (!_formKey.currentState!.validate()) return;
+
+    // Verificar si el usuario quiere cambiar la contraseña
+    final bool quiereCambiarContrasena =
+        _contrasenaNuevaController.text.trim().isNotEmpty ||
+            _confirmarContrasenaController.text.trim().isNotEmpty;
+
+    if (quiereCambiarContrasena) {
+      // Validar que se haya ingresado la contraseña actual
+      if (_contrasenaActualController.text.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Las contraseñas no coinciden'),
+            content: Text('Debes ingresar tu contraseña actual para cambiarla'),
             backgroundColor: Colors.red,
           ),
         );
         return;
       }
 
-      setState(() {
-        _isLoading = true;
-      });
+      // Validar que la nueva contraseña tenga al menos 6 caracteres
+      if (_contrasenaNuevaController.text.trim().length < 6) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content:
+                Text('La nueva contraseña debe tener al menos 6 caracteres'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
 
-      try {
-        final user = FirebaseAuth.instance.currentUser;
-        if (user != null) {
-          // Actualizar displayName en Firebase Auth
-          if (_nombreController.text.trim().isNotEmpty) {
-            await user.updateDisplayName(_nombreController.text.trim());
+      // Verificar que las contraseñas nuevas coincidan
+      if (_contrasenaNuevaController.text !=
+          _confirmarContrasenaController.text) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Las contraseñas nuevas no coinciden'),
+            backgroundColor: Colors.red,
+          ),
+        );
+        return;
+      }
+    }
+
+    setState(() {
+      _isSaving = true;
+    });
+
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      if (user == null) {
+        throw Exception('Usuario no autenticado');
+      }
+
+      // Si quiere cambiar la contraseña, verificar la actual primero
+      if (quiereCambiarContrasena) {
+        debugPrint('Verificando contraseña actual...');
+
+        // Verificar que la contraseña actual sea correcta
+        final contrasenaValida = await _verificarContrasenaActual(
+            _contrasenaActualController.text.trim());
+
+        if (!contrasenaValida) {
+          debugPrint('Contraseña actual incorrecta');
+          if (mounted) {
+            setState(() {
+              _isSaving = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('La contraseña actual es incorrecta'),
+                backgroundColor: Colors.red,
+              ),
+            );
           }
+          return;
+        }
 
-          // Actualizar email en Firebase Auth si cambió
-          if (_correoController.text.trim() != user.email) {
-            await user.verifyBeforeUpdateEmail(_correoController.text.trim());
-          }
+        debugPrint('Contraseña actual correcta, actualizando...');
 
-          // Actualizar contraseña en Firebase Auth si se proporcionó una nueva
-          if (_contrasenaController.text.trim().isNotEmpty) {
-            await user.updatePassword(_contrasenaController.text.trim());
-          }
-
-          // Actualizar datos en Firestore
-          await FirebaseFirestore.instance
-              .collection('usuarios')
-              .doc(user.uid)
-              .update({
-            'nombre': _nombreController.text.trim(),
-            'cedula': _cedulaController.text.trim(),
-            'email': _correoController.text.trim(),
-          });
-
-          // Recargar el usuario para reflejar los cambios
-          await user.reload();
-
-          if (!mounted) return;
-
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Perfil actualizado correctamente'),
-              backgroundColor: Colors.green,
-            ),
+        try {
+          // Actualizar la contraseña directamente
+          await user
+              .updatePassword(_contrasenaNuevaController.text.trim())
+              .timeout(
+            const Duration(seconds: 10),
+            onTimeout: () {
+              throw Exception('Timeout al actualizar contraseña');
+            },
           );
+          debugPrint('Contraseña actualizada exitosamente');
+        } on FirebaseAuthException catch (e) {
+          debugPrint(
+              'FirebaseAuthException al actualizar contraseña: ${e.code}');
 
-          // Recargar los datos actualizados
-          _cargarDatosUsuario();
-        }
-      } on FirebaseAuthException catch (e) {
-        if (!mounted) return;
-
-        String mensaje = 'Error al actualizar perfil';
-
-        switch (e.code) {
-          case 'requires-recent-login':
+          String mensaje = 'Error al cambiar contraseña';
+          if (e.code == 'requires-recent-login') {
             mensaje =
-                'Por seguridad, necesitas volver a iniciar sesión para cambiar estos datos';
-            break;
-          case 'weak-password':
+                'Por seguridad, debes cerrar sesión y volver a iniciar para cambiar tu contraseña';
+          } else if (e.code == 'weak-password') {
             mensaje = 'La contraseña es muy débil';
-            break;
-          case 'email-already-in-use':
-            mensaje = 'Este correo ya está en uso';
-            break;
-          case 'invalid-email':
-            mensaje = 'El correo no es válido';
-            break;
-          default:
-            mensaje = 'Error: ${e.message}';
-        }
+          }
 
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(mensaje),
-            backgroundColor: Colors.red,
-          ),
-        );
-      } catch (e) {
-        if (!mounted) return;
-
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error al actualizar perfil: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      } finally {
-        if (mounted) {
-          setState(() {
-            _isLoading = false;
-          });
+          if (mounted) {
+            setState(() {
+              _isSaving = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text(mensaje),
+                backgroundColor: Colors.red,
+                duration: const Duration(seconds: 5),
+              ),
+            );
+          }
+          return;
+        } catch (e) {
+          debugPrint('Error general al actualizar contraseña: $e');
+          if (mounted) {
+            setState(() {
+              _isSaving = false;
+            });
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Error al actualizar contraseña'),
+                backgroundColor: Colors.red,
+              ),
+            );
+          }
+          return;
         }
       }
+
+      // Actualizar displayName en Firebase Auth
+      if (_nombreController.text.trim().isNotEmpty) {
+        await user.updateDisplayName(_nombreController.text.trim());
+      }
+
+      // Actualizar datos en Firestore (solo nombre y cédula, NO el email)
+      await FirebaseFirestore.instance
+          .collection('usuarios')
+          .doc(user.uid)
+          .update({
+        'nombre': _nombreController.text.trim(),
+        'cedula': _cedulaController.text.trim(),
+      });
+
+      // Recargar el usuario para reflejar los cambios
+      await user.reload();
+
+      if (!mounted) return;
+
+      // Limpiar campos de contraseña después de guardar exitosamente
+      _contrasenaActualController.clear();
+      _contrasenaNuevaController.clear();
+      _confirmarContrasenaController.clear();
+
+      setState(() {
+        _isSaving = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Perfil actualizado correctamente'),
+          backgroundColor: Colors.green,
+        ),
+      );
+
+      // Recargar los datos actualizados
+      _cargarDatosUsuario();
+    } on FirebaseAuthException catch (e) {
+      debugPrint('FirebaseAuthException: ${e.code} - ${e.message}');
+      if (!mounted) return;
+
+      String mensaje = 'Error al actualizar perfil';
+
+      switch (e.code) {
+        case 'requires-recent-login':
+          mensaje =
+              'Por seguridad, necesitas volver a iniciar sesión para cambiar estos datos';
+          break;
+        case 'weak-password':
+          mensaje = 'La contraseña es muy débil';
+          break;
+        case 'email-already-in-use':
+          mensaje = 'Este correo ya está en uso';
+          break;
+        case 'invalid-email':
+          mensaje = 'El correo no es válido';
+          break;
+        default:
+          mensaje = 'Error: ${e.message}';
+      }
+
+      setState(() {
+        _isSaving = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(mensaje),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } catch (e) {
+      debugPrint('Error general: $e');
+      if (!mounted) return;
+
+      setState(() {
+        _isSaving = false;
+      });
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error al actualizar perfil: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     }
   }
 
@@ -268,6 +408,10 @@ class _PantallaEditarPerfilState extends State<PantallaEditarPerfil> {
     required String label,
     bool obscureText = false,
     String? hintText,
+    TextStyle? hintStyle,
+    bool readOnly = false,
+    int? maxLength,
+    List<TextInputFormatter>? inputFormatters,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -284,10 +428,14 @@ class _PantallaEditarPerfilState extends State<PantallaEditarPerfil> {
         TextFormField(
           controller: controller,
           obscureText: obscureText,
+          readOnly: readOnly,
+          enabled: !readOnly,
+          maxLength: maxLength,
+          inputFormatters: inputFormatters,
           decoration: InputDecoration(
             hintText: hintText,
             filled: true,
-            fillColor: Colors.white,
+            fillColor: readOnly ? Colors.grey[100] : Colors.white,
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(color: Colors.grey[300]!),
@@ -296,12 +444,25 @@ class _PantallaEditarPerfilState extends State<PantallaEditarPerfil> {
               borderRadius: BorderRadius.circular(8),
               borderSide: BorderSide(color: Colors.grey[300]!),
             ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(8),
+              borderSide: BorderSide(color: Colors.grey[300]!),
+            ),
             focusedBorder: OutlineInputBorder(
               borderRadius: BorderRadius.circular(8),
-              borderSide: const BorderSide(color: AppColors.primaryOrange),
+              borderSide: BorderSide(
+                color: readOnly ? Colors.grey[300]! : AppColors.primaryOrange,
+              ),
             ),
             contentPadding:
                 const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            suffixIcon: readOnly
+                ? Icon(Icons.lock_outline, color: Colors.grey[400], size: 20)
+                : null,
+            counterText: '', // Oculta el contador de caracteres
+          ),
+          style: TextStyle(
+            color: readOnly ? Colors.grey[600] : Colors.black87,
           ),
         ),
       ],
@@ -331,8 +492,13 @@ class _PantallaEditarPerfilState extends State<PantallaEditarPerfil> {
         TextFormField(
           controller: controller,
           obscureText: obscureText,
+          obscuringCharacter: '•',
           decoration: InputDecoration(
             hintText: hintText,
+            hintStyle: TextStyle(
+              color: Colors.grey[400],
+              letterSpacing: 0,
+            ),
             filled: true,
             fillColor: Colors.white,
             border: OutlineInputBorder(
@@ -357,6 +523,9 @@ class _PantallaEditarPerfilState extends State<PantallaEditarPerfil> {
               onPressed: onToggle,
             ),
           ),
+          style: const TextStyle(
+            letterSpacing: 2,
+          ),
         ),
       ],
     );
@@ -373,7 +542,7 @@ class _PantallaEditarPerfilState extends State<PantallaEditarPerfil> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
+              color: Colors.grey.withValues(alpha: 0.1),
               blurRadius: 10,
               offset: const Offset(0, 2),
             ),
@@ -395,7 +564,7 @@ class _PantallaEditarPerfilState extends State<PantallaEditarPerfil> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             blurRadius: 10,
             offset: const Offset(0, 2),
           ),
@@ -424,29 +593,12 @@ class _PantallaEditarPerfilState extends State<PantallaEditarPerfil> {
             _buildTextField(
               controller: _correoController,
               label: 'Correo Electrónico',
-              hintText: 'ejemplo@correo.com',
-            ),
-            const SizedBox(height: 20),
-            _buildTextField(
-              controller: _cedulaController,
-              label: 'Cédula',
-              hintText: 'V30980220',
-            ),
-            const SizedBox(height: 20),
-            _buildPasswordField(
-              controller: _contrasenaController,
-              label: 'Contraseña',
-              obscureText: _obscurePassword,
-              hintText: '••••••••',
-              onToggle: () {
-                setState(() {
-                  _obscurePassword = !_obscurePassword;
-                });
-              },
+              hintText: 'ejemplo@correo.unimet.edu.ve',
+              readOnly: true,
             ),
             const SizedBox(height: 8),
             Text(
-              'Deja en blanco si no deseas cambiarla',
+              'El correo electrónico no puede modificarse',
               style: TextStyle(
                 fontSize: 12,
                 color: Colors.grey[600],
@@ -454,20 +606,129 @@ class _PantallaEditarPerfilState extends State<PantallaEditarPerfil> {
               ),
             ),
             const SizedBox(height: 20),
-            _buildPasswordField(
-              controller: _confirmarContrasenaController,
-              label: 'Confirmar contraseña',
-              obscureText: _obscureConfirmPassword,
-              hintText: '••••••••',
-              onToggle: () {
-                setState(() {
-                  _obscureConfirmPassword = !_obscureConfirmPassword;
-                });
-              },
+            _buildTextField(
+              controller: _cedulaController,
+              label: 'Cédula',
+              hintText: 'V12345678',
+              maxLength: 9, // V + 8 dígitos
+              hintStyle: TextStyle(color: Colors.grey[500]),
+              inputFormatters: [
+                TextInputFormatter.withFunction((oldValue, newValue) {
+                  // Permitir solo dígitos después de remover la V
+                  String text = newValue.text;
+
+                  // Si está vacío, permitir
+                  if (text.isEmpty) return newValue;
+
+                  // Remover la V si existe para contar solo dígitos
+                  String digitsOnly =
+                      text.replaceAll('V', '').replaceAll('v', '');
+
+                  // Filtrar solo números
+                  digitsOnly = digitsOnly.replaceAll(RegExp(r'[^0-9]'), '');
+
+                  // Limitar a 8 dígitos
+                  if (digitsOnly.length > 8) {
+                    digitsOnly = digitsOnly.substring(0, 8);
+                  }
+
+                  // Si no hay dígitos, devolver vacío
+                  if (digitsOnly.isEmpty) {
+                    return const TextEditingValue(text: '');
+                  }
+
+                  // Construir el texto final con V
+                  String finalText = 'V$digitsOnly';
+
+                  // Mantener el cursor al final
+                  return TextEditingValue(
+                    text: finalText,
+                    selection:
+                        TextSelection.collapsed(offset: finalText.length),
+                  );
+                }),
+              ],
+            ),
+            const SizedBox(height: 32),
+
+            // Sección de cambio de contraseña
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.grey[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.grey[300]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  const Text(
+                    'Cambiar contraseña',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.black87,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Completa los siguientes campos solo si deseas cambiar tu contraseña',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                      fontStyle: FontStyle.italic,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _buildPasswordField(
+                    controller: _contrasenaActualController,
+                    label: 'Contraseña actual',
+                    obscureText: _obscureCurrentPassword,
+                    hintText: 'Ingresa tu contraseña actual',
+                    onToggle: () {
+                      setState(() {
+                        _obscureCurrentPassword = !_obscureCurrentPassword;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 20),
+                  _buildPasswordField(
+                    controller: _contrasenaNuevaController,
+                    label: 'Nueva contraseña',
+                    obscureText: _obscureNewPassword,
+                    hintText: 'Ingresa tu nueva contraseña',
+                    onToggle: () {
+                      setState(() {
+                        _obscureNewPassword = !_obscureNewPassword;
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Mínimo 6 caracteres',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: Colors.grey[600],
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  _buildPasswordField(
+                    controller: _confirmarContrasenaController,
+                    label: 'Confirmar nueva contraseña',
+                    obscureText: _obscureConfirmPassword,
+                    hintText: 'Confirma tu nueva contraseña',
+                    onToggle: () {
+                      setState(() {
+                        _obscureConfirmPassword = !_obscureConfirmPassword;
+                      });
+                    },
+                  ),
+                ],
+              ),
             ),
             const SizedBox(height: 32),
             ElevatedButton(
-              onPressed: _isLoading ? null : _guardarCambios,
+              onPressed: _isSaving ? null : _guardarCambios,
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppColors.primaryOrange,
                 foregroundColor: Colors.white,
@@ -477,7 +738,7 @@ class _PantallaEditarPerfilState extends State<PantallaEditarPerfil> {
                 ),
                 elevation: 0,
               ),
-              child: _isLoading
+              child: _isSaving
                   ? const SizedBox(
                       height: 20,
                       width: 20,
@@ -496,7 +757,7 @@ class _PantallaEditarPerfilState extends State<PantallaEditarPerfil> {
             ),
             const SizedBox(height: 16),
             OutlinedButton(
-              onPressed: () => Navigator.pop(context),
+              onPressed: _isSaving ? null : () => Navigator.pop(context),
               style: OutlinedButton.styleFrom(
                 foregroundColor: Colors.black87,
                 padding: const EdgeInsets.symmetric(vertical: 16),
@@ -611,19 +872,17 @@ class _PantallaEditarPerfilState extends State<PantallaEditarPerfil> {
           textAlign: isMobile ? TextAlign.center : TextAlign.left,
         ),
         const SizedBox(height: 10),
-        ...items
-            .map((item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4.0),
-                  child: Text(
-                    item,
-                    style: TextStyle(
-                      color: isContact ? Colors.black54 : Colors.black87,
-                      fontSize: 14,
-                    ),
-                    textAlign: isMobile ? TextAlign.center : TextAlign.left,
-                  ),
-                ))
-            .toList(),
+        ...items.map((item) => Padding(
+              padding: const EdgeInsets.only(bottom: 4.0),
+              child: Text(
+                item,
+                style: TextStyle(
+                  color: isContact ? Colors.black54 : Colors.black87,
+                  fontSize: 14,
+                ),
+                textAlign: isMobile ? TextAlign.center : TextAlign.left,
+              ),
+            ))
       ],
     );
   }

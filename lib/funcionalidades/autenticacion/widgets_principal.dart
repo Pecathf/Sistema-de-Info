@@ -1,21 +1,14 @@
 import 'package:flutter/material.dart';
 
-// --- TU MÓDULO DE COLORES (Integrado aquí para simplicidad) ---
 class AppColors {
-  // Color Naranja Principal (El color de los botones y el panel lateral)
   static const Color primaryOrange = Color(0xFFFF6633); 
-  // Color de fondo oscuro (Para texto principal y fondos oscuros)
   static const Color darkBackground = Color(0xFF2E2E2E);
-  // Color de Fondo claro para los formularios
   static const Color lightBackground = Colors.white; 
-  // Color del texto de la marca y enlaces
   static const Color accentColor = Color(0xFF3366FF); 
-  // Color para campos de texto/bordes grises suaves
   static const Color lightGrey = Color(0xFFE0E0E0);
 }
 
-// --- CONSTANTES Y DATOS DUMMY (Usando tus colores) ---
-const Color _naranjaPrincipal = AppColors.primaryOrange;  // Ahora usa tu color rojizo
+const Color _naranjaPrincipal = AppColors.primaryOrange;  
 
 const List<Map<String, dynamic>> statData = [
   {'title': 'PROYECTOS TOTALES', 'value': '12', 'subtitle': 'Total de proyectos', 'color': _naranjaPrincipal},
@@ -61,7 +54,7 @@ class StatCard extends StatelessWidget {
         border: Border.all(color: AppColors.lightGrey),  // Usa tu gris suave
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.1),
+            color: color.withValues(alpha:0.1),
             blurRadius: 10,
             offset: const Offset(0, 3),
           ),
@@ -134,7 +127,7 @@ class ProjectRow extends StatelessWidget {
         baseColor = Colors.grey.shade700;
         break;
     }
-    return isBackground ? baseColor.withOpacity(0.1) : baseColor;
+    return isBackground ? baseColor.withValues(alpha:0.1) : baseColor;
   }
 
   @override
@@ -229,7 +222,7 @@ class TaskRow extends StatelessWidget {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                   decoration: BoxDecoration(
-                    color: color.withOpacity(0.1),
+                    color: color.withValues(alpha:0.1),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Text(
@@ -343,7 +336,7 @@ class AppFooter extends StatelessWidget {
   Widget build(BuildContext context) {
     Color footerColor = const Color.fromARGB(255, 211, 215, 219);  // Usa tu fondo oscuro
     Color footerTextColor = const Color.fromARGB(255, 0, 0, 0);
-    Color secondaryTextColor = footerTextColor.withOpacity(0.8);
+    Color secondaryTextColor = footerTextColor.withValues(alpha:0.8);
 
     Widget mainContent = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
