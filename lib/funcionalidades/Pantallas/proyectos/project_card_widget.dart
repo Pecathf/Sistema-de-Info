@@ -1,19 +1,21 @@
 // Archivo: project_card_widget.dart
 
 import 'package:flutter/material.dart';
-// 🚨 Revisa estas rutas según tu estructura
 import 'package:sistem_proyect/central/constantes/modelos/project_model.dart';
 import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart'; 
 import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart';
+import 'package:sistem_proyect/central/constantes/colores.dart'; // Asumiendo que AppColors está aquí
+import 'package:intl/intl.dart'; // Necesario para formatear fechas
 
 class ProjectCardWidget extends StatelessWidget {
   final Proyecto proyecto;
-  final VoidCallback? onTap;
+  // 🎯 1. PROPIEDAD DE ACCIÓN: Se requiere un callback para la acción de clic
+  final VoidCallback? onTap; 
   
-  // Servicio para obtener los datos del usuario (asumimos que existe)
+  // Servicio para obtener los datos del usuario
   final UserDataService _userDataService = UserDataService(); 
 
-   ProjectCardWidget({
+  ProjectCardWidget({
     required this.proyecto,
     this.onTap,
     super.key,
@@ -34,156 +36,188 @@ class ProjectCardWidget extends StatelessWidget {
       if (user.nombre.isNotEmpty) {
           return user.nombre[0].toUpperCase();
       }
-      return user.email.isNotEmpty ? user.email[0].toUpperCase() : '?';
+      if (user.email.isNotEmpty) {
+          return user.email[0].toUpperCase();
+      }
+      return '?';
+  }
+
+  String _formatDate(DateTime date) {
+    return DateFormat('dd/MM/yyyy').format(date);
+  }
+
+  Widget _buildMetaRow(IconData icon, String text, {Color? iconColor}) {
+    return Row(
+      children: [
+        Icon(icon, size: 16, color: iconColor ?? Colors.grey.shade500),
+        const SizedBox(width: 8),
+        Text(
+          text, 
+          style: TextStyle(
+            fontSize: 13, 
+            color: Colors.grey.shade700
+          )
+        ),
+      ],
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      child: Card(
-        elevation: 3,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
+    // 🎯 2. WRAPPER CLICKEABLE: Usar InkWell para habilitar el clic y dar feedback visual
+    return InkWell( 
+      onTap: onTap, 
+      borderRadius: BorderRadius.circular(12.0),
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(12.0),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.grey.withOpacity(0.15),
+              spreadRadius: 1,
+              blurRadius: 5,
+              offset: const Offset(0, 3), 
+            ),
+          ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              // 1. Título y Estado
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Text(
-                      proyecto.nombre, 
-                      style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, overflow: TextOverflow.ellipsis)
-                    )
+        padding: const EdgeInsets.all(20.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            // Sección Superior: Título y Descripción
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Nombre del Proyecto
+                Text(
+                  proyecto.nombre,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.darkBackground,
                   ),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                    decoration: BoxDecoration(
-                      color: _getStatusColor(proyecto.estado), 
-                      borderRadius: BorderRadius.circular(16)
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 8),
+                // Descripción corta
+                Text(
+                  proyecto.descripcion,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                  ),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
+                const SizedBox(height: 15),
+              ],
+            ),
+
+            // Sección Media: Metadata y Estado
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Progreso (Opcional, si usas Slider o indicador)
+                // LinearProgressIndicator(value: proyecto.progreso / 100),
+
+                // Metadatos (Fechas y Estado)
+                _buildMetaRow(
+                  Icons.calendar_today,
+                  'Fecha Límite: ${_formatDate(proyecto.fechaLimite)}',
+                ),
+                const SizedBox(height: 5),
+                Row(
+                  children: [
+                    _buildMetaRow(
+                      Icons.info_outline,
+                      'Estado: ${proyecto.estado}',
+                      iconColor: _getStatusColor(proyecto.estado),
                     ),
-                    child: Text(
-                      proyecto.estado, 
-                      style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600)
-                    )
-                  ),
-                ],
-              ),
-              
-              const SizedBox(height: 10),
-              
-              // 2. Descripción
-              Text(
-                proyecto.descripcion,
-                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
-              ),
+                  ],
+                ),
+                const SizedBox(height: 15),
+              ],
+            ),
 
-              const SizedBox(height: 15),
-
-              // 3. Metadata (Fecha y Avatares de Miembros)
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildMetaRow(Icons.calendar_today, 'Creado: ${_formatDate(proyecto.fechaCreacion)}'),
-                  const SizedBox(height: 15),
-                  
-                  // 🎯 Widget de Avatares
-                  _buildMemberAvatars(),
-                ],
-              ),
-            ],
-          ),
+            // Sección Inferior: Miembros
+            _buildMembersStack(),
+          ],
         ),
       ),
     );
   }
-  
-  // 🎯 Widget que usa FutureBuilder para obtener y apilar los avatares
-  Widget _buildMemberAvatars() {
-      if (proyecto.miembrosUid.isEmpty) {
-          return _buildMetaRow(Icons.group, 'Miembros: 0');
-      }
 
-      return FutureBuilder<List<Usuario>>(
-          // ASUMIMOS que esta función existe en tu UserDataService
-          future: _userDataService.getUsuariosByIds(proyecto.miembrosUid), 
-          builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                  return _buildMetaRow(Icons.group, 'Cargando miembros...');
-              }
-              if (snapshot.hasError || !snapshot.hasData || snapshot.data!.isEmpty) {
-                  return _buildMetaRow(Icons.group, 'Miembros: ${proyecto.miembrosUid.length}');
-              }
+  Widget _buildMembersStack() {
+    // 3. 🎯 LÓGICA DE MIEMBROS: FutureBuilder para obtener la data de usuarios
+    return FutureBuilder<List<Usuario>>(
+        future: _userDataService.getUsuariosByIds(proyecto.miembrosUid),
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return const SizedBox(
+              height: 24,
+              child: Center(
+                child: LinearProgressIndicator(color: AppColors.primaryOrange),
+              ),
+            );
+          }
 
-              final members = snapshot.data!;
-              const double avatarSize = 30.0;
-              const double overlap = 15.0; // Espacio de solapamiento
+          if (snapshot.hasError || !snapshot.hasData) {
+            return Text('Error al cargar miembros.', style: TextStyle(color: Colors.red.shade400, fontSize: 12));
+          }
 
-              return Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
+          final List<Usuario> members = snapshot.data!;
+          // Limita a mostrar solo los primeros 4 avatares
+          final visibleMembers = members.take(4).toList(); 
+
+          return Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Miembros (${members.length})', 
+                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: Colors.grey.shade700)
+              ),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
                 children: [
-                    const Icon(Icons.group, size: 16, color: Color.fromARGB(255, 117, 117, 117)),
-                    const SizedBox(width: 15),
-                    SizedBox(
-                      height: avatarSize,
-                      width: members.length * (avatarSize - overlap) + overlap,
-                      child: Stack(
-                        children: List.generate(
-                          members.length > 4 ? 4 : members.length, // Máximo 4 avatares
-                          (index) {
-                            final member = members[index];
-                            return Positioned(
-                              left: index * overlap,
-                              child: Tooltip(
-                                message: member.nombre.isNotEmpty ? member.nombre : member.email,
-                                child: CircleAvatar(
-                                  radius: avatarSize / 2,
-                                  backgroundColor: index.isEven ? const Color(0xFF00BFFF) : const Color(0xFFFF6633), // Azul o Naranja
-                                  child: Text(
-                                    _getUserInitial(member),
-                                    style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
-                                  ),
-                                ),
+                  Stack(
+                    children: List.generate(
+                      visibleMembers.length,
+                      (index) {
+                        final member = visibleMembers[index];
+                        return Padding(
+                          // Offset para solapar los avatares
+                          padding: EdgeInsets.only(left: index * 20.0), 
+                          child: Tooltip(
+                            message: member.nombre.isNotEmpty ? member.nombre : member.email,
+                            child: CircleAvatar(
+                              radius: 14,
+                              backgroundColor: AppColors.accentColor, 
+                              child: Text(
+                                _getUserInitial(member),
+                                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
                               ),
-                            );
-                          },
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  
+                  // Contador para miembros ocultos
+                  if (members.length > 4)
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8.0),
+                        child: Center(
+                            child: Text('+${members.length - 4}', style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
                         ),
                       ),
-                    ),
-                    
-                    // Contador para miembros ocultos
-                    if (members.length > 4)
-                        Padding(
-                          padding: const EdgeInsets.only(left: 8.0),
-                          child: Center(
-                              child: Text('+${members.length - 4}', style: TextStyle(color: Colors.grey.shade700, fontSize: 13)),
-                          ),
-                        ),
-                ],
-              );
-          },
-      );
-  }
-
-  String _formatDate(DateTime date) {
-    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
-  }
-
-  Widget _buildMetaRow(IconData icon, String text) {
-    return Row(
-      children: [
-        Icon(icon, size: 16, color: Colors.grey.shade500),
-        const SizedBox(width: 8),
-        Text(text, style: TextStyle(fontSize: 13, color: Colors.grey.shade700)),
-      ],
-    );
+              ],
+            ),
+          ],
+        );
+    });
   }
 }

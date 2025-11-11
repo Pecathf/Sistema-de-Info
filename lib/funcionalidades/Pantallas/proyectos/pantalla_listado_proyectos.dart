@@ -1,3 +1,5 @@
+// Archivo: pantalla_listado_proyectos.dart
+
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sistem_proyect/central/constantes/modelos/project_model.dart';
@@ -9,6 +11,10 @@ import 'package:sistem_proyect/funcionalidades/Pantallas/pantalla_principal.dart
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/widgets_principal.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/widgets/shared_footer_widget.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/profile_menu_widget.dart';
+import 'pantalla_detalle_proyecto.dart';
+// ⚠️ Asegúrate de importar AppColors si está en un archivo separado
+// import 'package:sistem_proyect/central/constantes/colores.dart';
+
 
 class PantallaListadoProyectos extends StatefulWidget {
   const PantallaListadoProyectos({super.key});
@@ -36,10 +42,24 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
     final roleResult = await _authService.getUserRole();
     if (mounted) {
       setState(() {
-        _isAdmin = (roleResult == 'admin');
+        // 🎯 Nota: Usamos 'admin' para la lógica de visualización del botón
+        _isAdmin = (roleResult == 'admin'); 
         _isLoadingRole = false;
       });
     }
+  }
+  
+  // 🎯 FUNCIÓN CORREGIDA
+  void _navigateToProjectDetail(Proyecto proyecto) {
+    // Usa push() para navegar a la nueva pantalla
+    Navigator.of(context).push(
+      MaterialPageRoute(
+        // La PantallaDetalleProyecto requiere el ID (String), no el objeto completo
+        builder: (context) => PantallaDetalleProyecto(
+          projectId: proyecto.id, 
+        ),
+      ),
+    );
   }
 
   String _getUserInitial(String? userName) {
@@ -47,10 +67,9 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
     return userEmail?.isNotEmpty == true ? userEmail![0].toUpperCase() : 'U';
   }
 
-  
-
   PreferredSizeWidget _buildAppBar(String userInitial, bool isDesktop) {
-    final Color avatarColor =        _isAdmin ? AppColors.accentColor : AppColors.primaryOrange;
+    // ⚠️ Se asume que AppColors.primaryOrange y AppColors.accentColor están definidas
+    final Color avatarColor = _isAdmin ? AppColors.accentColor : AppColors.primaryOrange; 
 
     final profileWidget = HoverableProfileAvatar(
       userInitial: userInitial,
@@ -229,7 +248,9 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
         border: Border.all(color: Colors.grey.shade300),
         boxShadow: [
           BoxShadow(
-              color: Colors.grey.withValues(alpha: 0.1),
+              // ⚠️ CORRECCIÓN: el método withValues no existe en Color
+              // color: Colors.grey.withValues(alpha: 0.1), 
+              color: Colors.grey.withOpacity(0.1),
               blurRadius: 4,
               offset: const Offset(0, 1)),
         ],
@@ -250,7 +271,10 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {},
+            onPressed: () {
+              // La búsqueda ya se realiza reactivamente en el StreamBuilder con cada cambio de _searchQuery
+              // Este botón puede disparar una acción más fuerte si fuese necesario, pero por ahora solo refresca la vista
+            }, 
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryOrange,
               elevation: 0,
@@ -315,7 +339,7 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
             return ProjectCardWidget(
               proyecto: proyecto,
               onTap: () {
-                // Navegación a la pantalla de detalle/edición
+                _navigateToProjectDetail(proyecto);
               },
             );
           },
@@ -324,5 +348,3 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
     );
   }
 }
-
-

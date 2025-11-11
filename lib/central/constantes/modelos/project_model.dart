@@ -7,8 +7,8 @@ class Proyecto {
   final String nombre;
   final String descripcion;
   final DateTime fechaCreacion;
-  final DateTime fechaInicio;      // 🎯 NUEVO CAMPO
-  final DateTime fechaLimite;      // 🎯 NUEVO CAMPO
+  final DateTime fechaInicio;      
+  final DateTime fechaLimite;      
   final int progreso;
   final String estado;
   final String creadorUid;
@@ -20,14 +20,43 @@ class Proyecto {
     required this.nombre,
     required this.descripcion,
     required this.fechaCreacion,
-    required this.fechaInicio,     // Requerido
-    required this.fechaLimite,     // Requerido
+    required this.fechaInicio,     
+    required this.fechaLimite,     
     required this.progreso,
     required this.estado,
     required this.creadorUid,
     required this.miembrosUid,
     required this.recursosMateriales,
   });
+
+  // 🎯 IMPLEMENTACIÓN DEL MÉTODO copyWith para resolver el error
+  Proyecto copyWith({
+    String? id,
+    String? nombre,
+    String? descripcion,
+    DateTime? fechaCreacion,
+    DateTime? fechaInicio,
+    DateTime? fechaLimite,
+    int? progreso,
+    String? estado,
+    String? creadorUid,
+    List<String>? miembrosUid,
+    List<String>? recursosMateriales,
+  }) {
+    return Proyecto(
+      id: id ?? this.id,
+      nombre: nombre ?? this.nombre,
+      descripcion: descripcion ?? this.descripcion,
+      fechaCreacion: fechaCreacion ?? this.fechaCreacion,
+      fechaInicio: fechaInicio ?? this.fechaInicio,
+      fechaLimite: fechaLimite ?? this.fechaLimite,
+      progreso: progreso ?? this.progreso,
+      estado: estado ?? this.estado,
+      creadorUid: creadorUid ?? this.creadorUid,
+      miembrosUid: miembrosUid ?? this.miembrosUid,
+      recursosMateriales: recursosMateriales ?? this.recursosMateriales,
+    );
+  }
 
   // Factory para crear un objeto Proyecto desde Firestore
   factory Proyecto.fromFirestore(DocumentSnapshot doc) {
@@ -42,8 +71,8 @@ class Proyecto {
       nombre: data['nombre'] ?? 'Proyecto sin nombre',
       descripcion: data['descripcion'] ?? 'Sin descripción',
       fechaCreacion: tsCreacion?.toDate() ?? DateTime.now(),
-      fechaInicio: tsInicio?.toDate() ?? DateTime.now(),         // ✅ ACTUALIZADO
-      fechaLimite: tsLimite?.toDate() ?? DateTime(2101),         // ✅ ACTUALIZADO
+      fechaInicio: tsInicio?.toDate() ?? DateTime.now(),        
+      fechaLimite: tsLimite?.toDate() ?? DateTime(2101),        
       progreso: data['progreso'] ?? 0,
       estado: data['estado'] ?? 'Pendiente',
       creadorUid: data['creadorUid'] ?? '',
@@ -58,8 +87,8 @@ class Proyecto {
       'nombre': nombre,
       'descripcion': descripcion,
       'fechaCreacion': Timestamp.fromDate(fechaCreacion),
-      'fechaInicio': Timestamp.fromDate(fechaInicio),        // ✅ ACTUALIZADO
-      'fechaLimite': Timestamp.fromDate(fechaLimite),        // ✅ ACTUALIZADO
+      'fechaInicio': Timestamp.fromDate(fechaInicio),        
+      'fechaLimite': Timestamp.fromDate(fechaLimite),        
       'progreso': progreso,
       'estado': estado,
       'creadorUid': creadorUid,
