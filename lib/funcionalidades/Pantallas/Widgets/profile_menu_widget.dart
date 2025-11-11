@@ -7,8 +7,7 @@ import 'package:sistem_proyect/funcionalidades/Pantallas/Autenticacion/pantalla_
 class ProfileMenuHelper {
   static final AuthService _authService = AuthService();
 
-  /// Muestra el menú de perfil con las opciones de Editar Perfil y Cerrar Sesión
-  /// Usa el mismo estilo que pantalla_principal.dart
+
   static void mostrarMenuPerfil(BuildContext context, Offset offset) {
     showMenu(
       context: context,

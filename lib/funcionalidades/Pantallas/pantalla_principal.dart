@@ -1,11 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/widgets_principal.dart';
-import 'package:sistem_proyect/funcionalidades/Pantallas/Autenticacion/pantalla_editar_perfil.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/pantalla_listado_proyectos.dart'; 
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
-import 'package:sistem_proyect/funcionalidades/Pantallas/Autenticacion/pantalla_inicio_sesion.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/shared_footer_widget.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/profile_menu_widget.dart';
 
 
 class PantallaPrincipal extends StatefulWidget {
@@ -17,7 +16,6 @@ class PantallaPrincipal extends StatefulWidget {
 
 class _PantallaPrincipalState extends State<PantallaPrincipal> {
   final AuthService _authService = AuthService();
-  bool _isProfileHovered = false;
   bool _isAdmin = false;
   bool _isLoadingRole = true;
 
@@ -37,55 +35,6 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     }
   }
 
-  Future<void> _cerrarSesion() async {
-    try {
-      await _authService.signOut();
-      if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const PantallaInicioSesion()),
-        (Route<dynamic> route) => false,
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cerrar sesión: $e')),
-        );
-      }
-    }
-  }
-
-  void _editarPerfil() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const PantallaEditarPerfil()),
-    );
-  }
-
-  void _mostrarMenuPerfil(BuildContext context, Offset offset) {
-    showMenu(
-      context: context,
-      position: RelativeRect.fromLTRB(
-          offset.dx - 150, offset.dy + 50, offset.dx, offset.dy),
-      items: [
-        PopupMenuItem(
-          onTap: () => Future.delayed(Duration.zero, _editarPerfil),
-          child: const Row(children: [
-            Icon(Icons.edit, size: 20),
-            SizedBox(width: 12),
-            Text('Editar Perfil')
-          ]),
-        ),
-        PopupMenuItem(
-          onTap: () => Future.delayed(Duration.zero, _cerrarSesion),
-          child: const Row(children: [
-            Icon(Icons.logout, color: Colors.red, size: 20),
-            SizedBox(width: 12),
-            Text('Cerrar Sesión', style: TextStyle(color: Colors.red))
-          ]),
-        ),
-      ],
-    );
-  }
 
   String _getUserInitial(String? userName) =>
       userName?.isNotEmpty == true ? userName![0].toUpperCase() : 'U';
@@ -93,41 +42,11 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   PreferredSizeWidget _buildAppBar(String userInitial, bool isDesktop) {
     final Color avatarColor = _isAdmin ? AppColors.accentColor : AppColors.primaryOrange;
 
-    final profileWidget = MouseRegion(
-      onEnter: (_) => setState(() => _isProfileHovered = true),
-      onExit: (_) => setState(() => _isProfileHovered = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTapDown: (details) =>
-            _mostrarMenuPerfil(context, details.globalPosition),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(8),
-          margin: EdgeInsets.only(right: isDesktop ? 20 : 16),
-          decoration: BoxDecoration(
-            color: avatarColor,
-            shape: BoxShape.circle,
-            boxShadow: _isProfileHovered
-                ? [
-                    BoxShadow(
-                      color: avatarColor.withValues(alpha:0.5),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : [],
-          ),
-          transform: Matrix4.diagonal3Values(
-            _isProfileHovered ? 1.05 : 1.0,
-            _isProfileHovered ? 1.05 : 1.0,
-            1.0,
-          ),
-          child: Text(userInitial,
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.bold)),
-        ),
-      ),
-    );
+    final profileWidget = HoverableProfileAvatar(
+    userInitial: userInitial,
+    avatarColor: avatarColor,
+    isDesktop: isDesktop,
+  );
 
     if (isDesktop) {
       return AppBar(

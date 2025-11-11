@@ -5,13 +5,13 @@ import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart';
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/project_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart';
-import 'package:sistem_proyect/funcionalidades/Pantallas/Autenticacion/pantalla_inicio_sesion.dart'; 
-import 'package:sistem_proyect/funcionalidades/Pantallas/Autenticacion/pantalla_editar_perfil.dart'; 
 import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/pantalla_listado_proyectos.dart'; 
 import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/member_selection_dialog.dart'; 
 import 'package:sistem_proyect/funcionalidades/Pantallas/pantalla_principal.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/widgets_principal.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/shared_footer_widget.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/profile_menu_widget.dart';
+
 
 class PantallaCrearProyecto extends StatefulWidget {
   const PantallaCrearProyecto({super.key});
@@ -36,7 +36,7 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
 
   bool _isAdmin = false;
   bool _isLoadingRole = true;
-  bool _isProfileHovered = false;
+
 
   @override
   void initState() {
@@ -149,77 +149,15 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
     return userEmail?.isNotEmpty == true ? userEmail![0].toUpperCase() : 'U';
   }
 
-  Future<void> _cerrarSesion() async {
-    await _authService.signOut();
-    if (mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const PantallaInicioSesion()),
-        (Route<dynamic> route) => false,
-      );
-    }
-  }
-
-  void _editarPerfil() {
-    Navigator.of(context).pop(); 
-    Navigator.push(context, MaterialPageRoute(builder: (context) => const PantallaEditarPerfil()));
-  }
-
-  void _mostrarMenuPerfil(BuildContext context, Offset offset) {
-    showMenu(
-      context: context,
-      position: RelativeRect.fromRect(offset & const Size(40, 40), Offset.zero & MediaQuery.of(context).size),
-      items: const [
-        PopupMenuItem<String>(value: 'perfil', child: Text('Editar Perfil')),
-        PopupMenuItem<String>(value: 'cerrar', child: Text('Cerrar Sesión')),
-      ],
-      elevation: 8.0,
-    ).then((value) {
-      if (value == 'perfil') {
-        _editarPerfil();
-      } else if (value == 'cerrar') {
-        _cerrarSesion();
-      }
-    });
-  }
+  
 
  PreferredSizeWidget _buildAppBar(String userInitial, bool isDesktop) {
   final Color avatarColor = _isAdmin ? AppColors.accentColor : AppColors.primaryOrange; 
   
-  final profileWidget = MouseRegion(
-    onEnter: (_) => setState(() => _isProfileHovered = true),
-    onExit: (_) => setState(() => _isProfileHovered = false),
-    cursor: SystemMouseCursors.click,
-    child: GestureDetector(
-      onTapDown: (details) => _mostrarMenuPerfil(context, details.globalPosition),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.all(8),
-        margin: EdgeInsets.only(right: isDesktop ? 20 : 16),
-        decoration: BoxDecoration(
-          color: avatarColor,
-          shape: BoxShape.circle,
-          boxShadow: _isProfileHovered ? [
-            BoxShadow(
-              color: avatarColor.withValues(alpha: 0.5),
-              blurRadius: 12,
-              offset: const Offset(0, 4)
-            )
-          ] : [],
-        ),
-        transform: Matrix4.diagonal3Values(
-          _isProfileHovered ? 1.05 : 1.0,
-          _isProfileHovered ? 1.05 : 1.0,
-          1.0
-        ),
-        child: Text(
-          userInitial,
-          style: const TextStyle(
-            color: Colors.white,
-            fontWeight: FontWeight.bold
-          ),
-        ),
-      ),
-    ),
+   final profileWidget = HoverableProfileAvatar(
+    userInitial: userInitial,
+    avatarColor: avatarColor,
+    isDesktop: isDesktop,
   );
 
   if (isDesktop) {
