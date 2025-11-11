@@ -5,7 +5,7 @@ import 'pantalla_registro.dart';
 import 'package:sistem_proyect/central/constantes/colores.dart';
 
 // Importamos la Pantalla Principal
-import 'pantalla_principal.dart';
+import '../pantalla_principal.dart';
 
 class PantallaInicioSesion extends StatefulWidget {
   const PantallaInicioSesion({super.key});

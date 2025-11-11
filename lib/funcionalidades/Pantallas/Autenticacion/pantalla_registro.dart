@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_inicio_sesion.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/Autenticacion/pantalla_inicio_sesion.dart';
 import 'package:sistem_proyect/central/constantes/colores.dart';
 
 class PantallaRegistro extends StatefulWidget {

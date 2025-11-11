@@ -2,11 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:provider/provider.dart';
-import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_bienvenida.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/Autenticacion/pantalla_bienvenida.dart';
 import 'package:sistem_proyect/central/constantes/colores.dart';
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
-import 'funcionalidades/autenticacion/pantalla_principal.dart';
-import 'funcionalidades/autenticacion/firebase_options.dart';
+import 'funcionalidades/Pantallas/pantalla_principal.dart';
+import 'funcionalidades/Pantallas/Autenticacion/firebase_options.dart';
 
 void main() async {
   // 1. Inicialización de Widgets y Firebase

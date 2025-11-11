@@ -1,17 +1,15 @@
-// Archivo: pantalla_listado_proyectos.dart
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-// 🚨 Revisa estas rutas según tu estructura
 import 'package:sistem_proyect/central/constantes/modelos/project_model.dart'; 
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart'; 
 import 'package:sistem_proyect/central/constantes/servicios/project_service.dart'; 
-import 'package:sistem_proyect/funcionalidades/autenticacion/proyectos/pantalla_crear_proyecto.dart'; 
-import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_editar_perfil.dart'; 
-import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_inicio_sesion.dart'; 
-import 'package:sistem_proyect/funcionalidades/autenticacion/proyectos/project_card_widget.dart'; 
-// Importaciones adicionales que podrías necesitar para navegación (ejemplo)
-// import 'package:sistem_proyect/funcionalidades/principal/pantalla_principal.dart'; 
+import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/pantalla_crear_proyecto.dart'; 
+import 'package:sistem_proyect/funcionalidades/Pantallas/Autenticacion/pantalla_editar_perfil.dart'; 
+import 'package:sistem_proyect/funcionalidades/Pantallas/Autenticacion/pantalla_inicio_sesion.dart'; 
+import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/project_card_widget.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/pantalla_principal.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/widgets_principal.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/widgets/shared_footer_widget.dart';
 
 class PantallaListadoProyectos extends StatefulWidget {
   const PantallaListadoProyectos({super.key});
@@ -27,11 +25,7 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
   bool _isAdmin = false;
   bool _isLoadingRole = true;
   String _searchQuery = '';
-  bool _isProfileHovered = false; 
-
-  // Colores simulados para consistencia con tu diseño (Naranja y Azul)
-  final Color _primaryOrange = const Color(0xFFFF6633); 
-  final Color _accentBlue = const Color(0xFF00BFFF); 
+  // ELIMINAMOS: bool _isProfileHovered = false; 
 
   @override
   void initState() {
@@ -49,10 +43,7 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
     }
   }
 
-  // ============== FUNCIONES DE PERFIL/AUTENTICACIÓN (COPIADAS) ==============
-  
   String _getUserInitial(String? userName) {
-    // Intenta obtener la inicial del email si el nombre no está disponible
     final userEmail = FirebaseAuth.instance.currentUser?.email;
     return userEmail?.isNotEmpty == true ? userEmail![0].toUpperCase() : 'U';
   }
@@ -96,29 +87,15 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
     });
   }
 
-  // 🎯 WIDGET DEL APPBAR COMPLETO
   PreferredSizeWidget _buildAppBar(String userInitial, bool isDesktop) {
-    final Color avatarColor = _isAdmin ? _accentBlue : _primaryOrange; 
+    final Color avatarColor = _isAdmin ? AppColors.accentColor : AppColors.primaryOrange; 
     
-    final profileWidget = MouseRegion(
-      onEnter: (_) => setState(() => _isProfileHovered = true),
-      onExit: (_) => setState(() => _isProfileHovered = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTapDown: (details) => _mostrarMenuPerfil(context, details.globalPosition),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(8),
-          margin: EdgeInsets.only(right: isDesktop ? 20 : 16),
-          decoration: BoxDecoration(
-            color: avatarColor,
-            shape: BoxShape.circle,
-            boxShadow: _isProfileHovered ? [BoxShadow(color: avatarColor.withOpacity(0.5), blurRadius: 12, offset: const Offset(0, 4))] : [],
-          ),
-          transform: Matrix4.diagonal3Values(_isProfileHovered ? 1.05 : 1.0, _isProfileHovered ? 1.05 : 1.0, 1.0),
-          child: Text(userInitial, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        ),
-      ),
+    // Usamos un StatefulWidget local para el avatar con hover
+    final profileWidget = _HoverableAvatar(
+      userInitial: userInitial,
+      avatarColor: avatarColor,
+      isDesktop: isDesktop,
+      onTapDown: (details) => _mostrarMenuPerfil(context, details.globalPosition),
     );
 
     if (isDesktop) {
@@ -126,15 +103,23 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
         backgroundColor: Colors.white,
         elevation: 0,
         toolbarHeight: 60,
-        title: Text('ProyectApp', style: TextStyle(color: _primaryOrange, fontWeight: FontWeight.bold, fontSize: 20)),
+        title: Text('ProyectApp', style: TextStyle(color: AppColors.primaryOrange, fontWeight: FontWeight.bold, fontSize: 20)),
         centerTitle: false,
         actions: [
           Expanded(
             child: Row(
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
-                TextButton(onPressed: () {}, child: const Text('Menú', style: TextStyle(color: Colors.black87))), 
-                TextButton(onPressed: () {}, child: Text('Proyectos', style: TextStyle(color: _primaryOrange, fontWeight: FontWeight.bold))), 
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(builder: (context) => const PantallaPrincipal()),
+                      (Route<dynamic> route) => false,
+                    );
+                  }, 
+                  child: const Text('Menú', style: TextStyle(color: Colors.black87)),
+                ), 
+                TextButton(onPressed: () {}, child: Text('Proyectos', style: TextStyle(color: AppColors.primaryOrange, fontWeight: FontWeight.bold))), 
                 TextButton(onPressed: () {}, child: const Text('Calendario', style: TextStyle(color: Colors.black87))),
                 TextButton(onPressed: () {}, child: const Text('Estadísticas', style: TextStyle(color: Colors.black87))),
               ],
@@ -144,10 +129,13 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
         ],
       );
     } else {
-      // Versión Móvil
       return AppBar(
         backgroundColor: Colors.white,
         elevation: 1,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text('Gestión de Proyectos', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
         actions: [
           IconButton(icon: const Icon(Icons.search, color: Colors.black54), onPressed: () {}),
@@ -156,82 +144,6 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
       );
     }
   }
-  
-  // 🎯 WIDGET AUXILIAR DEL FOOTER (Sección de columna)
-  Widget _buildFooterSection(BuildContext context, String title, List<String> links) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
-        const SizedBox(height: 15),
-        ...links.map((link) => Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: () {},
-                  child: Text(link, style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
-                ),
-              ),
-            )),
-      ],
-    );
-  }
-
-  // 🎯 WIDGET DEL FOOTER COMPLETO (Estructura de secciones)
-  Widget _buildFooter(BuildContext context, bool isMobile) {
-    final linksAcerca = ['Nosotros', 'Equipo','Carreras'];
-    final linksServicios = ['Gestión de Proyectos', 'Asignación de Tareas'];
-    final linksContacto = ['Soporte','Blog', 'Preguntas Frecuentes'];
-
-    return Container(
-      padding: EdgeInsets.only(top: 40, bottom: isMobile ? 80 : 20, left: 40, right: 40),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        border: Border(top: BorderSide(color: _primaryOrange, width: 4)), 
-      ),
-      child: Column(
-        children: [
-          if (!isMobile) 
-            Padding(
-              padding: const EdgeInsets.only(bottom: 40.0),
-              child: Flex(
-                direction: Axis.horizontal,
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildFooterSection(context, 'Acerca de', linksAcerca),
-                  _buildFooterSection(context, 'Servicios', linksServicios),
-                  _buildFooterSection(context, 'Contacto', linksContacto),
-                ],
-              ),
-            )
-          else 
-            Padding(
-              padding: const EdgeInsets.only(bottom: 30.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildFooterSection(context, 'Acerca de', linksAcerca),
-                  const SizedBox(height: 20),
-                  _buildFooterSection(context, 'Servicios', linksServicios),
-                  const SizedBox(height: 20),
-                  _buildFooterSection(context, 'Contacto', linksContacto),
-                ],
-              ),
-            ),
-          
-          Divider(color: Colors.grey[300]),
-          const Text(
-            '2025 ProyectApp UNIMET. Derechos Reservados.',
-            style: TextStyle(color: Colors.black54, fontSize: 12),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-  // =========================================================================
 
   @override
   Widget build(BuildContext context) {
@@ -261,46 +173,38 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      // 1. Encabezado (Título + Botón Nuevo Proyecto)
                       _buildHeader(context, _isAdmin),
                       const SizedBox(height: 20),
                       
-                      // 2. Barra de Búsqueda
                       _buildSearchBar(),
                       const SizedBox(height: 40),
                       
-                      // 3. Listado de Proyectos en Grid
                       _buildProjectList(isDesktop),
                       
                       const SizedBox(height: 30),
-                      // 4. Barra de Estadísticas
-                      // Si tienes un widget de estadísticas, agrégalo aquí (ej: const PendingTasksCard())
                     ],
                   ),
                 ),
-                
-                // Footer
-                _buildFooter(context, !isDesktop), 
+
+                SharedFooter(primaryOrange: AppColors.primaryOrange,
+                    accentBlue: AppColors.accentColor),
               ],
             ),
           ),
           
-          // Botón flotante
           floatingActionButton: !_isAdmin || isDesktop 
               ? null
               : FloatingActionButton(
                   onPressed: () {
                     Navigator.push(context, MaterialPageRoute(builder: (context) => const PantallaCrearProyecto()));
                   },
-                  backgroundColor: _primaryOrange, 
+                  backgroundColor:AppColors.primaryOrange, 
                   child: const Icon(Icons.add, color: Colors.white),
                 ),
         );
       },
     );
   }
-
-  // ---------------- WIDGETS DE CONTENIDO (Cuerpo) ----------------
 
   Widget _buildHeader(BuildContext context, bool isAdmin) {
     return Row(
@@ -316,7 +220,7 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
             label: const Text('Nuevo Proyecto',
                 style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
             style: ElevatedButton.styleFrom(
-              backgroundColor: _primaryOrange, 
+              backgroundColor: AppColors.primaryOrange, 
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               elevation: 3,
@@ -334,7 +238,7 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
         borderRadius: BorderRadius.circular(8),
         border: Border.all(color: Colors.grey.shade300),
         boxShadow: [
-          BoxShadow(color: Colors.grey.withOpacity(0.1), blurRadius: 4, offset: const Offset(0, 1)),
+          BoxShadow(color: Colors.grey.withValues(alpha:0.1), blurRadius: 4, offset: const Offset(0, 1)),
         ],
       ),
       child: Row(
@@ -355,7 +259,7 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
           ElevatedButton(
             onPressed: () {},
             style: ElevatedButton.styleFrom(
-              backgroundColor: _primaryOrange, 
+              backgroundColor: AppColors.primaryOrange, 
               elevation: 0,
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
               padding: const EdgeInsets.symmetric(horizontal: 25, vertical: 14),
@@ -390,8 +294,8 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
         }
 
         if (proyectos.isEmpty) {
-            return Center(
-                child: Text('No hay proyectos creados o que coincidan con la búsqueda.', style: const TextStyle(fontSize: 16, color: Colors.grey), textAlign: TextAlign.center),
+            return const Center(
+                child: Text('No hay proyectos creados o que coincidan con la búsqueda.', style: TextStyle(fontSize: 16, color: Colors.grey), textAlign: TextAlign.center),
             );
         }
 
@@ -416,6 +320,68 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
           },
         );
       },
+    );
+  }
+}
+
+// Widget independiente para el avatar con hover
+class _HoverableAvatar extends StatefulWidget {
+  final String userInitial;
+  final Color avatarColor;
+  final bool isDesktop;
+  final Function(TapDownDetails) onTapDown;
+
+  const _HoverableAvatar({
+    required this.userInitial,
+    required this.avatarColor,
+    required this.isDesktop,
+    required this.onTapDown,
+  });
+
+  @override
+  State<_HoverableAvatar> createState() => _HoverableAvatarState();
+}
+
+class _HoverableAvatarState extends State<_HoverableAvatar> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return MouseRegion(
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      cursor: SystemMouseCursors.click,
+      child: GestureDetector(
+        onTapDown: widget.onTapDown,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.all(8),
+          margin: EdgeInsets.only(right: widget.isDesktop ? 20 : 16),
+          decoration: BoxDecoration(
+            color: widget.avatarColor,
+            shape: BoxShape.circle,
+            boxShadow: _isHovered ? [
+              BoxShadow(
+                color: widget.avatarColor.withValues(alpha: 0.5),
+                blurRadius: 12,
+                offset: const Offset(0, 4)
+              )
+            ] : [],
+          ),
+          transform: Matrix4.diagonal3Values(
+            _isHovered ? 1.05 : 1.0,
+            _isHovered ? 1.05 : 1.0,
+            1.0
+          ),
+          child: Text(
+            widget.userInitial,
+            style: const TextStyle(
+              color: Colors.white,
+              fontWeight: FontWeight.bold
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
