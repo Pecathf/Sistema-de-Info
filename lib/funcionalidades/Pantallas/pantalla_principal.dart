@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'widgets_principal.dart';
-import 'pantalla_editar_perfil.dart';
-// ✅ Importación necesaria para la navegación de Proyectos
-import 'package:sistem_proyect/funcionalidades/autenticacion/proyectos/pantalla_listado_proyectos.dart'; 
+import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/widgets_principal.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/pantalla_listado_proyectos.dart'; 
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
-import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_inicio_sesion.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/shared_footer_widget.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/profile_menu_widget.dart';
+
 
 class PantallaPrincipal extends StatefulWidget {
   const PantallaPrincipal({super.key});
@@ -16,7 +16,6 @@ class PantallaPrincipal extends StatefulWidget {
 
 class _PantallaPrincipalState extends State<PantallaPrincipal> {
   final AuthService _authService = AuthService();
-  bool _isProfileHovered = false;
   bool _isAdmin = false;
   bool _isLoadingRole = true;
 
@@ -36,103 +35,18 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     }
   }
 
-  // Cierra la sesión del usuario y redirige al login
-  Future<void> _cerrarSesion() async {
-    try {
-      await _authService.signOut();
-      if (!mounted) return;
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const PantallaInicioSesion()),
-        (Route<dynamic> route) => false,
-      );
-    } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cerrar sesión: $e')),
-        );
-      }
-    }
-  }
 
-  // Navega a la pantalla de edición de perfil
-  void _editarPerfil() {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const PantallaEditarPerfil()),
-    );
-  }
-
-  // Muestra el menú contextual del perfil
-  void _mostrarMenuPerfil(BuildContext context, Offset offset) {
-    showMenu(
-      context: context,
-      position: RelativeRect.fromLTRB(
-          offset.dx - 150, offset.dy + 50, offset.dx, offset.dy),
-      items: [
-        PopupMenuItem(
-          onTap: () => Future.delayed(Duration.zero, _editarPerfil),
-          child: const Row(children: [
-            Icon(Icons.edit, size: 20),
-            SizedBox(width: 12),
-            Text('Editar Perfil')
-          ]),
-        ),
-        PopupMenuItem(
-          onTap: () => Future.delayed(Duration.zero, _cerrarSesion),
-          child: const Row(children: [
-            Icon(Icons.logout, color: Colors.red, size: 20),
-            SizedBox(width: 12),
-            Text('Cerrar Sesión', style: TextStyle(color: Colors.red))
-          ]),
-        ),
-      ],
-    );
-  }
-
-  // Obtiene la inicial del nombre de usuario
   String _getUserInitial(String? userName) =>
       userName?.isNotEmpty == true ? userName![0].toUpperCase() : 'U';
 
-  // Construye el AppBar con navegación adaptativa
   PreferredSizeWidget _buildAppBar(String userInitial, bool isDesktop) {
-    // Determinar el color del avatar según el rol
     final Color avatarColor = _isAdmin ? AppColors.accentColor : AppColors.primaryOrange;
 
-    final profileWidget = MouseRegion(
-      onEnter: (_) => setState(() => _isProfileHovered = true),
-      onExit: (_) => setState(() => _isProfileHovered = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTapDown: (details) =>
-            _mostrarMenuPerfil(context, details.globalPosition),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(8),
-          margin: EdgeInsets.only(right: isDesktop ? 20 : 16),
-          decoration: BoxDecoration(
-            color: avatarColor,
-            shape: BoxShape.circle,
-            boxShadow: _isProfileHovered
-                ? [
-                    BoxShadow(
-                      color: avatarColor.withOpacity(0.5),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
-                    ),
-                  ]
-                : [],
-          ),
-          transform: Matrix4.diagonal3Values(
-            _isProfileHovered ? 1.05 : 1.0,
-            _isProfileHovered ? 1.05 : 1.0,
-            1.0,
-          ),
-          child: Text(userInitial,
-              style: const TextStyle(
-                  color: Colors.white, fontWeight: FontWeight.bold)),
-        ),
-      ),
-    );
+    final profileWidget = HoverableProfileAvatar(
+    userInitial: userInitial,
+    avatarColor: avatarColor,
+    isDesktop: isDesktop,
+  );
 
     if (isDesktop) {
       return AppBar(
@@ -154,7 +68,6 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
               mainAxisAlignment: MainAxisAlignment.center,
               children: [
                 TextButton(
-                    // ✅ Lógica de navegación implementada aquí
                     onPressed: () {
                       Navigator.push(
                           context,
@@ -196,7 +109,6 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     }
   }
 
-  // Encabezado de bienvenida con nombre del usuario
   Widget _buildWelcomeHeader(String userName) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -216,7 +128,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.accentColor.withOpacity(0.1),
+                  color: AppColors.accentColor.withValues(alpha:0.1),
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(color: AppColors.accentColor, width: 1),
                 ),
@@ -244,7 +156,6 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     );
   }
 
-  // Barra de búsqueda con filtro de estados
   Widget _buildSearchBar() {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10),
@@ -254,7 +165,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
         border: Border.all(color: AppColors.lightGrey),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
+            color: Colors.grey.withValues(alpha:0.1),
             blurRadius: 4,
             offset: const Offset(0, 1),
           ),
@@ -287,13 +198,11 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     );
   }
 
-  // Grid de tarjetas con estadísticas de proyectos
   Widget _buildStatisticsGrid(BuildContext context, bool isDesktop) {
     if (FirebaseAuth.instance.currentUser == null) {
       return const Center(child: Text('Cargando estadísticas...'));
     }
 
-    // Nota: StatCard y statData deben estar definidos en widgets_principal.dart
     final children = statData
         .map(
           (stat) => StatCard(
@@ -327,7 +236,6 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     }
   }
 
-  // Lista de proyectos recientes con su información
   Widget _buildRecentProjectsList() {
     if (FirebaseAuth.instance.currentUser == null) {
       return const Center(child: Text('Cargando proyectos...'));
@@ -351,14 +259,13 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             borderRadius: BorderRadius.circular(8),
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withOpacity(0.1),
+                color: Colors.grey.withValues(alpha:0.1),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),
             ],
           ),
           child: Column(
-            // Nota: ProjectRow y recentProjects deben estar definidos en widgets_principal.dart
             children: recentProjects.map((project) {
               return ProjectRow(
                 title: project['name'] as String,
@@ -368,113 +275,6 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             }).toList(),
           ),
         ),
-      ],
-    );
-  }
-
-  // Footer con información de contacto y enlaces
-  Widget _buildFooter(BuildContext context, bool isMobile) {
-    return Container(
-      padding: const EdgeInsets.only(top: 40, bottom: 20),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        border: const Border(
-            top: BorderSide(color: AppColors.primaryOrange, width: 4)),
-      ),
-      child: Column(
-        children: [
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20.0),
-            child: Flex(
-              direction: isMobile ? Axis.vertical : Axis.horizontal,
-              mainAxisAlignment: isMobile
-                  ? MainAxisAlignment.center
-                  : MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: isMobile
-                  ? CrossAxisAlignment.center
-                  : CrossAxisAlignment.start,
-              children: [
-                _buildFooterSection(
-                  'ProyectApp',
-                  [
-                    'Sistema de gestión de proyectos para ingeniería',
-                    'en la Universidad Metropolitana'
-                  ],
-                  isMobile,
-                  isTitleBold: true,
-                ),
-                SizedBox(height: isMobile ? 30 : 0, width: isMobile ? 0 : 50),
-                _buildFooterSection(
-                  'Links',
-                  ['Proyectos', 'Calendario', 'Estadísticas'],
-                  isMobile,
-                ),
-                SizedBox(height: isMobile ? 30 : 0, width: isMobile ? 0 : 50),
-                _buildFooterSection(
-                  'Ayuda',
-                  [
-                    'Email: ayudalog@proyectapp.unimet.edu.ve',
-                    'Contacto: 0202020200202'
-                  ],
-                  isMobile,
-                  isContact: true,
-                ),
-                SizedBox(height: isMobile ? 30 : 0, width: isMobile ? 0 : 50),
-                Column(
-                  children: [
-                    const Icon(
-                      Icons.camera_alt,
-                      color: Colors.black87,
-                      size: 30,
-                    ),
-                    const SizedBox(height: 5),
-                    const Text('Instagram',
-                        style: TextStyle(color: Colors.black54)),
-                  ],
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-          Divider(color: Colors.grey[300]),
-          const Text(
-            '2025 ProyectApp UNIMET. Derechos Reservados.',
-            style: TextStyle(color: Colors.black54, fontSize: 12),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Sección individual del footer
-  Widget _buildFooterSection(String title, List<String> items, bool isMobile,
-      {bool isTitleBold = false, bool isContact = false}) {
-    return Column(
-      crossAxisAlignment:
-          isMobile ? CrossAxisAlignment.center : CrossAxisAlignment.start,
-      children: [
-        Text(
-          title,
-          style: TextStyle(
-            color: isContact ? AppColors.accentColor : Colors.black87,
-            fontSize: 18,
-            fontWeight: isTitleBold ? FontWeight.bold : FontWeight.w500,
-          ),
-          textAlign: isMobile ? TextAlign.center : TextAlign.left,
-        ),
-        const SizedBox(height: 10),
-        ...items.map((item) => Padding(
-              padding: const EdgeInsets.only(bottom: 4.0),
-              child: Text(
-                item,
-                style: TextStyle(
-                  color: isContact ? Colors.black54 : Colors.black87,
-                  fontSize: 14,
-                ),
-                textAlign: isMobile ? TextAlign.center : TextAlign.left,
-              ),
-            ))
       ],
     );
   }
@@ -539,7 +339,6 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                               child: Column(
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  // Nota: PendingTasksCard debe estar definido en widgets_principal.dart
                                   const PendingTasksCard(),
                                 ],
                               ),
@@ -550,7 +349,10 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                       ],
                     ),
                   ),
-                  _buildFooter(context, false),
+                  SharedFooter(
+                    primaryOrange: AppColors.primaryOrange,
+                    accentBlue: AppColors.accentColor,
+                  ),
                 ],
               ),
             ),
@@ -583,7 +385,10 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                       ],
                     ),
                   ),
-                  _buildFooter(context, true),
+                  SharedFooter(
+                    primaryOrange: AppColors.primaryOrange,
+                    accentBlue: AppColors.accentColor,
+                  ),
                 ],
               ),
             ),

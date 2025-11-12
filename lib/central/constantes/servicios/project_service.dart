@@ -67,4 +67,25 @@ class ProjectService {
       return null;
     }
   }
+
+  Future<void> updateProyecto(Proyecto proyecto) async { // 🎯 NUEVO MÉTODO
+    try {
+      final proyectoRef = _firestore.collection('proyectos').doc(proyecto.id);
+      
+      // Usa toFirestore() para obtener los datos
+      final data = proyecto.toFirestore();
+      // Elimina el campo 'id' antes de subir, ya que el ID ya está en la referencia del documento
+      data.remove('id'); 
+      
+      // Usa .update() para actualizar solo los campos modificados
+      await proyectoRef.update(data);
+      
+    } on FirebaseException catch (e) {
+      print('Error al actualizar proyecto: ${e.message}');
+      throw Exception('Fallo al actualizar proyecto: ${e.code}');
+    }
+  }
+
+
+  
 }

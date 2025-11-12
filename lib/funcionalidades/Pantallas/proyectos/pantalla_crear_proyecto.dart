@@ -1,17 +1,16 @@
-// Archivo: pantalla_crear_proyecto.dart
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-// 🚨 Revisa estas rutas según tu estructura de carpetas
 import 'package:sistem_proyect/central/constantes/modelos/project_model.dart';
 import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart';
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/project_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart';
-import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_inicio_sesion.dart'; 
-import 'package:sistem_proyect/funcionalidades/autenticacion/pantalla_editar_perfil.dart'; 
-import 'package:sistem_proyect/funcionalidades/autenticacion/proyectos/pantalla_listado_proyectos.dart'; 
-import 'package:sistem_proyect/funcionalidades/autenticacion/proyectos/member_selection_dialog.dart'; 
+import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/pantalla_listado_proyectos.dart'; 
+import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/member_selection_dialog.dart'; 
+import 'package:sistem_proyect/funcionalidades/Pantallas/pantalla_principal.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/widgets_principal.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/shared_footer_widget.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/profile_menu_widget.dart';
 
 
 class PantallaCrearProyecto extends StatefulWidget {
@@ -27,7 +26,6 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
   final AuthService _authService = AuthService();
   final UserDataService _userDataService = UserDataService(); 
   
-  // Controladores para los campos de texto
   final TextEditingController _nombreController = TextEditingController();
   final TextEditingController _descripcionController = TextEditingController();
   final TextEditingController _recursosMaterialesController = TextEditingController();
@@ -36,14 +34,9 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
   DateTime? _fechaLimite;
   List<Usuario> _selectedMembers = []; 
 
-  // Estados para el AppBar y Footer
   bool _isAdmin = false;
   bool _isLoadingRole = true;
-  bool _isProfileHovered = false; 
 
-  // Colores simulados (Naranja y Azul)
-  final Color _primaryOrange = const Color(0xFFFF6633); 
-  final Color _accentBlue = const Color(0xFF00BFFF); 
 
   @override
   void initState() {
@@ -69,7 +62,6 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
     }
   }
 
-  // ============== FUNCIONES DE FECHA ==============
   Future<DateTime?> _selectDate(BuildContext context, bool isStartDate) async {
     final DateTime? picked = await showDatePicker(
       context: context,
@@ -80,7 +72,7 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
         return Theme(
           data: ThemeData.light().copyWith(
             colorScheme: ColorScheme.light(
-              primary: _primaryOrange, 
+              primary:  AppColors.primaryOrange,
               onPrimary: Colors.white,
               onSurface: Colors.black87,
             ),
@@ -90,7 +82,7 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
         );
       },
     );
-    return picked; // Retorna la fecha seleccionada
+    return picked;
   }
   
   String _formatDate(DateTime? date) {
@@ -98,7 +90,6 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
-  // ============== LÓGICA DE CREACIÓN DE PROYECTO (CORREGIDA) ==============
   Future<void> _createProject() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
@@ -133,19 +124,19 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
           recursosMateriales: _recursosMaterialesController.text.split(',').map((s) => s.trim()).where((s) => s.isNotEmpty).toList(),
         );
 
-        // 🎯 CORRECCIÓN CLAVE: Usar 'crearProyecto'
         await _projectService.crearProyecto(newProject); 
+
+        if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Proyecto creado exitosamente!')),
         );
         
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const PantallaListadoProyectos()),
-          (Route<dynamic> route) => false,
-        );
+      
+        Navigator.of(context).pop();
 
       } catch (e) {
+        if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error al crear proyecto: $e')),
         );
@@ -153,177 +144,99 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
     }
   }
 
-  // ============== WIDGETS DE ESTRUCTURA (APPBAR y FOOTER) ==============
-  
   String _getUserInitial(String? userName) {
     final userEmail = FirebaseAuth.instance.currentUser?.email;
     return userEmail?.isNotEmpty == true ? userEmail![0].toUpperCase() : 'U';
   }
 
-  Future<void> _cerrarSesion() async {
-    await _authService.signOut();
-    if (mounted) {
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (context) => const PantallaInicioSesion()),
-        (Route<dynamic> route) => false,
-      );
-    }
-  }
-
-  void _editarPerfil() {
-    Navigator.of(context).pop(); 
-    Navigator.push(context, MaterialPageRoute(builder: (context) => const PantallaEditarPerfil()));
-  }
-
-  void _mostrarMenuPerfil(BuildContext context, Offset offset) {
-    showMenu(
-      context: context,
-      position: RelativeRect.fromRect(offset & const Size(40, 40), Offset.zero & MediaQuery.of(context).size),
-      items: const [
-        PopupMenuItem<String>(value: 'perfil', child: Text('Editar Perfil')),
-        PopupMenuItem<String>(value: 'cerrar', child: Text('Cerrar Sesión')),
-      ],
-      elevation: 8.0,
-    ).then((value) {
-      if (value == 'perfil') {
-        _editarPerfil();
-      } else if (value == 'cerrar') {
-        _cerrarSesion();
-      }
-    });
-  }
-
-  PreferredSizeWidget _buildAppBar(String userInitial, bool isDesktop) {
-    final Color avatarColor = _isAdmin ? _accentBlue : _primaryOrange; 
-    
-    final profileWidget = MouseRegion(
-      onEnter: (_) => setState(() => _isProfileHovered = true),
-      onExit: (_) => setState(() => _isProfileHovered = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTapDown: (details) => _mostrarMenuPerfil(context, details.globalPosition),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(8),
-          margin: EdgeInsets.only(right: isDesktop ? 20 : 16),
-          decoration: BoxDecoration(
-            color: avatarColor,
-            shape: BoxShape.circle,
-            boxShadow: _isProfileHovered ? [BoxShadow(color: avatarColor.withOpacity(0.5), blurRadius: 12, offset: const Offset(0, 4))] : [],
-          ),
-          transform: Matrix4.diagonal3Values(_isProfileHovered ? 1.05 : 1.0, _isProfileHovered ? 1.05 : 1.0, 1.0),
-          child: Text(userInitial, style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        ),
-      ),
-    );
-
-    if (isDesktop) {
-      return AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        toolbarHeight: 60,
-        title: Text('ProyectApp', style: TextStyle(color: _primaryOrange, fontWeight: FontWeight.bold, fontSize: 20)),
-        centerTitle: false,
-        actions: [
-          Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TextButton(onPressed: () {}, child: const Text('Menú', style: TextStyle(color: Colors.black87))), 
-                TextButton(onPressed: () {}, child: Text('Proyecto', style: TextStyle(color: _primaryOrange, fontWeight: FontWeight.bold))), 
-                TextButton(onPressed: () {}, child: const Text('Calendario', style: TextStyle(color: Colors.black87))),
-                TextButton(onPressed: () {}, child: const Text('Estadísticas', style: TextStyle(color: Colors.black87))),
-              ],
-            ),
-          ),
-          profileWidget,
-        ],
-      );
-    } else {
-      return AppBar(
-        backgroundColor: Colors.white,
-        elevation: 1,
-        title: const Text('Crear Nuevo Proyecto', style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
-        actions: [
-          profileWidget,
-        ],
-      );
-    }
-  }
   
-  Widget _buildFooterSection(BuildContext context, String title, List<String> links) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(title, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.black87)),
-        const SizedBox(height: 15),
-        ...links.map((link) => Padding(
-              padding: const EdgeInsets.only(bottom: 8.0),
-              child: MouseRegion(
-                cursor: SystemMouseCursors.click,
-                child: GestureDetector(
-                  onTap: () {},
-                  child: Text(link, style: TextStyle(color: Colors.grey.shade600, fontSize: 14)),
+
+ PreferredSizeWidget _buildAppBar(String userInitial, bool isDesktop) {
+  final Color avatarColor = _isAdmin ? AppColors.accentColor : AppColors.primaryOrange; 
+  
+   final profileWidget = HoverableProfileAvatar(
+    userInitial: userInitial,
+    avatarColor: avatarColor,
+    isDesktop: isDesktop,
+  );
+
+  if (isDesktop) {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 0,
+      toolbarHeight: 60,
+      title: Text(
+        'ProyectApp',
+        style: TextStyle(
+          color: AppColors.primaryOrange,
+          fontWeight: FontWeight.bold,
+          fontSize: 20
+        )
+      ),
+      centerTitle: false,
+      actions: [
+        Expanded(
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [               
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const PantallaPrincipal()),
+                    (Route<dynamic> route) => false,
+                  );
+                }, 
+                child: const Text('Menú', style: TextStyle(color: Colors.black87)),
+              ), 
+              TextButton(
+                onPressed: () {
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(builder: (context) => const PantallaListadoProyectos()),
+                    (Route<dynamic> route) => false,
+                  );
+                }, 
+                child: Text(
+                  'Proyecto',
+                  style: TextStyle(
+                    color: AppColors.primaryOrange,
+                    fontWeight: FontWeight.bold
+                  )
                 ),
+              ), 
+              TextButton(
+                onPressed: () {},
+                child: const Text('Calendario', style: TextStyle(color: Colors.black87))
               ),
-            )),
+              TextButton(
+                onPressed: () {},
+                child: const Text('Estadísticas', style: TextStyle(color: Colors.black87))
+              ),
+            ],
+          ),
+        ),
+        profileWidget,
+      ],
+    );
+  } else {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 1,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.black87),
+        onPressed: () => Navigator.pop(context),
+      ),
+      title: const Text(
+        'Crear Nuevo Proyecto',
+        style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)
+      ),
+      actions: [
+        profileWidget,
       ],
     );
   }
-
-  Widget _buildFooter(BuildContext context, bool isMobile) {
-    final linksAcerca = ['Nosotros', 'Equipo', 'Testimonios', 'Carreras'];
-    final linksServicios = ['Gestión de Proyectos', 'Reportes', 'Asignación de Tareas', 'Monitoreo'];
-    final linksContacto = ['Soporte', 'Ventas', 'Blog', 'Preguntas Frecuentes'];
-
-    return Container(
-      padding: EdgeInsets.only(top: 40, bottom: isMobile ? 80 : 20, left: 40, right: 40),
-      decoration: BoxDecoration(
-        color: Colors.grey[100],
-        border: Border(top: BorderSide(color: _primaryOrange, width: 4)), 
-      ),
-      child: Column(
-        children: [
-          if (!isMobile) 
-            Padding(
-              padding: const EdgeInsets.only(bottom: 40.0),
-              child: Flex(
-                direction: Axis.horizontal,
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildFooterSection(context, 'Acerca de', linksAcerca),
-                  _buildFooterSection(context, 'Servicios', linksServicios),
-                  _buildFooterSection(context, 'Contacto', linksContacto),
-                ],
-              ),
-            )
-          else 
-            Padding(
-              padding: const EdgeInsets.only(bottom: 30.0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildFooterSection(context, 'Acerca de', linksAcerca),
-                  const SizedBox(height: 20),
-                  _buildFooterSection(context, 'Servicios', linksServicios),
-                  const SizedBox(height: 20),
-                  _buildFooterSection(context, 'Contacto', linksContacto),
-                ],
-              ),
-            ),
-          
-          Divider(color: Colors.grey[300]),
-          const Text(
-            '2025 ProyectApp UNIMET. Derechos Reservados.',
-            style: TextStyle(color: Colors.black54, fontSize: 12),
-            textAlign: TextAlign.center,
-          ),
-        ],
-      ),
-    );
-  }
-
+}
+  
+  // FOOTER REUTILIZABLE 
   @override
   Widget build(BuildContext context) {
     final userInitial = _getUserInitial(FirebaseAuth.instance.currentUser?.email);
@@ -351,22 +264,20 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildPageHeader(),
                       const SizedBox(height: 30),
 
                       isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
 
                       const SizedBox(height: 30),
 
-                      // Botón "Volver"
                       Center(
                         child: OutlinedButton(
                           onPressed: () {
                             Navigator.of(context).pop(); 
                           },
                           style: OutlinedButton.styleFrom(
-                            foregroundColor: _primaryOrange, 
-                            side: BorderSide(color: _primaryOrange),
+                            foregroundColor: AppColors.primaryOrange, 
+                            side: BorderSide(color: AppColors.primaryOrange),
                             padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
                             shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                           ),
@@ -376,9 +287,10 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
                       const SizedBox(height: 20),
                     ],
                   ),
-                ),
+                ),            
                 
-                _buildFooter(context, !isDesktop), 
+                SharedFooter(primaryOrange: AppColors.primaryOrange,
+                    accentBlue: AppColors.accentColor),
               ],
             ),
           ),
@@ -387,18 +299,6 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
     );
   }
 
-  // ============== WIDGETS DE CONTENIDO ==============
-
-  Widget _buildPageHeader() {
-    return const Text(
-      'Crear Proyecto', 
-      style: TextStyle(
-        fontSize: 24,
-        fontWeight: FontWeight.bold,
-        color: Colors.black87,
-      ),
-    );
-  }
 
   Widget _buildDesktopLayout() {
     return Row(
@@ -422,7 +322,6 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
     );
   }
 
-  // Card del Formulario de Creación de Proyecto
   Widget _buildProjectForm() {
     return Card(
       elevation: 3,
@@ -448,10 +347,8 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
               }),
               const SizedBox(height: 15),
               
-              // Uso correcto de _buildDateField (pasando DateTime?)
               _buildDateField(context, 'Fecha de Inicio', _fechaInicio, (date) => setState(() => _fechaInicio = date), isStartDate: true),
               const SizedBox(height: 15),
-              // Uso correcto de _buildDateField (pasando DateTime?)
               _buildDateField(context, 'Fecha Límite', _fechaLimite, (date) => setState(() => _fechaLimite = date), isStartDate: false),
               const SizedBox(height: 15),
 
@@ -478,7 +375,7 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
                   icon: const Icon(Icons.add, color: Colors.white, size: 20),
                   label: const Text('Agregar miembros', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _primaryOrange,
+                    backgroundColor: AppColors.primaryOrange,
                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
@@ -490,7 +387,7 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
                 child: ElevatedButton(
                   onPressed: _createProject,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _primaryOrange,
+                    backgroundColor: AppColors.primaryOrange,
                     padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                     elevation: 3,
@@ -505,7 +402,6 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
     );
   }
 
-  // Helper para TextField
   Widget _buildTextField(TextEditingController controller, String label, {int maxLines = 1, String? Function(String?)? validator, bool isOptional = false}) {
     return TextFormField(
       controller: controller,
@@ -516,7 +412,7 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
-          borderSide: BorderSide(color: _primaryOrange, width: 2),
+          borderSide: BorderSide(color: AppColors.primaryOrange, width: 2),
         ),
         enabledBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(8),
@@ -527,7 +423,6 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
     );
   }
 
-  // Helper para campos de fecha (Corregida la lógica interna para usar _selectDate)
   Widget _buildDateField(BuildContext context, String label, DateTime? date, Function(DateTime) onDateSelected, {required bool isStartDate}) {
     return InkWell(
       onTap: () async {
@@ -543,16 +438,16 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
-            borderSide: BorderSide(color: _primaryOrange, width: 2),
+            borderSide: BorderSide(color: AppColors.primaryOrange, width: 2),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(8),
             borderSide: BorderSide(color: Colors.grey.shade300),
           ),
-          suffixIcon: Icon(Icons.calendar_today, color: _primaryOrange),
+          suffixIcon: Icon(Icons.calendar_today, color: AppColors.primaryOrange),
         ),
         child: Text(
-          _formatDate(date), // Usa _formatDate con DateTime?
+          _formatDate(date),
           style: TextStyle(
             color: date == null ? Colors.grey : Colors.black87,
             fontSize: 16,
@@ -562,7 +457,6 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
     );
   }
 
-  // Card del Panel de Recursos
   Widget _buildResourcesPanel() {
     return Card(
       elevation: 3,
@@ -575,13 +469,11 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
             const Text('Recursos', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
 
-            // Recursos Humanos
             Text('Recursos Humanos', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
             const SizedBox(height: 10),
-            Text('${_selectedMembers.length}', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _primaryOrange)),
+            Text('${_selectedMembers.length}', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primaryOrange)),
             const SizedBox(height: 15),
             
-            // Lista de miembros seleccionados con avatares
             if (_selectedMembers.isNotEmpty)
               Column(
                 children: _selectedMembers.map((member) => Padding(
@@ -590,7 +482,7 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
                     children: [
                       CircleAvatar(
                         radius: 18,
-                        backgroundColor: member.uid.hashCode.isEven ? _accentBlue : _primaryOrange, 
+                        backgroundColor: member.uid.hashCode.isEven ? AppColors.accentColor : AppColors.primaryOrange, 
                         child: Text(
                           member.nombre.isNotEmpty ? member.nombre[0].toUpperCase() : (member.email.isNotEmpty ? member.email[0].toUpperCase() : '?'),
                           style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
@@ -613,14 +505,13 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
 
             const SizedBox(height: 30),
 
-            // Recursos Materiales
             Text('Recursos Materiales', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: Colors.grey.shade700)),
             const SizedBox(height: 10),
             Row(
               children: [
                 Text(
                   _recursosMaterialesController.text.split(',').where((s) => s.trim().isNotEmpty).length.toString(), 
-                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: _primaryOrange)
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppColors.primaryOrange)
                 ),
               ],
             ),
