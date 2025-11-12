@@ -1,4 +1,4 @@
-import '/funcionalidades/autenticacion/modelo_usuario.dart';
+import '../../funcionalidades/Pantallas/Autenticacion/modelo_usuario.dart';
 
 class ServicioUsuario {
   static Usuario _usuarioActual = Usuario(
