@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart'; // Importar para usar FilteringTextInputFormatter
 import 'package:sistem_proyect/central/constantes/modelos/recurso_model.dart';
 
 class ResourceSelectionDialog extends StatefulWidget {
@@ -147,6 +148,10 @@ class _ResourceSelectionDialogState extends State<ResourceSelectionDialog> {
                     // Campo Nombre
                     TextField(
                       controller: _nombreController,
+                      // **VALIDACIÓN: SOLO LETRAS Y ESPACIOS**
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'[a-zA-ZáéíóúÁÉÍÓÚñÑ\s]')),
+                      ],
                       decoration: InputDecoration(
                         labelText: 'Nombre del recurso *',
                         hintText: 'Ej: Laptop, Proyector, etc.',
@@ -166,6 +171,10 @@ class _ResourceSelectionDialogState extends State<ResourceSelectionDialog> {
                     TextField(
                       controller: _cantidadController,
                       keyboardType: TextInputType.number,
+                      // **VALIDACIÓN: SOLO NÚMEROS**
+                      inputFormatters: [
+                        FilteringTextInputFormatter.digitsOnly,
+                      ],
                       decoration: InputDecoration(
                         labelText: 'Cantidad disponible *',
                         hintText: 'Ej: 5',
