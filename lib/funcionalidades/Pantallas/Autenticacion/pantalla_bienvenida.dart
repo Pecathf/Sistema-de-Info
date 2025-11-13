@@ -65,7 +65,7 @@ class PantallaBienvenida extends StatelessWidget {
           fit: BoxFit.cover,
           colorFilter: ColorFilter.mode(
             // Overlay oscuro para hacer el texto legible
-            AppColors.darkBackground.withValues(alpha:0.7),
+            AppColors.darkBackground.withValues(alpha: 0.7),
             BlendMode.darken,
           ),
         ),
@@ -138,7 +138,7 @@ class PantallaBienvenida extends StatelessWidget {
               _buildActionButton(
                 context,
                 'Iniciar Sesión',
-                AppColors.primaryOrange.withValues(alpha:0.8),
+                AppColors.primaryOrange.withValues(alpha: 0.8),
                 // Navega a Inicio de Sesión
                 () => Navigator.push(
                     context,
@@ -258,59 +258,97 @@ class PantallaBienvenida extends StatelessWidget {
             padding: const EdgeInsets.symmetric(horizontal: 20.0),
             child: Flex(
               direction: isMobile ? Axis.vertical : Axis.horizontal,
-              mainAxisAlignment: isMobile
-                  ? MainAxisAlignment.center
-                  : MainAxisAlignment.spaceBetween,
-              crossAxisAlignment: isMobile
-                  ? CrossAxisAlignment.center
-                  : CrossAxisAlignment.start,
-              children: [
-                // Columna 1: Información de ProyectApp
-                _buildFooterSection(
-                  'ProyectApp',
-                  [
-                    'Sistema de gestión de proyectos para ingeniería',
-                    'en la Universidad Metropolitana'
-                  ],
-                  isMobile,
-                  isTitleBold: true,
-                ),
-                SizedBox(height: isMobile ? 30 : 0, width: isMobile ? 0 : 50),
-
-                // Columna 2: Links
-                _buildFooterSection(
-                  'Links',
-                  ['Iniciar Sesión', 'Registro'],
-                  isMobile,
-                ),
-                SizedBox(height: isMobile ? 30 : 0, width: isMobile ? 0 : 50),
-
-                // Columna 3: Ayuda y Contacto
-                _buildFooterSection(
-                  'Ayuda',
-                  [
-                    'Email: ayudalog@proyectapp.unimet.edu.ve',
-                    'Contacto: 0202020200202'
-                  ],
-                  isMobile,
-                  isContact: true,
-                ),
-                SizedBox(height: isMobile ? 30 : 0, width: isMobile ? 0 : 50),
-
-                // Columna 4: Icono de Red Social
-                Column(
-                  children: [
-                    const Icon(
-                      Icons.camera_alt, // Ícono de Instagram/Red Social
-                      color: Colors.white,
-                      size: 30,
-                    ),
-                    const SizedBox(height: 5),
-                    Text('Instagram',
-                        style: TextStyle(color: Colors.white.withValues(alpha:0.8))),
-                  ],
-                ),
-              ],
+              children: isMobile
+                  ? [
+                      // Mobile: apilar las secciones verticalmente
+                      _buildFooterSection(
+                        'ProyectApp',
+                        [
+                          'Sistema de gestión de proyectos para ingeniería',
+                          'en la Universidad Metropolitana'
+                        ],
+                        isMobile,
+                        isTitleBold: true,
+                      ),
+                      const SizedBox(height: 30),
+                      _buildFooterSection(
+                        'Links',
+                        ['Iniciar Sesión', 'Registro'],
+                        isMobile,
+                      ),
+                      const SizedBox(height: 30),
+                      _buildFooterSection(
+                        'Ayuda',
+                        [
+                          'Email: ayudalog@proyectapp.unimet.edu.ve',
+                          'Contacto: 0202020200202'
+                        ],
+                        isMobile,
+                        isContact: true,
+                      ),
+                      const SizedBox(height: 30),
+                      Column(
+                        children: [
+                          const Icon(
+                            Icons.camera_alt, // Ícono de Instagram
+                            color: Colors.white,
+                            size: 30,
+                          ),
+                          const SizedBox(height: 5),
+                          Text('Instagram',
+                              style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.8))),
+                        ],
+                      ),
+                    ]
+                  : [
+                      // Desktop: distribuir horizontalmente con espacio entre y columnas flexibles
+                      Expanded(
+                        child: _buildFooterSection(
+                          'ProyectApp',
+                          [
+                            'Sistema de gestión de proyectos para ingeniería',
+                            'en la Universidad Metropolitana'
+                          ],
+                          isMobile,
+                          isTitleBold: true,
+                        ),
+                      ),
+                      const SizedBox(width: 50),
+                      Expanded(
+                        child: _buildFooterSection(
+                          'Links',
+                          ['Iniciar Sesión', 'Registro'],
+                          isMobile,
+                        ),
+                      ),
+                      const SizedBox(width: 50),
+                      Expanded(
+                        child: _buildFooterSection(
+                          'Ayuda',
+                          [
+                            'Email: ayudalog@proyectapp.unimet.edu.ve',
+                            'Contacto: 0202020200202'
+                          ],
+                          isMobile,
+                          isContact: true,
+                        ),
+                      ),
+                      const SizedBox(width: 50),
+                      Column(
+                        children: [
+                          const Icon(
+                            Icons.camera_alt, // Ícono de Instagram
+                            color: Colors.white,
+                            size: 30,
+                          ),
+                          const SizedBox(height: 5),
+                          Text('Instagram',
+                              style: TextStyle(
+                                  color: Colors.white.withValues(alpha: 0.8))),
+                        ],
+                      ),
+                    ],
             ),
           ),
 
@@ -340,27 +378,26 @@ class PantallaBienvenida extends StatelessWidget {
           style: TextStyle(
             color: isContact
                 ? AppColors.accentColor
-                : Colors.white, // El Figma usa azul para "Ayuda"
+                : Colors.white, 
             fontSize: 18,
             fontWeight: isTitleBold ? FontWeight.bold : FontWeight.w500,
           ),
           textAlign: isMobile ? TextAlign.center : TextAlign.left,
         ),
         const SizedBox(height: 10),
-        ...items
-            .map((item) => Padding(
-                  padding: const EdgeInsets.only(bottom: 4.0),
-                  child: Text(
-                    item,
-                    style: TextStyle(
-                      color: isContact
-                          ? Colors.white70
-                          : Colors.white.withValues(alpha:0.8),
-                      fontSize: 14,
-                    ),
-                    textAlign: isMobile ? TextAlign.center : TextAlign.left,
-                  ),
-                ))
+        ...items.map((item) => Padding(
+              padding: const EdgeInsets.only(bottom: 4.0),
+              child: Text(
+                item,
+                style: TextStyle(
+                  color: isContact
+                      ? Colors.white70
+                      : Colors.white.withValues(alpha: 0.8),
+                  fontSize: 14,
+                ),
+                textAlign: isMobile ? TextAlign.center : TextAlign.left,
+              ),
+            ))
       ],
     );
   }

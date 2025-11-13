@@ -1,5 +1,3 @@
-// Archivo: pantalla_listado_proyectos.dart
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sistem_proyect/central/constantes/modelos/project_model.dart';
@@ -12,9 +10,6 @@ import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/widgets_princip
 import 'package:sistem_proyect/funcionalidades/Pantallas/widgets/shared_footer_widget.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/profile_menu_widget.dart';
 import 'pantalla_detalle_proyecto.dart';
-// ⚠️ Asegúrate de importar AppColors si está en un archivo separado
-// import 'package:sistem_proyect/central/constantes/colores.dart';
-
 
 class PantallaListadoProyectos extends StatefulWidget {
   const PantallaListadoProyectos({super.key});
@@ -27,10 +22,12 @@ class PantallaListadoProyectos extends StatefulWidget {
 class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
   final ProjectService _projectService = ProjectService();
   final AuthService _authService = AuthService();
+  final TextEditingController _searchController = TextEditingController();
 
   bool _isAdmin = false;
   bool _isLoadingRole = true;
   String _searchQuery = '';
+  String _tempSearchQuery = '';
 
   @override
   void initState() {
@@ -38,28 +35,100 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
     _checkIfAdmin();
   }
 
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
+
   Future<void> _checkIfAdmin() async {
     final roleResult = await _authService.getUserRole();
     if (mounted) {
       setState(() {
-        // 🎯 Nota: Usamos 'admin' para la lógica de visualización del botón
         _isAdmin = (roleResult == 'admin'); 
         _isLoadingRole = false;
       });
     }
   }
   
-  // 🎯 FUNCIÓN CORREGIDA
   void _navigateToProjectDetail(Proyecto proyecto) {
-    // Usa push() para navegar a la nueva pantalla
     Navigator.of(context).push(
       MaterialPageRoute(
-        // La PantallaDetalleProyecto requiere el ID (String), no el objeto completo
         builder: (context) => PantallaDetalleProyecto(
           projectId: proyecto.id, 
         ),
       ),
     );
+  }
+
+  void _performSearch() {
+    setState(() {
+      _searchQuery = _tempSearchQuery;
+    });
+  }
+
+  // 🎯 MÉTODO PARA ELIMINAR PROYECTO
+  Future<void> _confirmarEliminarProyecto(Proyecto proyecto) async {
+    final bool? confirmar = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirmar eliminación'),
+          content: Text(
+            '¿Estás seguro de que deseas eliminar el proyecto "${proyecto.nombre}"?\n\nEsta acción no se puede deshacer.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmar == true) {
+      // Mostrar indicador de carga
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      // Eliminar proyecto
+      final bool exitoso = await _projectService.eliminarProyecto(proyecto.id);
+
+      // Cerrar indicador de carga
+      if (!mounted) return;
+      Navigator.of(context).pop();
+
+      // Mostrar resultado
+      if (exitoso) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Proyecto "${proyecto.nombre}" eliminado exitosamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Error al eliminar el proyecto. Intenta nuevamente.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 
   String _getUserInitial(String? userName) {
@@ -68,7 +137,6 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
   }
 
   PreferredSizeWidget _buildAppBar(String userInitial, bool isDesktop) {
-    // ⚠️ Se asume que AppColors.primaryOrange y AppColors.accentColor están definidas
     final Color avatarColor = _isAdmin ? AppColors.accentColor : AppColors.primaryOrange; 
 
     final profileWidget = HoverableProfileAvatar(
@@ -248,9 +316,7 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
         border: Border.all(color: Colors.grey.shade300),
         boxShadow: [
           BoxShadow(
-              // ⚠️ CORRECCIÓN: el método withValues no existe en Color
-              // color: Colors.grey.withValues(alpha: 0.1), 
-              color: Colors.grey.withOpacity(0.1),
+              color: Colors.grey.withValues(alpha:0.1),
               blurRadius: 4,
               offset: const Offset(0, 1)),
         ],
@@ -259,9 +325,11 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
         children: [
           Expanded(
             child: TextField(
+              controller: _searchController,
               onChanged: (value) {
-                setState(() => _searchQuery = value);
+                _tempSearchQuery = value;
               },
+              onSubmitted: (_) => _performSearch(),
               decoration: const InputDecoration(
                 hintText: 'Buscar proyectos por nombre...',
                 hintStyle: TextStyle(color: Colors.grey),
@@ -271,10 +339,7 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
             ),
           ),
           ElevatedButton(
-            onPressed: () {
-              // La búsqueda ya se realiza reactivamente en el StreamBuilder con cada cambio de _searchQuery
-              // Este botón puede disparar una acción más fuerte si fuese necesario, pero por ahora solo refresca la vista
-            }, 
+            onPressed: _performSearch,
             style: ElevatedButton.styleFrom(
               backgroundColor: AppColors.primaryOrange,
               elevation: 0,
@@ -329,7 +394,7 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: isDesktop ? 3 : 1,
-            childAspectRatio: isDesktop ? 1.2 : 2.5,
+            childAspectRatio: isDesktop ? 1.0 : 2.0,
             crossAxisSpacing: 20.0,
             mainAxisSpacing: 20.0,
           ),
@@ -338,8 +403,11 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
             final proyecto = proyectos[index];
             return ProjectCardWidget(
               proyecto: proyecto,
-              onTap: () {
+              onTapView: () {
                 _navigateToProjectDetail(proyecto);
+              },
+              onTapDelete: () {
+                _confirmarEliminarProyecto(proyecto); // 🎯 Función de eliminar
               },
             );
           },

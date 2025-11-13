@@ -1,35 +1,76 @@
-// Archivo: project_model.dart
-
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:sistem_proyect/central/constantes/modelos/recurso_model.dart';
 
 class Proyecto {
   final String id;
   final String nombre;
   final String descripcion;
   final DateTime fechaCreacion;
-  final DateTime fechaInicio;      
-  final DateTime fechaLimite;      
+  final DateTime fechaInicio;
+  final DateTime fechaLimite;
   final int progreso;
   final String estado;
   final String creadorUid;
   final List<String> miembrosUid;
-  final List<String> recursosMateriales;
+  final List<RecursoMaterial> recursosMateriales; // 🎯 CAMBIADO: Ahora guarda objetos completos
 
   Proyecto({
     required this.id,
     required this.nombre,
     required this.descripcion,
     required this.fechaCreacion,
-    required this.fechaInicio,     
-    required this.fechaLimite,     
+    required this.fechaInicio,
+    required this.fechaLimite,
     required this.progreso,
     required this.estado,
     required this.creadorUid,
     required this.miembrosUid,
-    required this.recursosMateriales,
+    required this.recursosMateriales, // 🎯 CAMBIADO
   });
 
-  // 🎯 IMPLEMENTACIÓN DEL MÉTODO copyWith para resolver el error
+  factory Proyecto.fromMap(Map<String, dynamic> map, String id) {
+    // 🎯 Convertir la lista de recursos desde Firestore
+    List<RecursoMaterial> recursos = [];
+    if (map['recursosMateriales'] != null) {
+      recursos = (map['recursosMateriales'] as List)
+          .map((recursoMap) => RecursoMaterial.fromMap(
+              recursoMap as Map<String, dynamic>, 
+              recursoMap['id'] ?? ''
+          ))
+          .toList();
+    }
+
+    return Proyecto(
+      id: id,
+      nombre: map['nombre'] ?? '',
+      descripcion: map['descripcion'] ?? '',
+      fechaCreacion: (map['fechaCreacion'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      fechaInicio: (map['fechaInicio'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      fechaLimite: (map['fechaLimite'] as Timestamp?)?.toDate() ?? DateTime.now(),
+      progreso: map['progreso'] ?? 0,
+      estado: map['estado'] ?? 'Activo',
+      creadorUid: map['creadorUid'] ?? '',
+      miembrosUid: List<String>.from(map['miembrosUid'] ?? []),
+      recursosMateriales: recursos, // 🎯 CAMBIADO
+    );
+  }
+
+  Map<String, dynamic> toMap() {
+    return {
+      'nombre': nombre,
+      'descripcion': descripcion,
+      'fechaCreacion': Timestamp.fromDate(fechaCreacion),
+      'fechaInicio': Timestamp.fromDate(fechaInicio),
+      'fechaLimite': Timestamp.fromDate(fechaLimite),
+      'progreso': progreso,
+      'estado': estado,
+      'creadorUid': creadorUid,
+      'miembrosUid': miembrosUid,
+      // 🎯 Guardar recursos como lista de mapas
+      'recursosMateriales': recursosMateriales.map((r) => r.toMap()).toList(),
+    };
+  }
+
   Proyecto copyWith({
     String? id,
     String? nombre,
@@ -41,7 +82,7 @@ class Proyecto {
     String? estado,
     String? creadorUid,
     List<String>? miembrosUid,
-    List<String>? recursosMateriales,
+    List<RecursoMaterial>? recursosMateriales,
   }) {
     return Proyecto(
       id: id ?? this.id,
@@ -56,44 +97,5 @@ class Proyecto {
       miembrosUid: miembrosUid ?? this.miembrosUid,
       recursosMateriales: recursosMateriales ?? this.recursosMateriales,
     );
-  }
-
-  // Factory para crear un objeto Proyecto desde Firestore
-  factory Proyecto.fromFirestore(DocumentSnapshot doc) {
-    final data = doc.data() as Map<String, dynamic>;
-
-    final Timestamp? tsCreacion = data['fechaCreacion'] as Timestamp?;
-    final Timestamp? tsInicio = data['fechaInicio'] as Timestamp?;
-    final Timestamp? tsLimite = data['fechaLimite'] as Timestamp?;
-
-    return Proyecto(
-      id: doc.id,
-      nombre: data['nombre'] ?? 'Proyecto sin nombre',
-      descripcion: data['descripcion'] ?? 'Sin descripción',
-      fechaCreacion: tsCreacion?.toDate() ?? DateTime.now(),
-      fechaInicio: tsInicio?.toDate() ?? DateTime.now(),        
-      fechaLimite: tsLimite?.toDate() ?? DateTime(2101),        
-      progreso: data['progreso'] ?? 0,
-      estado: data['estado'] ?? 'Pendiente',
-      creadorUid: data['creadorUid'] ?? '',
-      miembrosUid: List<String>.from(data['miembrosUid'] ?? []),
-      recursosMateriales: List<String>.from(data['recursosMateriales'] ?? []),
-    );
-  }
-
-  // Método para convertir el objeto Proyecto a un mapa para Firestore
-  Map<String, dynamic> toFirestore() {
-    return {
-      'nombre': nombre,
-      'descripcion': descripcion,
-      'fechaCreacion': Timestamp.fromDate(fechaCreacion),
-      'fechaInicio': Timestamp.fromDate(fechaInicio),        
-      'fechaLimite': Timestamp.fromDate(fechaLimite),        
-      'progreso': progreso,
-      'estado': estado,
-      'creadorUid': creadorUid,
-      'miembrosUid': miembrosUid,
-      'recursosMateriales': recursosMateriales,
-    };
   }
 }
