@@ -67,8 +67,19 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
     });
   }
 
-  // 🎯 MÉTODO PARA ELIMINAR PROYECTO
+  // MÉTODO PARA ELIMINAR PROYECTO (SOLO ADMIN)
   Future<void> _confirmarEliminarProyecto(Proyecto proyecto) async {
+    // Verificar que sea admin
+    if (!_isAdmin) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No tienes permisos para eliminar proyectos.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     final bool? confirmar = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) {
@@ -95,7 +106,6 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
     );
 
     if (confirmar == true) {
-      // Mostrar indicador de carga
       if (!mounted) return;
       showDialog(
         context: context,
@@ -105,14 +115,11 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
         ),
       );
 
-      // Eliminar proyecto
       final bool exitoso = await _projectService.eliminarProyecto(proyecto.id);
 
-      // Cerrar indicador de carga
       if (!mounted) return;
       Navigator.of(context).pop();
 
-      // Mostrar resultado
       if (exitoso) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
@@ -370,6 +377,7 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
 
         List<Proyecto> proyectos = snapshot.data ?? [];
 
+        // Filtrar por búsqueda
         if (_searchQuery.isNotEmpty) {
           proyectos = proyectos
               .where((p) =>
@@ -403,12 +411,13 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
             final proyecto = proyectos[index];
             return ProjectCardWidget(
               proyecto: proyecto,
+              isAdmin: _isAdmin, // 🎯 Pasar si es admin
               onTapView: () {
                 _navigateToProjectDetail(proyecto);
               },
-              onTapDelete: () {
-                _confirmarEliminarProyecto(proyecto); // 🎯 Función de eliminar
-              },
+              onTapDelete: _isAdmin ? () {
+                _confirmarEliminarProyecto(proyecto);
+              } : null, // Solo permitir eliminar si es admin
             );
           },
         );

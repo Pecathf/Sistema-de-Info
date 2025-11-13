@@ -8,7 +8,8 @@ import 'package:intl/intl.dart';
 class ProjectCardWidget extends StatelessWidget {
   final Proyecto proyecto;
   final VoidCallback? onTapView; 
-  final VoidCallback? onTapDelete; 
+  final VoidCallback? onTapDelete;
+  final bool isAdmin; 
   
   final UserDataService _userDataService = UserDataService(); 
 
@@ -16,6 +17,7 @@ class ProjectCardWidget extends StatelessWidget {
     required this.proyecto,
     this.onTapView,
     this.onTapDelete,
+    this.isAdmin = false, 
     super.key,
   });
 
@@ -39,7 +41,7 @@ class ProjectCardWidget extends StatelessWidget {
   }
 
   String _formatDate(DateTime date) {
-    return DateFormat('dd MMM yyyy').format(date); // Formato actualizado
+    return DateFormat('dd MMM yyyy').format(date);
   }
 
   Widget _buildMetaRow(IconData icon, String text, {Color? iconColor}) {
@@ -85,7 +87,6 @@ class ProjectCardWidget extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Nombre del Proyecto
               Text(
                 proyecto.nombre,
                 style: const TextStyle(
@@ -97,7 +98,6 @@ class ProjectCardWidget extends StatelessWidget {
                 overflow: TextOverflow.ellipsis,
               ),
               const SizedBox(height: 8),
-              // Descripción corta
               Text(
                 proyecto.descripcion,
                 style: TextStyle(
@@ -115,19 +115,16 @@ class ProjectCardWidget extends StatelessWidget {
           Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Fecha de inicio
               _buildMetaRow(
                 Icons.date_range,
                 'Fecha de inicio: ${_formatDate(proyecto.fechaInicio)}',
               ),
               const SizedBox(height: 5),
-              // Fecha límite
               _buildMetaRow(
                 Icons.calendar_today,
                 'Fecha límite: ${_formatDate(proyecto.fechaLimite)}',
               ),
               const SizedBox(height: 5),
-              // Progreso
               _buildMetaRow(
                 Icons.trending_up,
                 'Progreso: ${proyecto.progreso}%',
@@ -146,10 +143,9 @@ class ProjectCardWidget extends StatelessWidget {
               ),
               const SizedBox(height: 10),
               
-              // Tareas completadas (placeholder - se actualizará cuando implementes tareas)
               _buildMetaRow(
                 Icons.task_alt,
-                'Tareas completadas: 8/12', // 🎯 Placeholder
+                'Tareas completadas: 8/12',
               ),
               const SizedBox(height: 15),
             ],
@@ -183,7 +179,7 @@ class ProjectCardWidget extends StatelessWidget {
           
           const SizedBox(height: 15),
           
-          // BOTONES DE ACCIÓN
+          // BOTONES DE ACCIÓN 
           Row(
             children: [
               Expanded(
@@ -203,24 +199,28 @@ class ProjectCardWidget extends StatelessWidget {
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: OutlinedButton(
-                  onPressed: onTapDelete,
-                  style: OutlinedButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    side: const BorderSide(color: Colors.red),
-                    padding: const EdgeInsets.symmetric(vertical: 12),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
+            
+              // Solo mostrar botón eliminar si es admin
+              if (isAdmin) ...[
+                const SizedBox(width: 10),
+                Expanded(
+                  child: OutlinedButton(
+                    onPressed: onTapDelete,
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: Colors.red,
+                      side: const BorderSide(color: Colors.red),
+                      padding: const EdgeInsets.symmetric(vertical: 12),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Eliminar',
+                      style: TextStyle(fontWeight: FontWeight.bold),
                     ),
                   ),
-                  child: const Text(
-                    'Eliminar',
-                    style: TextStyle(fontWeight: FontWeight.bold),
-                  ),
                 ),
-              ),
+              ],
             ],
           ),
         ],
