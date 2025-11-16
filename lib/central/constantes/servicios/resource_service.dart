@@ -6,10 +6,17 @@ class ResourceService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String _collectionName = 'recursos_materiales';
 
-  // Crear un nuevo recurso
-  Future<String?> crearRecurso(RecursoMaterial recurso) async {
+  // Crear un nuevo recurso asociado a un proyecto
+  Future<String?> crearRecurso(
+      RecursoMaterial recurso, String projectId) async {
     try {
-      final docRef = await _firestore.collection(_collectionName).add(recurso.toMap());
+      final recursoData = recurso.toMap();
+      recursoData['proyectoId'] = projectId; 
+      recursoData['cantidadDisponible'] =
+          recurso.cantidad; 
+
+      final docRef =
+          await _firestore.collection(_collectionName).add(recursoData);
       return docRef.id;
     } catch (e, st) {
       developer.log(
@@ -22,7 +29,21 @@ class ResourceService {
     }
   }
 
-  // Obtener todos los recursos como Stream
+  // Obtener recursos de un proyecto específico
+  Stream<List<RecursoMaterial>> getRecursosStreamByProject(String projectId) {
+    return _firestore
+        .collection(_collectionName)
+        .where('proyectoId', isEqualTo: projectId)
+        .orderBy('nombre')
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => RecursoMaterial.fromMap(doc.data(), doc.id))
+          .toList();
+    });
+  }
+
+  // Obtener todos los recursos como Stream (para admin global si es necesario)
   Stream<List<RecursoMaterial>> getRecursosStream() {
     return _firestore
         .collection(_collectionName)
@@ -78,6 +99,26 @@ class ResourceService {
     }
   }
 
+  // Actualizar cantidad disponible de un recurso
+  Future<bool> actualizarCantidadDisponible(
+      String id, int nuevaCantidad) async {
+    try {
+      await _firestore
+          .collection(_collectionName)
+          .doc(id)
+          .update({'cantidadDisponible': nuevaCantidad});
+      return true;
+    } catch (e, st) {
+      developer.log(
+        'Error al actualizar cantidad disponible: $e',
+        error: e,
+        stackTrace: st,
+        name: 'ResourceService.actualizarCantidadDisponible',
+      );
+      return false;
+    }
+  }
+
   // Eliminar un recurso
   Future<bool> eliminarRecurso(String id) async {
     try {
@@ -94,7 +135,7 @@ class ResourceService {
     }
   }
 
-  // Actualizar un recurso
+  // Actualizar un recurso completo
   Future<bool> actualizarRecurso(RecursoMaterial recurso) async {
     try {
       await _firestore

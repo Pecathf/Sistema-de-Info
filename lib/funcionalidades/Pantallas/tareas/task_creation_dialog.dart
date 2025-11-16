@@ -1,14 +1,10 @@
-// Archivo: funcionalidades/Tareas/task_creation_dialog.dart
-
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sistem_proyect/central/constantes/colores.dart';
 import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart';
 import 'package:sistem_proyect/central/constantes/modelos/recurso_model.dart';
 import 'package:sistem_proyect/central/constantes/modelos/task_model.dart';
-// ⚠ Asegúrate que esta ruta sea correcta para tu 'taskMemberSelection.dart'
 import 'package:sistem_proyect/funcionalidades/Pantallas/tareas/taskMemberSelection.dart';
-// ⚠ Asegúrate que esta ruta sea correcta
 import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/resource_selection_dialog.dart';
 import 'package:intl/intl.dart';
 
