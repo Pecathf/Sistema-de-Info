@@ -1,5 +1,3 @@
-// Archivo: member_selection_dialog.dart
-
 import 'package:flutter/material.dart';
 import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart';
 import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart';
@@ -67,18 +65,23 @@ class _MemberSelectionDialogState extends State<MemberSelectionDialog> {
               itemCount: users.length,
               itemBuilder: (context, index) {
                 final user = users[index];
-                final isSelected = _selectedMembers.any((m) => m.uid == user.uid);
-                
-                // 🎯 El widget usa las propiedades del modelo, ahora garantizadas como no nulas
+                final isSelected =
+                    _selectedMembers.any((m) => m.uid == user.uid);
+
                 return ListTile(
                   leading: CircleAvatar(
                     backgroundColor: isSelected ? Colors.orange : Colors.grey,
                     child: Text(
-                      user.nombre.isNotEmpty ? user.nombre[0].toUpperCase() : (user.email.isNotEmpty ? user.email[0].toUpperCase() : '?'),
+                      user.nombre.isNotEmpty
+                          ? user.nombre[0].toUpperCase()
+                          : (user.email.isNotEmpty
+                              ? user.email[0].toUpperCase()
+                              : '?'),
                       style: const TextStyle(color: Colors.white),
                     ),
                   ),
-                  title: Text(user.nombre.isNotEmpty ? user.nombre : user.email),
+                  title:
+                      Text(user.nombre.isNotEmpty ? user.nombre : user.email),
                   subtitle: Text(user.email),
                   trailing: isSelected
                       ? const Icon(Icons.check_circle, color: Colors.green)

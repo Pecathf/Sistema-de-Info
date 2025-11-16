@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'dart:developer' as developer;
 
 class AuthService {
   final FirebaseAuth _firebaseAuth = FirebaseAuth.instance;
@@ -27,7 +28,6 @@ class AuthService {
         'uid': userCredential.user!.uid,
         'email': email,
         'nombre': nombre,
-        // 💡 CORREGIDO: Ahora se guarda como 'rol' (con 'l')
         'rol': 'usuario', 
         'timestamp': FieldValue.serverTimestamp(),
       });
@@ -51,13 +51,17 @@ class AuthService {
 
       if (userDoc.exists) {
         final data = userDoc.data();
-        // ✅ ESTO AHORA ES CORRECTO: Lee 'rol' (con 'l')
         final rol = data?['rol'] as String?; 
         return rol?.trim();
       }
       return null;
-    } catch (e) {
-      print("Error obteniendo el rol del usuario: $e"); // Para debugging
+    } catch (e, st) {
+      developer.log(
+        'Error obteniendo el rol del usuario: $e',
+        error: e,
+        stackTrace: st,
+        name: 'AuthService.getUserRole',
+      );
       return null;
     }
   }

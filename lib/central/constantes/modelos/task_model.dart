@@ -1,5 +1,3 @@
-// Archivo: central/constantes/modelos/task_model.dart
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sistem_proyect/central/constantes/modelos/recurso_model.dart';
 

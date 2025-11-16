@@ -411,13 +411,13 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
             final proyecto = proyectos[index];
             return ProjectCardWidget(
               proyecto: proyecto,
-              isAdmin: _isAdmin, // 🎯 Pasar si es admin
+              isAdmin: _isAdmin, 
               onTapView: () {
                 _navigateToProjectDetail(proyecto);
               },
               onTapDelete: _isAdmin ? () {
                 _confirmarEliminarProyecto(proyecto);
-              } : null, // Solo permitir eliminar si es admin
+              } : null, 
             );
           },
         );

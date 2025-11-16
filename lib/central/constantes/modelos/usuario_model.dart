@@ -14,7 +14,6 @@ class Usuario {
   factory Usuario.fromFirestore(DocumentSnapshot doc) {
     final data = doc.data() as Map<String, dynamic>?;
 
-    // 🎯 CORRECCIÓN CLAVE: Usar ?? para proporcionar valores por defecto
     // '??' se asegura de que si el valor es nulo, se use una cadena vacía ('') en su lugar.
     return Usuario(
       uid: doc.id, // El ID siempre existe en el DocumentSnapshot

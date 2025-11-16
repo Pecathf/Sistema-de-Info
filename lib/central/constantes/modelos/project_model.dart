@@ -12,8 +12,7 @@ class Proyecto {
   final String estado;
   final String creadorUid;
   final List<String> miembrosUid;
-  final List<RecursoMaterial> recursosMateriales; // 🎯 CAMBIADO: Ahora guarda objetos completos
-
+  final List<RecursoMaterial> recursosMateriales; 
   Proyecto({
     required this.id,
     required this.nombre,
@@ -25,11 +24,10 @@ class Proyecto {
     required this.estado,
     required this.creadorUid,
     required this.miembrosUid,
-    required this.recursosMateriales, // 🎯 CAMBIADO
+    required this.recursosMateriales, 
   });
 
   factory Proyecto.fromMap(Map<String, dynamic> map, String id) {
-    // 🎯 Convertir la lista de recursos desde Firestore
     List<RecursoMaterial> recursos = [];
     if (map['recursosMateriales'] != null) {
       recursos = (map['recursosMateriales'] as List)
@@ -51,7 +49,7 @@ class Proyecto {
       estado: map['estado'] ?? 'Activo',
       creadorUid: map['creadorUid'] ?? '',
       miembrosUid: List<String>.from(map['miembrosUid'] ?? []),
-      recursosMateriales: recursos, // 🎯 CAMBIADO
+      recursosMateriales: recursos, 
     );
   }
 
@@ -66,7 +64,6 @@ class Proyecto {
       'estado': estado,
       'creadorUid': creadorUid,
       'miembrosUid': miembrosUid,
-      // 🎯 Guardar recursos como lista de mapas
       'recursosMateriales': recursosMateriales.map((r) => r.toMap()).toList(),
     };
   }

@@ -1,5 +1,3 @@
-// Archivo: central/constantes/servicios/task_service.dart
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sistem_proyect/central/constantes/modelos/task_model.dart';
 import 'dart:developer' as developer;
@@ -41,5 +39,5 @@ class TaskService {
 
   Future<void> eliminarTarea(String taskId) async {}
 
-  // 3. (Opcional) Implementar más métodos (update, delete, getById) si es necesario
+  // 3. Implementar más métodos (update, delete, getById) si es necesario
 }
