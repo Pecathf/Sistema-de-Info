@@ -15,6 +15,7 @@ import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/shared_footer_w
 import 'package:sistem_proyect/central/constantes/modelos/task_model.dart';
 import 'package:sistem_proyect/central/constantes/servicios/task.service.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/tareas/task_creation_dialog.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/tareas/pantalla_crear_tarea.dart';
 
 class PantallaDetalleProyecto extends StatefulWidget {
   final String projectId;
@@ -296,7 +297,27 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
             // Solo mostrar botón si es admin
             if (_isAdmin)
               ElevatedButton.icon(
-                onPressed: _abrirDialogoCrearTarea,
+                onPressed: () {
+                  // 1. Validar que el proyecto esté cargado
+                  if (_proyecto == null) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                          content: Text(
+                              'Error: No se ha podido cargar el proyecto.')),
+                    );
+                    return;
+                  }
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PantallaCrearTarea(
+                        proyecto: _proyecto!,
+                      ),
+                    ),
+                  ).then((_) {
+                    _cargarDatosProyecto();
+                  });
+                },
                 icon: const Icon(Icons.add, color: Colors.white, size: 18),
                 label: const Text(
                   'Nueva Tarea',

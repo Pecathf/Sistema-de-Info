@@ -68,4 +68,35 @@ class TaskModel {
       fechaCreacion: (map['fechaCreacion'] as Timestamp).toDate(),
     );
   }
+  // Método para crear una copia con campos modificados
+  TaskModel copyWith({
+    String? id,
+    String? nombre,
+    String? descripcion,
+    String? proyectoId,
+    String? creadorUid,
+    List<String>? miembrosUid,
+    List<RecursoMaterial>? recursosAsignados,
+    DateTime? fechaVencimiento,
+    bool? fechaVencimientoNulable, // Para poder setearlo a null
+    String? prioridad,
+    String? estado,
+    DateTime? fechaCreacion,
+  }) {
+    return TaskModel(
+      id: id ?? this.id,
+      nombre: nombre ?? this.nombre,
+      descripcion: descripcion ?? this.descripcion,
+      proyectoId: proyectoId ?? this.proyectoId,
+      creadorUid: creadorUid ?? this.creadorUid,
+      miembrosUid: miembrosUid ?? this.miembrosUid,
+      recursosAsignados: recursosAsignados ?? this.recursosAsignados,
+      fechaVencimiento: fechaVencimientoNulable == true
+          ? null
+          : (fechaVencimiento ?? this.fechaVencimiento),
+      prioridad: prioridad ?? this.prioridad,
+      estado: estado ?? this.estado,
+      fechaCreacion: fechaCreacion ?? this.fechaCreacion,
+    );
+  }
 }
