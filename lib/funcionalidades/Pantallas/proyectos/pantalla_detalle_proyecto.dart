@@ -1,3 +1,4 @@
+// Archivo: PantallaDetalleProyecto.dart
 import 'package:flutter/material.dart';
 import 'package:sistem_proyect/central/constantes/modelos/project_model.dart';
 import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart';
@@ -9,32 +10,11 @@ import 'package:intl/intl.dart';
 import 'dart:developer' as developer;
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/shared_footer_widget.dart';
 
-// 🎯 TODO: Crear archivo task_creation_dialog.dart
-// Este diálogo debe permitir:
-// - Seleccionar nombre de la tarea
-// - Asignar miembros del proyecto existentes
-// - Asignar recursos materiales del proyecto existentes
-// - Definir fecha de vencimiento
-// - Establecer prioridad (Alta, Media, Baja)
-// - Agregar descripción
-// Similar a member_selection_dialog.dart y resource_selection_dialog.dart
-
-// 🎯 TODO: Crear modelo task_model.dart en central/constantes/modelos/
-// Debe contener:
-// - id, nombre, descripcion
-// - proyectoId (referencia al proyecto)
-// - miembrosAsignadosUid (lista de UIDs)
-// - recursosAsignados (lista de RecursoMaterial)
-// - fechaVencimiento, prioridad, estado (pendiente/en progreso/completada)
-// - fechaCreacion
-
-// 🎯 TODO: Crear servicio task_service.dart en central/constantes/servicios/
-// Debe permitir:
-// - Crear tarea
-// - Obtener tareas de un proyecto (stream)
-// - Actualizar estado de tarea
-// - Eliminar tarea
-// - Calcular progreso del proyecto basado en tareas completadas
+// 1. IMPORTACIONES DE TAREAS (Completando TODOs)
+// ⚠ Asegúrate que estas rutas sean correctas
+import 'package:sistem_proyect/central/constantes/modelos/task_model.dart';
+import 'package:sistem_proyect/central/constantes/servicios/task.service.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/tareas/task_creation_dialog.dart';
 
 class PantallaDetalleProyecto extends StatefulWidget {
   final String projectId;
@@ -62,22 +42,24 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
   String? _errorMessage;
   String _selectedFilter = 'Todas';
 
-  // 🎯 TODO: Descomentar cuando TaskService esté implementado
-  // final TaskService _taskService = TaskService();
-  // List<Task> _tareas = [];
+  // 2. INSTANCIAR SERVICIO Y LISTA DE TAREAS (Completando TODOs)
+  final TaskService _taskService = TaskService();
+  List<TaskModel> _tareas = [];
 
   @override
   void initState() {
     super.initState();
+    // 💡 NOTA: _checkIfAdmin() ahora funcionará correctamente
     _checkIfAdmin();
     _cargarDatosProyecto();
   }
 
   Future<void> _checkIfAdmin() async {
-    final roleResult = await _authService.getUserRole();
+    // 💡 NOTA: _authService.isAdmin() ahora devolverá 'true'
+    final isAdmin = await _authService.isAdmin();
     if (mounted) {
       setState(() {
-        _isAdmin = (roleResult == 'admin');
+        _isAdmin = isAdmin;
         _isLoadingRole = false;
       });
     }
@@ -90,21 +72,23 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
     });
 
     try {
+      // Obtenemos el proyecto
       final proyecto = await _projectService.getProyectoById(widget.projectId);
 
       if (proyecto != null) {
+        // Obtenemos los miembros (necesarios para la tabla de tareas)
         final miembrosUids =
             proyecto.miembrosUid.where((uid) => uid.isNotEmpty).toList();
-
         final miembros = await _userDataService.getUsuariosByIds(miembrosUids);
 
-        // 🎯 TODO: Descomentar para cargar tareas cuando TaskService esté listo
-        // final tareas = await _taskService.getTareasDeProyecto(widget.projectId);
+        // 3. CARGAR TAREAS (Completando TODOs)
+        final tareas =
+            await _taskService.getTasksStreamByProject(widget.projectId).first;
 
         setState(() {
           _proyecto = proyecto;
-          _miembros = miembros;
-          // _tareas = tareas;
+          _miembros = miembros; // <-- Miembros cargados
+          _tareas = tareas; // <-- Tareas cargadas
           _isLoading = false;
         });
       } else {
@@ -114,6 +98,8 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
         });
       }
     } catch (e) {
+      // ⚠ Si las reglas de Firestore o el Índice fallan, esto se activará
+      developer.log("Error en _cargarDatosProyecto: $e");
       setState(() {
         _errorMessage = 'Error al cargar los datos: $e';
         _isLoading = false;
@@ -121,7 +107,7 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
     }
   }
 
-  // 🎯 TODO: Implementar este método cuando TaskCreationDialog esté listo
+  // 4. IMPLEMENTAR DIÁLOGO REAL (Completando TODOs)
   Future<void> _abrirDialogoCrearTarea() async {
     if (!_isAdmin) {
       ScaffoldMessenger.of(context).showSnackBar(
@@ -133,44 +119,29 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
       return;
     }
 
-    // 🎯 TODO: Descomentar cuando TaskCreationDialog esté implementado
-    /*
-    final Task? nuevaTarea = await showDialog<Task>(
+    if (_proyecto == null) return;
+
+    // Llamar al diálogo
+    final bool? exito = await showDialog<bool>(
       context: context,
       builder: (context) => TaskCreationDialog(
         projectId: widget.projectId,
-        availableMembers: _miembros,
-        availableResources: _proyecto!.recursosMateriales,
+        projectMembers: _miembros,
+        projectResources: _proyecto!.recursosMateriales,
       ),
     );
 
-    if (nuevaTarea != null) {
-      // Guardar la tarea en Firestore usando TaskService
-      await _taskService.crearTarea(nuevaTarea);
-      
-      // Recargar tareas
-      _cargarDatosProyecto();
-      
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tarea creada exitosamente!')),
-        );
-      }
+    // Si el diálogo devuelve 'true', recargar los datos
+    if (exito == true && mounted) {
+      _cargarDatosProyecto(); // Recargar la lista de tareas
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Tarea creada exitosamente!'),
+          backgroundColor: Colors.green,
+        ),
+      );
     }
-    */
-
-    // Temporal: mensaje de desarrollo
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Funcionalidad en desarrollo. Ver comentarios TODO en el código.'),
-        backgroundColor: Colors.orange,
-      ),
-    );
-
-    developer.log(
-      'Botón crear tarea presionado. Implementar TaskCreationDialog.',
-      name: 'PantallaDetalleProyecto.action',
-    );
   }
 
   String _formatDate(DateTime date) {
@@ -179,14 +150,12 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
 
   // Métricas superiores tipo Figma
   Widget _buildMetricsRow() {
-    // 🎯 TODO: Calcular valores reales desde las tareas
-    // final tareasCompletadas = _tareas.where((t) => t.estado == 'completada').length;
-    // final tareasPendientes = _tareas.where((t) => t.estado == 'pendiente').length;
-    
-    // Valores temporales de ejemplo
-    final tareasTotales = 12;
-    final tareasCompletadas = 8;
-    final tareasPendientes = 4;
+    // 5. USAR DATOS REALES (Completando TODOs)
+    final tareasTotales = _tareas.length;
+    final tareasCompletadas =
+        _tareas.where((t) => t.estado == 'Completada').length;
+    final tareasPendientes =
+        _tareas.where((t) => t.estado == 'Pendiente').length;
     final miembrosCount = _miembros.length;
 
     return Row(
@@ -231,6 +200,7 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
     required String value,
     required Color color,
   }) {
+    // ... (Este widget está bien, no hay cambios)
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       decoration: BoxDecoration(
@@ -270,8 +240,9 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
     required String subtitle,
     required Color color,
   }) {
+    // ... (Este widget está bien, no hay cambios)
     final progress = int.parse(percentage.replaceAll('%', '')) / 100;
-    
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -306,6 +277,8 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
   }
 
   Widget _buildTaskManagementSection() {
+    // Este Column está bien, porque sus hijos (Row, Row, _buildTasksDataTable)
+    // tienen alturas finitas y conocidas.
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -354,15 +327,17 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
 
         const SizedBox(height: 20),
 
-        // Área scrolleable de tareas
-        _buildTasksList(),
+        // 💡 6. ÁREA DE TAREAS REEMPLAZADA
+        // Reemplazamos el _buildTasksList() original por _buildTasksDataTable()
+        _buildTasksDataTable(),
       ],
     );
   }
 
   Widget _buildTaskFilters() {
+    // ... (Este widget está bien, no hay cambios)
     final filters = ['Todas', 'Pendientes', 'Completadas', 'Vencidas'];
-    
+
     return Row(
       children: filters.map((filter) {
         final isSelected = _selectedFilter == filter;
@@ -382,7 +357,9 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
                 color: isSelected ? AppColors.primaryOrange : Colors.white,
                 borderRadius: BorderRadius.circular(20),
                 border: Border.all(
-                  color: isSelected ? AppColors.primaryOrange : Colors.grey.shade300,
+                  color: isSelected
+                      ? AppColors.primaryOrange
+                      : Colors.grey.shade300,
                   width: 1,
                 ),
               ),
@@ -401,278 +378,219 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
     );
   }
 
-  Widget _buildTasksList() {
-    // 🎯 TODO: Reemplazar con datos reales cuando TaskService esté implementado
-    
-    // Tareas de ejemplo (temporal)
-    final tareasEjemplo = [
-      {
-        'nombre': 'Diseño de wireframes',
-        'estado': 'completada',
-        'fechaCompleta': 'Completada el 18 Sep 2025',
-        'asignado': 'María García',
-        'prioridad': 'Alta',
-        'iniciales': 'MG',
-      },
-      {
-        'nombre': 'Desarrollo del frontend',
-        'estado': 'en progreso',
-        'fechaCompleta': 'Asignada el 19 Sep 2025',
-        'fecha': 'Vence: 25 Sep',
-        'asignado': 'Juan Pérez',
-        'prioridad': 'Media',
-        'iniciales': 'JP',
-      },
-      {
-        'nombre': 'Configuración del servidor',
-        'estado': 'completada',
-        'fechaCompleta': 'Completada el 16 Sep 2025',
-        'asignado': 'Carlos López',
-        'prioridad': 'Media',
-        'iniciales': 'CL',
-      },
-    ];
+  // 💡 7. NUEVO WIDGET: _buildTasksDataTable
+  // Esta es la solución. Reemplaza _buildTasksList y _buildTaskItem
+  Widget _buildTasksDataTable() {
+    // 🎯 TODO: Filtrar _tareas basado en _selectedFilter
+    final tareasFiltradas = _tareas; // Por ahora, usa todas las tareas
 
+    if (tareasFiltradas.isEmpty) {
+      return Container(
+        decoration: BoxDecoration(
+          border: Border.all(color: Colors.grey.shade200),
+          borderRadius: BorderRadius.circular(6),
+          color: Colors.white,
+        ),
+        padding: const EdgeInsets.all(30),
+        child: const Center(
+          child: Text(
+            'Este proyecto aún no tiene tareas.',
+            style: TextStyle(fontSize: 15, color: Colors.grey),
+          ),
+        ),
+      );
+    }
+
+    // El SingleChildScrollView horizontal es la clave para arreglar
+    // el desbordamiento y hacer que los botones funcionen.
     return Container(
+      width: double.infinity, // Ocupa todo el ancho del Container padre
       decoration: BoxDecoration(
         border: Border.all(color: Colors.grey.shade200),
         borderRadius: BorderRadius.circular(6),
         color: Colors.white,
       ),
-      child: ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: tareasEjemplo.length,
-        separatorBuilder: (context, index) => Divider(
-          height: 1,
-          color: Colors.grey.shade200,
+      // ClipRRect para que el borde redondeado corte el scroll
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(6),
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: DataTable(
+            headingRowColor: MaterialStateProperty.all(Colors.grey.shade50),
+            dataRowMinHeight: 60.0, // Damos un poco más de altura a las filas
+            dataRowMaxHeight: 80.0,
+            columns: const [
+              DataColumn(label: Text('')), // Checkbox
+              DataColumn(label: Text('TAREA')),
+              DataColumn(label: Text('ASIGNADO')),
+              DataColumn(label: Text('VENCIMIENTO')),
+              DataColumn(label: Text('PRIORIDAD')),
+              DataColumn(label: Text('ACCIONES')),
+            ],
+            // Usamos las tareas reales (_tareas) en lugar de 'tareasEjemplo'
+            rows: tareasFiltradas
+                .map((tarea) => _buildTaskDataRow(tarea))
+                .toList(),
+          ),
         ),
-        itemBuilder: (context, index) {
-          final tarea = tareasEjemplo[index];
-          return _buildTaskItem(
-            nombre: tarea['nombre']!,
-            estado: tarea['estado']!,
-            fechaCompleta: tarea['fechaCompleta']!,
-            fecha: tarea['fecha'],
-            asignado: tarea['asignado']!,
-            prioridad: tarea['prioridad']!,
-            iniciales: tarea['iniciales']!,
-          );
-        },
       ),
     );
   }
 
-  Widget _buildTaskItem({
-    required String nombre,
-    required String estado,
-    required String fechaCompleta,
-    String? fecha,
-    required String asignado,
-    required String prioridad,
-    required String iniciales,
-  }) {
-    final isCompletada = estado == 'completada';
-    final Color prioridadColor = prioridad == 'Alta' 
-        ? Colors.red.shade400 
-        : prioridad == 'Media' 
-            ? Colors.orange.shade400 
+  // 💡 8. NUEVO WIDGET: _buildTaskDataRow
+  // Este es el "ayudante" que construye cada fila de la tabla
+  DataRow _buildTaskDataRow(TaskModel tarea) {
+    final isCompletada = tarea.estado == 'Completada';
+
+    // Lógica para buscar el primer miembro asignado (si existe)
+    Usuario? asignado;
+    String iniciales = 'S/A';
+    if (tarea.miembrosUid.isNotEmpty) {
+      // Usamos .firstWhere, pero con un 'orElse' para evitar errores si no se encuentra
+      asignado = _miembros.firstWhere(
+        (m) => m.uid == tarea.miembrosUid.first,
+        orElse: () => Usuario(uid: '', nombre: 'N/A', email: ''),
+      );
+      if (asignado.nombre.isNotEmpty) {
+        iniciales = asignado.nombre.substring(0, 1).toUpperCase();
+      }
+    }
+
+    // Lógica para formatear la fecha
+    String fechaStr = 'Sin fecha';
+    if (tarea.fechaVencimiento != null) {
+      fechaStr = DateFormat('d MMM, y').format(tarea.fechaVencimiento!);
+    }
+
+    // Lógica para el color de prioridad
+    final Color prioridadColor = tarea.prioridad == 'Alta'
+        ? Colors.red.shade400
+        : tarea.prioridad == 'Media'
+            ? Colors.orange.shade400
             : Colors.blue.shade400;
 
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
-      child: Row(
-        children: [
-          // Checkbox de completado
-          Container(
-            width: 20,
-            height: 20,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isCompletada ? Colors.green.shade600 : Colors.transparent,
-              border: Border.all(
-                color: isCompletada ? Colors.green.shade600 : Colors.grey.shade400,
-                width: 2,
-              ),
-            ),
-            child: isCompletada
-                ? const Icon(Icons.check, color: Colors.white, size: 14)
-                : null,
-          ),
-          const SizedBox(width: 16),
-
-          // Información de la tarea
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  nombre,
-                  style: TextStyle(
-                    fontSize: 15,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.darkBackground,
-                    decoration: isCompletada ? TextDecoration.lineThrough : null,
-                  ),
-                ),
-                const SizedBox(height: 6),
-                Text(
-                  fechaCompleta,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.grey.shade600,
-                  ),
-                ),
-              ],
+    return DataRow(
+      cells: [
+        // Celda 1: Checkbox
+        DataCell(Container(
+          width: 20,
+          height: 20,
+          decoration: BoxDecoration(
+            shape: BoxShape.circle,
+            color: isCompletada ? Colors.green.shade600 : Colors.transparent,
+            border: Border.all(
+              color:
+                  isCompletada ? Colors.green.shade600 : Colors.grey.shade400,
+              width: 2,
             ),
           ),
+          child: isCompletada
+              ? const Icon(Icons.check, color: Colors.white, size: 14)
+              : null,
+        )),
 
-          const SizedBox(width: 20),
-
-          // Avatares de miembros asignados
-          Row(
+        // Celda 2: Tarea y Fecha de Creación
+        DataCell(Container(
+          width: 200, // Ancho fijo para el nombre
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: AppColors.accentColor,
-                child: Text(
-                  iniciales,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
+              Text(
+                tarea.nombre,
+                style: TextStyle(
+                  fontWeight: FontWeight.w500,
+                  decoration: isCompletada ? TextDecoration.lineThrough : null,
                 ),
+                overflow: TextOverflow.ellipsis,
               ),
-              const SizedBox(width: 4),
-              CircleAvatar(
-                radius: 16,
-                backgroundColor: Colors.grey.shade300,
-                child: Text(
-                  iniciales,
-                  style: TextStyle(
-                    color: Colors.grey.shade600,
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                  ),
-                ),
+              Text(
+                'Creada: ${_formatDate(tarea.fechaCreacion)}',
+                style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
               ),
             ],
           ),
+        )),
 
-          const SizedBox(width: 16),
-
-          // Nombre del asignado y fecha
-          SizedBox(
-            width: 120,
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  asignado,
-                  style: const TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: AppColors.darkBackground,
-                  ),
-                  overflow: TextOverflow.ellipsis,
-                ),
-                if (fecha != null)
-                  Text(
-                    fecha,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: fecha.contains('Vence') 
-                          ? Colors.red.shade600 
-                          : Colors.grey.shade600,
-                    ),
-                  ),
-              ],
-            ),
-          ),
-
-          const SizedBox(width: 16),
-
-          // Prioridad badge
-          Container(
-            width: 60,
-            alignment: Alignment.center,
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: prioridadColor.withValues(alpha: 0.15),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Text(
-              prioridad,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w600,
-                color: prioridadColor,
+        // Celda 3: Asignados (Avatar e Iniciales)
+        DataCell(Row(
+          children: [
+            CircleAvatar(
+              radius: 14,
+              backgroundColor: AppColors.accentColor,
+              child: Text(
+                iniciales,
+                style: const TextStyle(color: Colors.white, fontSize: 10),
               ),
             ),
+            const SizedBox(width: 8),
+            Text(asignado?.nombre ?? 'Sin Asignar'),
+          ],
+        )),
+
+        // Celda 4: Vencimiento
+        DataCell(Text(
+          fechaStr,
+          style: TextStyle(
+            color: (tarea.fechaVencimiento != null &&
+                    tarea.fechaVencimiento!.isBefore(DateTime.now()) &&
+                    !isCompletada)
+                ? Colors.red
+                : Colors.grey.shade700,
           ),
+        )),
 
-          const SizedBox(width: 10),
+        // Celda 5: Prioridad
+        DataCell(Container(
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+          decoration: BoxDecoration(
+            color: prioridadColor.withOpacity(0.15),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: Text(
+            tarea.prioridad,
+            style: TextStyle(
+              fontSize: 11,
+              fontWeight: FontWeight.w600,
+              color: prioridadColor,
+            ),
+          ),
+        )),
 
-          // Botones de acción
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Botón ver/comentar
+        // Celda 6: Acciones (¡Ahora funcionarán!)
+        DataCell(Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            IconButton(
+              icon: const Icon(Icons.visibility_outlined, size: 18),
+              color: AppColors.accentColor,
+              onPressed: () {
+                developer.log('Ver tarea: ${tarea.nombre}', name: 'TaskAction');
+              },
+              tooltip: 'Ver',
+            ),
+            IconButton(
+              icon: const Icon(Icons.edit_outlined, size: 18),
+              color: Colors.blueGrey,
+              onPressed: () {
+                developer.log('Editar tarea: ${tarea.nombre}',
+                    name: 'TaskAction');
+              },
+              tooltip: 'Editar',
+            ),
+            if (_isAdmin)
               IconButton(
-                icon: const Icon(Icons.visibility_outlined, size: 18),
-                color: AppColors.accentColor,
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
+                icon: const Icon(Icons.delete_outline, size: 18),
+                color: Colors.red,
                 onPressed: () {
-                  developer.log('Ver tarea: $nombre', name: 'TaskAction');
+                  developer.log('Eliminar tarea: ${tarea.nombre}',
+                      name: 'TaskAction');
                 },
-                tooltip: 'Ver',
+                tooltip: 'Eliminar',
               ),
-              const SizedBox(width: 8),
-              // 🎯 TODO: Implementar edición de tarea
-              TextButton(
-                onPressed: () {
-                  developer.log('Editar tarea: $nombre', name: 'TaskAction');
-                },
-                style: TextButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  minimumSize: Size.zero,
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: const Text(
-                  'Editar',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 4),
-              // 🎯 TODO: Implementar eliminación de tarea (solo admin)
-              if (_isAdmin)
-                TextButton(
-                  onPressed: () {
-                    developer.log('Eliminar tarea: $nombre', name: 'TaskAction');
-                  },
-                  style: TextButton.styleFrom(
-                    foregroundColor: Colors.red,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                  child: const Text(
-                    'Eliminar',
-                    style: TextStyle(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ),
-            ],
-          ),
-        ],
-      ),
+          ],
+        )),
+      ],
     );
   }
 
@@ -687,13 +605,18 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
       );
     }
 
+    // 💡 Si los permisos (rol/role) fallan, verás esto
     if (_errorMessage != null || _proyecto == null) {
       return Scaffold(
         appBar: AppBar(title: const Text('Error')),
         body: Center(
-          child: Text(
-            _errorMessage ?? 'El proyecto solicitado no existe.',
-            style: const TextStyle(color: Colors.red),
+          child: Padding(
+            padding: const EdgeInsets.all(20.0),
+            child: Text(
+              _errorMessage ?? 'El proyecto solicitado no existe.',
+              style: const TextStyle(color: Colors.red, fontSize: 16),
+              textAlign: TextAlign.center,
+            ),
           ),
         ),
       );
@@ -720,11 +643,15 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
                 fontWeight: FontWeight.w500,
               ),
             ),
-            Text(
-              ' > Sitio Web Corporativo > ',
-              style: TextStyle(
-                color: Colors.grey.shade600,
-                fontSize: 14,
+            // Flexible para que el nombre del proyecto no desborde el AppBar
+            Flexible(
+              child: Text(
+                ' > ${proyecto.nombre} > ', // Título dinámico
+                style: TextStyle(
+                  color: Colors.grey.shade600,
+                  fontSize: 14,
+                ),
+                overflow: TextOverflow.ellipsis,
               ),
             ),
             const Text(
@@ -743,7 +670,8 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
             child: Row(
               children: [
                 IconButton(
-                  icon: const Icon(Icons.history, color: AppColors.darkBackground),
+                  icon: const Icon(Icons.history,
+                      color: AppColors.darkBackground),
                   tooltip: 'HISTORIAL',
                   onPressed: () {
                     // 🎯 TODO: Implementar historial del proyecto
@@ -751,17 +679,16 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
                   },
                 ),
                 Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
                     border: Border.all(color: Colors.grey.shade300),
                     borderRadius: BorderRadius.circular(4),
                   ),
                   child: Row(
                     children: [
-                      Icon(Icons.insert_drive_file_outlined, 
-                        size: 16, 
-                        color: Colors.grey.shade700
-                      ),
+                      Icon(Icons.insert_drive_file_outlined,
+                          size: 16, color: Colors.grey.shade700),
                       const SizedBox(width: 6),
                       Text(
                         'HISTORIAL',
@@ -782,6 +709,7 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
       body: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(40.0),
+          // La Columna principal es segura
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
@@ -823,14 +751,14 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
                   children: [
                     _buildProgressBar(
                       label: 'Progreso del Proyecto',
-                      percentage: '67%',
+                      percentage: '67%', // 🎯 TODO: Conectar a datos reales
                       subtitle: '67% completado - 8 de 12 tareas finalizadas',
                       color: AppColors.primaryOrange,
                     ),
                     const SizedBox(height: 24),
                     _buildProgressBar(
                       label: 'Recursos',
-                      percentage: '98%',
+                      percentage: '98%', // 🎯 TODO: Conectar a datos reales
                       subtitle: '98% de recursos disponibles',
                       color: AppColors.primaryOrange,
                     ),
