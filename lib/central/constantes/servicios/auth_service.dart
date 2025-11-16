@@ -27,7 +27,8 @@ class AuthService {
         'uid': userCredential.user!.uid,
         'email': email,
         'nombre': nombre,
-        'role': 'usuario',
+        // 💡 CORREGIDO: Ahora se guarda como 'rol' (con 'l')
+        'rol': 'usuario', 
         'timestamp': FieldValue.serverTimestamp(),
       });
     } on FirebaseAuthException catch (e) {
@@ -50,11 +51,13 @@ class AuthService {
 
       if (userDoc.exists) {
         final data = userDoc.data();
-        final rol = data?['rol'] as String?;
+        // ✅ ESTO AHORA ES CORRECTO: Lee 'rol' (con 'l')
+        final rol = data?['rol'] as String?; 
         return rol?.trim();
       }
       return null;
     } catch (e) {
+      print("Error obteniendo el rol del usuario: $e"); // Para debugging
       return null;
     }
   }
