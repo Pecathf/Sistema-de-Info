@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
+import 'dart:developer' as developer;
 import 'pantalla_registro.dart';
 import 'package:sistem_proyect/central/constantes/colores.dart';
 
@@ -59,7 +60,8 @@ class _PantallaInicioSesionState extends State<PantallaInicioSesion> {
         ),
       );
     } on FirebaseAuthException catch (e) {
-      debugPrint('Error de FirebaseAuth: ${e.code}');
+      developer.log('Error de FirebaseAuth: ${e.code}',
+          error: e, name: 'Auth.signIn');
 
       String message;
 

@@ -7,9 +7,13 @@ import 'package:sistem_proyect/funcionalidades/Pantallas/Autenticacion/pantalla_
 class ProfileMenuHelper {
   static final AuthService _authService = AuthService();
 
+  static Future<void> mostrarMenuPerfil(
+      BuildContext context, Offset offset) async {
+    // Capture navigator & messenger synchronously to avoid using BuildContext after await
+    final NavigatorState navigator = Navigator.of(context);
+    final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
 
-  static void mostrarMenuPerfil(BuildContext context, Offset offset) {
-    showMenu(
+    final selected = await showMenu<String>(
       context: context,
       position: RelativeRect.fromLTRB(
         offset.dx - 150,
@@ -18,9 +22,9 @@ class ProfileMenuHelper {
         offset.dy,
       ),
       items: [
-        PopupMenuItem(
-          onTap: () => Future.delayed(Duration.zero, () => _editarPerfil(context)),
-          child: const Row(
+        const PopupMenuItem<String>(
+          value: 'edit',
+          child: Row(
             children: [
               Icon(Icons.edit, size: 20),
               SizedBox(width: 12),
@@ -28,9 +32,9 @@ class ProfileMenuHelper {
             ],
           ),
         ),
-        PopupMenuItem(
-          onTap: () => Future.delayed(Duration.zero, () => _cerrarSesion(context)),
-          child: const Row(
+        const PopupMenuItem<String>(
+          value: 'logout',
+          child: Row(
             children: [
               Icon(Icons.logout, color: Colors.red, size: 20),
               SizedBox(width: 12),
@@ -40,32 +44,26 @@ class ProfileMenuHelper {
         ),
       ],
     );
-  }
 
-  static void _editarPerfil(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (context) => const PantallaEditarPerfil()),
-    );
-  }
-
-  static Future<void> _cerrarSesion(BuildContext context) async {
-    try {
-      await _authService.signOut();
-      if (context.mounted) {
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (context) => const PantallaInicioSesion()),
+    if (selected == 'edit') {
+      navigator.push(
+          MaterialPageRoute(builder: (c) => const PantallaEditarPerfil()));
+    } else if (selected == 'logout') {
+      try {
+        await _authService.signOut();
+        navigator.pushAndRemoveUntil(
+          MaterialPageRoute(builder: (c) => const PantallaInicioSesion()),
           (Route<dynamic> route) => false,
         );
-      }
-    } catch (e) {
-      if (context.mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al cerrar sesión: $e')),
-        );
+      } catch (e) {
+        messenger.showSnackBar(
+            SnackBar(content: Text('Error al cerrar sesión: $e')));
       }
     }
   }
+
+  // Navigation and sign-out are handled inline in mostrarMenuPerfil to avoid
+  // using BuildContext across async gaps.
 }
 
 /// Widget del avatar con hover que muestra el menú de perfil al hacer clic
@@ -96,7 +94,8 @@ class _HoverableProfileAvatarState extends State<HoverableProfileAvatar> {
       onExit: (_) => setState(() => _isHovered = false),
       cursor: SystemMouseCursors.click,
       child: GestureDetector(
-        onTapDown: (details) => ProfileMenuHelper.mostrarMenuPerfil(context, details.globalPosition),
+        onTapDown: (details) => ProfileMenuHelper.mostrarMenuPerfil(
+            context, details.globalPosition),
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 200),
           padding: const EdgeInsets.all(8),

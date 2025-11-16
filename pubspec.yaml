@@ -21,7 +21,8 @@ dependencies:
 
   # Utilidades
   cupertino_icons: ^1.0.2
-  intl: 0.18.1
+  intl: ^0.20.2
+  uuid: ^4.5.2
 
 # Esta es la línea que estaba mal
 dev_dependencies:
@@ -36,4 +37,3 @@ flutter:
   # DECLARACIÓN DE ASSETS
   assets:
     - assets/
-    
