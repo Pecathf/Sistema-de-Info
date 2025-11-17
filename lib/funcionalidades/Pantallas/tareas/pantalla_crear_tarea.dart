@@ -7,7 +7,7 @@ import 'package:sistem_proyect/central/constantes/servicios/task.service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/resource_service.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/tareas/task_member_selection.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/widgets_principal.dart';
-import 'package:intl/intl.dart';
+
 
 class PantallaCrearTarea extends StatefulWidget {
   final String projectId;
@@ -31,6 +31,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
   final TextEditingController _nombreController = TextEditingController();
   final TextEditingController _descripcionController = TextEditingController();
 
+  DateTime? _fechaInicio;
   DateTime? _fechaVencimiento;
   String _prioridad = 'Media';
   List<Usuario> _selectedMembers = [];
@@ -83,12 +84,12 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
     }
   }
 
-  Future<void> _selectDate(BuildContext context) async {
+  Future<void> _selectDate(BuildContext context, bool isFechaInicio) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: _fechaVencimiento ?? DateTime.now(),
-      firstDate: DateTime.now(),
-      lastDate: DateTime(2050),
+      initialDate: (isFechaInicio ? _fechaInicio : _fechaVencimiento) ?? DateTime.now(),
+      firstDate: DateTime(2000),
+      lastDate: DateTime(2101),
       builder: (context, child) {
         final ThemeData base = Theme.of(context);
         return Theme(
@@ -104,8 +105,14 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
       },
     );
 
-    if (picked != null && picked != _fechaVencimiento) {
-      setState(() => _fechaVencimiento = picked);
+    if (picked != null) {
+      setState(() {
+        if (isFechaInicio) {
+          _fechaInicio = picked;
+        } else {
+          _fechaVencimiento = picked;
+        }
+      });
     }
   }
 
@@ -172,6 +179,16 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
   Future<void> _createTask() async {
     if (!_formKey.currentState!.validate()) return;
 
+    if (_fechaInicio == null || _fechaVencimiento == null) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Por favor, selecciona las fechas de inicio y vencimiento.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+      return;
+    }
+
     setState(() => _isCreating = true);
 
     try {
@@ -192,6 +209,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
         creadorUid: currentUserUid,
         miembrosUid: _selectedMembers.map((m) => m.uid).toList(),
         recursosAsignados: recursosAsignados,
+        fechaInicio: _fechaInicio,
         fechaVencimiento: _fechaVencimiento,
         prioridad: _prioridad,
         fechaCreacion: DateTime.now(),
@@ -240,6 +258,11 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
     }
   }
 
+  String _formatDate(DateTime? date) {
+    if (date == null) return '';
+    return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
+  }
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -271,57 +294,55 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
               children: [
                 isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
                 const SizedBox(height: 30),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    OutlinedButton(
-                      onPressed:
-                          _isCreating ? null : () => Navigator.pop(context),
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: AppColors.primaryOrange,
-                        side: BorderSide(color: AppColors.primaryOrange),
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 40, vertical: 15),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
+                Center(
+                  child: ElevatedButton(
+                    onPressed: _isCreating ? null : _createTask,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryOrange,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 50, vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      child: const Text(
-                        'Cancelar',
-                        style: TextStyle(fontWeight: FontWeight.bold),
-                      ),
+                      elevation: 3,
                     ),
-                    const SizedBox(width: 20),
-                    ElevatedButton(
-                      onPressed: _isCreating ? null : _createTask,
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.primaryOrange,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 50, vertical: 15),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        elevation: 3,
-                      ),
-                      child: _isCreating
-                          ? const SizedBox(
-                              width: 20,
-                              height: 20,
-                              child: CircularProgressIndicator(
-                                strokeWidth: 2,
-                                color: Colors.white,
-                              ),
-                            )
-                          : const Text(
-                              'Crear Tarea',
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontSize: 16,
-                                fontWeight: FontWeight.bold,
-                              ),
+                    child: _isCreating
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
                             ),
+                          )
+                        : const Text(
+                            'Crear',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Center(
+                  child: OutlinedButton(
+                    onPressed: _isCreating ? null : () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primaryOrange,
+                      side: BorderSide(color: AppColors.primaryOrange),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 40, vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
                     ),
-                  ],
+                    child: const Text(
+                      'Volver',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -337,7 +358,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
       children: [
         Expanded(child: _buildTaskForm()),
         const SizedBox(width: 40),
-        Expanded(child: _buildAssignmentsPanel()),
+        Expanded(child: _buildResourcesPanel()),
       ],
     );
   }
@@ -347,7 +368,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
       children: [
         _buildTaskForm(),
         const SizedBox(height: 30),
-        _buildAssignmentsPanel(),
+        _buildResourcesPanel(),
       ],
     );
   }
@@ -364,7 +385,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               const Text(
-                'Información de la Tarea',
+                'Crear Tarea',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
@@ -381,6 +402,10 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
                     borderRadius: BorderRadius.circular(8),
                     borderSide:
                         BorderSide(color: AppColors.primaryOrange, width: 2),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
                   ),
                 ),
                 validator: (value) {
@@ -406,7 +431,17 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
                     borderSide:
                         BorderSide(color: AppColors.primaryOrange, width: 2),
                   ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
                 ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'La descripcion no puede estar vacío';
+                  }
+                  return null;
+                },
               ),
               const SizedBox(height: 15),
 
@@ -422,6 +457,10 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
                     borderSide:
                         BorderSide(color: AppColors.primaryOrange, width: 2),
                   ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
                 ),
                 items: _priorities
                     .map((p) => DropdownMenuItem(value: p, child: Text(p)))
@@ -432,12 +471,12 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
               ),
               const SizedBox(height: 15),
 
-              // Fecha de Vencimiento
+              // Fecha de Inicio
               InkWell(
-                onTap: () => _selectDate(context),
+                onTap: () => _selectDate(context, true),
                 child: InputDecorator(
                   decoration: InputDecoration(
-                    labelText: 'Fecha de Vencimiento',
+                    labelText: 'Fecha de Inicio',
                     suffixIcon: Icon(Icons.calendar_today,
                         color: AppColors.primaryOrange),
                     border: OutlineInputBorder(
@@ -447,11 +486,50 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
                       borderSide:
                           BorderSide(color: AppColors.primaryOrange, width: 2),
                     ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                  ),
+                  child: Text(
+                    _fechaInicio == null
+                        ? 'Seleccionar fecha'
+                        : _formatDate(_fechaInicio),
+                    style: TextStyle(
+                      color: _fechaInicio == null
+                          ? Colors.grey
+                          : Colors.black,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 15),
+
+              // Fecha Límite
+              InkWell(
+                onTap: () => _selectDate(context, false),
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: 'Fecha Límite',
+                    suffixIcon: Icon(Icons.calendar_today,
+                        color: AppColors.primaryOrange),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide:
+                          BorderSide(color: AppColors.primaryOrange, width: 2),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
                   ),
                   child: Text(
                     _fechaVencimiento == null
                         ? 'Seleccionar fecha'
-                        : DateFormat('dd/MM/yyyy').format(_fechaVencimiento!),
+                        : _formatDate(_fechaVencimiento),
                     style: TextStyle(
                       color: _fechaVencimiento == null
                           ? Colors.grey
@@ -468,7 +546,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
     );
   }
 
-  Widget _buildAssignmentsPanel() {
+  Widget _buildResourcesPanel() {
     return Card(
       elevation: 3,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
@@ -478,138 +556,196 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const Text(
-              'Asignaciones',
+              'Recursos',
               style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
             ),
             const SizedBox(height: 20),
 
-            // Miembros
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Miembros (${_selectedMembers.length})',
-                  style: const TextStyle(
-                      fontSize: 16, fontWeight: FontWeight.w600),
-                ),
-                ElevatedButton.icon(
-                  onPressed: _selectMembers,
-                  icon: const Icon(Icons.person_add,
-                      color: Colors.white, size: 18),
-                  label: const Text('Asignar',
-                      style: TextStyle(color: Colors.white)),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: AppColors.primaryOrange,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 15, vertical: 10),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                  ),
-                ),
-              ],
+            // Recursos Humanos
+            Text(
+              'Recursos Humanos',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
             ),
             const SizedBox(height: 10),
+            Text(
+              '${_selectedMembers.length}',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primaryOrange,
+              ),
+            ),
+            const SizedBox(height: 15),
 
-            if (_selectedMembers.isEmpty)
-              Text('No hay miembros asignados',
-                  style: TextStyle(color: Colors.grey.shade600))
-            else
-              Wrap(
-                spacing: 8.0,
-                runSpacing: 8.0,
+            if (_selectedMembers.isNotEmpty)
+              Column(
                 children: _selectedMembers.map((member) {
-                  return Chip(
-                    avatar: CircleAvatar(
-                      backgroundColor: AppColors.accentColor,
-                      child: Text(
-                        member.nombre.isNotEmpty
-                            ? member.nombre[0].toUpperCase()
-                            : member.email[0].toUpperCase(),
-                        style:
-                            const TextStyle(color: Colors.white, fontSize: 12),
-                      ),
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 5.0),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundColor: member.uid.hashCode.isEven
+                              ? AppColors.accentColor
+                              : AppColors.primaryOrange,
+                          child: Text(
+                            member.nombre.isNotEmpty
+                                ? member.nombre[0].toUpperCase()
+                                : (member.email.isNotEmpty
+                                    ? member.email[0].toUpperCase()
+                                    : '?'),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            member.nombre.isNotEmpty
+                                ? member.nombre
+                                : member.email,
+                            style: TextStyle(
+                                fontSize: 15, color: Colors.grey.shade800),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
                     ),
-                    label: Text(member.nombre.isNotEmpty
-                        ? member.nombre
-                        : member.email),
-                    onDeleted: () {
-                      setState(() {
-                        _selectedMembers
-                            .removeWhere((m) => m.uid == member.uid);
-                      });
-                    },
                   );
                 }).toList(),
+              )
+            else
+              Text(
+                'No se han asignado miembros.',
+                style: TextStyle(color: Colors.grey.shade600),
               ),
+
+            const SizedBox(height: 20),
+
+            // Botón Agregar miembros
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _selectMembers,
+                icon: const Icon(Icons.person_add, color: Colors.white, size: 20),
+                label: const Text('Agregar miembros',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryOrange,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
 
             const SizedBox(height: 30),
 
-            // Recursos
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'Recursos (${_selectedResources.length})',
-                      style: const TextStyle(
-                          fontSize: 16, fontWeight: FontWeight.w600),
-                    ),
-                    if (!_isLoadingResources)
-                      Text(
-                        '${_availableResources.length} disponibles en el proyecto',
-                        style: TextStyle(
-                            fontSize: 11, color: Colors.grey.shade600),
-                      ),
-                  ],
-                ),
-                Row(
-                  children: [
-                    if (!_isLoadingResources && _availableResources.isEmpty)
-                      IconButton(
-                        icon: const Icon(Icons.refresh, size: 20),
-                        onPressed: _cargarRecursos,
-                        tooltip: 'Recargar recursos',
-                      ),
-                    ElevatedButton.icon(
-                      onPressed:
-                          _isLoadingResources ? null : _showResourceSelector,
-                      icon: const Icon(Icons.inventory_2,
-                          color: Colors.white, size: 18),
-                      label: const Text('Asignar',
-                          style: TextStyle(color: Colors.white)),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: AppColors.accentColor,
-                        padding: const EdgeInsets.symmetric(
-                            horizontal: 15, vertical: 10),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
+            // Recursos Materiales
+            Text(
+              'Recursos Materiales',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
             ),
             const SizedBox(height: 10),
+            Text(
+              '${_selectedResources.length}',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primaryOrange,
+              ),
+            ),
+            if (!_isLoadingResources && _availableResources.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text(
+                  '${_availableResources.where((r) => r.cantidadDisponible > 0).length} disponibles en el proyecto',
+                  style: TextStyle(
+                      fontSize: 11, color: Colors.grey.shade600),
+                ),
+              ),
+            const SizedBox(height: 15),
 
             if (_isLoadingResources)
               const Center(child: CircularProgressIndicator())
-            else if (_selectedResources.isEmpty)
-              Text('No hay recursos asignados',
-                  style: TextStyle(color: Colors.grey.shade600))
-            else
+            else if (_availableResources.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.inventory_2_outlined,
+                        size: 48, color: Colors.grey.shade400),
+                    const SizedBox(height: 12),
+                    Text(
+                      'No hay recursos en este proyecto',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (_availableResources.every((r) => r.cantidadDisponible == 0))
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.warning_amber_rounded,
+                        size: 48, color: Colors.orange.shade400),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Todos los recursos están agotados',
+                      style: TextStyle(
+                        color: Colors.orange.shade700,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'No hay cantidad disponible para asignar',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (_selectedResources.isNotEmpty)
               Column(
                 children: _selectedResources.entries.map((entry) {
                   final recurso =
                       _availableResources.firstWhere((r) => r.id == entry.key);
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 8.0),
+                    padding: const EdgeInsets.symmetric(vertical: 5.0),
                     child: Row(
                       children: [
                         CircleAvatar(
+                          radius: 18,
                           backgroundColor:
                               AppColors.accentColor.withValues(alpha: 0.2),
                           child: Text(recurso.icono,
@@ -619,23 +755,48 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
                         Expanded(
                           child: Text(
                             '${recurso.nombre} (${entry.value} unidades)',
-                            style: const TextStyle(fontSize: 15),
+                            style: TextStyle(
+                                fontSize: 15, color: Colors.grey.shade800),
+                            overflow: TextOverflow.ellipsis,
                           ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.close,
-                              color: Colors.red, size: 20),
-                          onPressed: () {
-                            setState(() {
-                              _selectedResources.remove(entry.key);
-                            });
-                          },
                         ),
                       ],
                     ),
                   );
                 }).toList(),
+              )
+            else
+              Text(
+                'No se han asignado recursos materiales.',
+                style: TextStyle(color: Colors.grey.shade600),
               ),
+
+            const SizedBox(height: 20),
+
+            // Botón Agregar recursos
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: (_isLoadingResources || 
+                           _availableResources.isEmpty || 
+                           _availableResources.every((r) => r.cantidadDisponible == 0))
+                    ? null 
+                    : _showResourceSelector,
+                icon:
+                    const Icon(Icons.inventory_2, color: Colors.white, size: 20),
+                label: const Text('Agregar recursos',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accentColor,
+                  disabledBackgroundColor: Colors.grey.shade300,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
           ],
         ),
       ),
@@ -663,7 +824,7 @@ class _ResourceAssignmentDialog extends StatefulWidget {
 class _ResourceAssignmentDialogState extends State<_ResourceAssignmentDialog> {
   late Map<String, int> _assignments;
   final Map<String, TextEditingController> _controllers = {};
-  final Map<String, String?> _errors = {}; // Para mostrar errores de validación
+  final Map<String, String?> _errors = {};
 
   @override
   void initState() {
@@ -689,7 +850,6 @@ class _ResourceAssignmentDialogState extends State<_ResourceAssignmentDialog> {
   void _validateAndUpdateAssignment(RecursoMaterial recurso, String value) {
     setState(() {
       if (value.isEmpty) {
-        // Si está vacío, eliminar la asignación
         _assignments.remove(recurso.id);
         _errors[recurso.id] = null;
         return;
@@ -714,7 +874,6 @@ class _ResourceAssignmentDialogState extends State<_ResourceAssignmentDialog> {
         return;
       }
 
-      // Todo bien, asignar
       _errors[recurso.id] = null;
       _assignments[recurso.id] = cantidad;
     });

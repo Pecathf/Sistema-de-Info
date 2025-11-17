@@ -9,6 +9,7 @@ class TaskModel {
   final String creadorUid; // Quién creó la tarea
   final List<String> miembrosUid; // UIDs de los miembros asignados
   final List<RecursoMaterial> recursosAsignados; // Lista de recursos
+  final DateTime? fechaInicio; // NUEVO CAMPO
   final DateTime? fechaVencimiento;
   final String prioridad; // 'Alta', 'Media', 'Baja'
   final String estado; // 'Pendiente', 'En Progreso', 'Completada'
@@ -22,6 +23,7 @@ class TaskModel {
     required this.creadorUid,
     required this.miembrosUid,
     required this.recursosAsignados,
+    this.fechaInicio, // NUEVO CAMPO
     this.fechaVencimiento,
     this.prioridad = 'Media',
     this.estado = 'Pendiente',
@@ -37,6 +39,9 @@ class TaskModel {
       'creadorUid': creadorUid,
       'miembrosUid': miembrosUid,
       'recursosAsignados': recursosAsignados.map((r) => r.toMap()).toList(),
+      'fechaInicio': fechaInicio != null
+          ? Timestamp.fromDate(fechaInicio!)
+          : null, // NUEVO CAMPO
       'fechaVencimiento': fechaVencimiento != null
           ? Timestamp.fromDate(fechaVencimiento!)
           : null,
@@ -60,6 +65,7 @@ class TaskModel {
           .map((r) => RecursoMaterial.fromMap(
               r as Map<String, dynamic>, r['id'] as String? ?? ''))
           .toList(),
+      fechaInicio: (map['fechaInicio'] as Timestamp?)?.toDate(), // NUEVO CAMPO
       fechaVencimiento: (map['fechaVencimiento'] as Timestamp?)?.toDate(),
       prioridad: map['prioridad'] as String? ?? 'Media',
       estado: map['estado'] as String? ?? 'Pendiente',
