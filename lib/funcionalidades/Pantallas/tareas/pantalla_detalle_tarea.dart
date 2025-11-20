@@ -4,6 +4,7 @@ import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart';
 import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart';
 import 'package:sistem_proyect/central/constantes/colores.dart';
 import 'package:intl/intl.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/tareas/comentarios_section.dart';
 
 class PantallaDetalleTarea extends StatefulWidget {
   final TaskModel tarea;
@@ -137,11 +138,11 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
                     ),
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                     decoration: BoxDecoration(
-                      color:
-                          _getStatusColor(widget.tarea.estado).withValues(alpha: 0.15),
+                      color: _getStatusColor(widget.tarea.estado)
+                          .withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: _getStatusColor(widget.tarea.estado),
@@ -479,7 +480,8 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
                   shrinkWrap: true,
                   physics: const NeverScrollableScrollPhysics(),
                   itemCount: widget.tarea.recursosAsignados.length,
-                  separatorBuilder: (context, index) => const Divider(height: 16),
+                  separatorBuilder: (context, index) =>
+                      const Divider(height: 16),
                   itemBuilder: (context, index) {
                     final recurso = widget.tarea.recursosAsignados[index];
                     return Row(
@@ -487,8 +489,7 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
                         Container(
                           padding: const EdgeInsets.all(12),
                           decoration: BoxDecoration(
-                            color:
-                                AppColors.accentColor.withValues(alpha: 0.1),
+                            color: AppColors.accentColor.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
@@ -640,78 +641,44 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
   }
 
   Widget _buildCommentsSection() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(6),
-        border: Border.all(color: Colors.grey.shade200),
-      ),
+    // ESTA ES LA SECCIÓN QUE SE REEMPLAZA
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          // Título de la sección
           Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Row(
-                children: [
-                  Icon(Icons.comment, size: 22, color: AppColors.primaryOrange),
-                  const SizedBox(width: 8),
-                  const Text(
-                    'Comentarios',
-                    style: TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.darkBackground,
-                    ),
-                  ),
-                ],
-              ),
-              Container(
-                padding:
-                    const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: Colors.grey.shade100,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Text(
-                  'Próximamente',
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.grey.shade600,
-                  ),
+              Text(
+                'Comentarios',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade800,
                 ),
               ),
+              const Spacer(),
+              // ******* SE QUITA EL TAG 'PRÓXIMAMENTE' ********
             ],
           ),
-          const SizedBox(height: 20),
-          Center(
-            child: Padding(
-              padding: const EdgeInsets.all(40.0),
-              child: Column(
-                children: [
-                  Icon(Icons.chat_bubble_outline,
-                      size: 64, color: Colors.grey.shade300),
-                  const SizedBox(height: 16),
-                  Text(
-                    'Sección de comentarios',
-                    style: TextStyle(
-                      color: Colors.grey.shade600,
-                      fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Esta funcionalidad estará disponible próximamente',
-                    style: TextStyle(
-                      color: Colors.grey.shade500,
-                      fontSize: 13,
-                    ),
-                    textAlign: TextAlign.center,
-                  ),
-                ],
+          const SizedBox(height: 10),
+          // ******* SE QUITA EL CONTENIDO DE 'PRÓXIMAMENTE' ********
+
+          // Aquí puedes insertar tu Widget de Comentarios (Ejemplo: CommentWidget())
+          // Por ahora, se deja un placeholder simple para que sepa dónde irá la sección.
+          Container(
+            padding: const EdgeInsets.all(16.0),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.grey.shade200),
+            ),
+            child: Center(
+              child: Text(
+                '*** Aquí irá tu Widget de Comentarios (e.g., Lista de Comentarios y Campo de Texto para Nuevo Comentario) ***',
+                style: TextStyle(color: Colors.blueGrey.shade400, fontSize: 14),
+                textAlign: TextAlign.center,
               ),
             ),
           ),
