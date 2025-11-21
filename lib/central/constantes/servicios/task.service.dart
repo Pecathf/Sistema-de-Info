@@ -5,12 +5,17 @@ import 'dart:developer' as developer;
 class TaskService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String _collectionName = 'tareas';
+  final String _projectsCollection = 'proyectos';
 
   // 1. Crear una nueva tarea
   Future<String?> crearTarea(TaskModel tarea) async {
     try {
-      final docRef =
-          await _firestore.collection(_collectionName).add(tarea.toMap());
+      final docRef = await _firestore.collection(_collectionName).add(tarea.toMap());
+      
+      // IMPORTANTE: Al crear tarea, recalculamos el progreso 
+      // (porque aumenta el total de tareas y el % baja)
+      await _recalcularProgresoProyecto(tarea.proyectoId);
+      
       return docRef.id;
     } catch (e, st) {
       developer.log(
@@ -37,7 +42,75 @@ class TaskService {
     });
   }
 
-  Future<void> eliminarTarea(String taskId) async {}
+  // 3. Eliminar tarea (Implementada y conectada al progreso)
+  Future<void> eliminarTarea(String taskId, String projectId) async {
+    try {
+      await _firestore.collection(_collectionName).doc(taskId).delete();
+      // Al eliminar, recalculamos el progreso
+      await _recalcularProgresoProyecto(projectId);
+    } catch (e) {
+      developer.log('Error al eliminar tarea: $e');
+      throw Exception('Fallo al eliminar tarea');
+    }
+  }
 
-  // 3. Implementar más métodos (update, delete, getById) si es necesario
+  // 4. Actualizar estado (MODIFICADO para actualizar barra de proyecto)
+  Future<void> updateTaskStatus(String taskId, String projectId, String newStatus) async {
+    try {
+      // A. Actualizamos el estado de la tarea
+      await _firestore.collection(_collectionName).doc(taskId).update({
+        'estado': newStatus,
+      });
+
+      // B. Recalculamos el progreso del proyecto inmediatamente
+      await _recalcularProgresoProyecto(projectId);
+
+    } catch (e) {
+      print('Error al actualizar estado y progreso: $e');
+      rethrow;
+    }
+  }
+
+  // ----------------------------------------------------------------------
+  // MÉTODO PRIVADO: EL CEREBRO MATEMÁTICO
+  // ----------------------------------------------------------------------
+  Future<void> _recalcularProgresoProyecto(String projectId) async {
+    try {
+      // 1. Obtenemos TODAS las tareas de este proyecto
+      final querySnapshot = await _firestore
+          .collection(_collectionName)
+          .where('proyectoId', isEqualTo: projectId)
+          .get();
+
+      final totalTareas = querySnapshot.docs.length;
+      
+      // Si no hay tareas, el progreso es 0
+      if (totalTareas == 0) {
+        await _firestore.collection(_projectsCollection).doc(projectId).update({
+          'progreso': 0.0,
+        });
+        return;
+      }
+
+      // 2. Contamos cuántas dicen 'Completada'
+      final tareasCompletadas = querySnapshot.docs
+          .where((doc) => doc['estado'] == 'Completada')
+          .length;
+
+      // 3. Calculamos el decimal (Ej: 5/10 = 0.5)
+      double nuevoProgreso = tareasCompletadas / totalTareas;
+
+      // 4. Guardamos el nuevo progreso en el documento del PROYECTO
+      await _firestore.collection(_projectsCollection).doc(projectId).update({
+        'progreso': nuevoProgreso,
+        // Opcional: Actualizar estado del proyecto si llega al 100%
+        // 'estado': nuevoProgreso == 1.0 ? 'Completado' : 'En Progreso',
+      });
+      
+      developer.log('Progreso actualizado: ${(nuevoProgreso * 100).toStringAsFixed(1)}%');
+      
+    } catch (e) {
+      print('Error crítico recalculando el porcentaje del proyecto: $e');
+    }
+  }
 }

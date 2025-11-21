@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart'; // <--- IMPORTANTE: Agregado
 import 'package:sistem_proyect/central/constantes/modelos/project_model.dart';
 import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart';
 import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart';
@@ -114,7 +115,7 @@ class ProjectCardWidget extends StatelessWidget {
                 ),
                 const SizedBox(height: 15),
 
-                // Sección Media: Metadata
+                // Sección Media: Metadata (Fechas)
                 _buildMetaRow(
                   Icons.date_range,
                   'Inicio: ${_formatDate(proyecto.fechaInicio)}',
@@ -124,30 +125,64 @@ class ProjectCardWidget extends StatelessWidget {
                   Icons.calendar_today,
                   'Límite: ${_formatDate(proyecto.fechaLimite)}',
                 ),
+                
+                // --- AQUI COMIENZA EL CAMBIO IMPORTANTE ---
+                // Usamos StreamBuilder para calcular el progreso EN VIVO
                 const SizedBox(height: 5),
-                _buildMetaRow(
-                  Icons.trending_up,
-                  'Progreso: ${proyecto.progreso}%',
-                ),
-                const SizedBox(height: 10),
+                StreamBuilder<QuerySnapshot>(
+                  stream: FirebaseFirestore.instance
+                      .collection('tareas')
+                      .where('proyectoId', isEqualTo: proyecto.id)
+                      .snapshots(),
+                  builder: (context, snapshot) {
+                    double progress = 0.0;
+                    int total = 0;
+                    int completed = 0;
 
-                // Barra de progreso
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(10),
-                  child: LinearProgressIndicator(
-                    value: proyecto.progreso / 100,
-                    backgroundColor: Colors.grey.shade300,
-                    valueColor: const AlwaysStoppedAnimation<Color>(
-                        AppColors.primaryOrange),
-                    minHeight: 8,
-                  ),
-                ),
-                const SizedBox(height: 10),
+                    if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+                      final docs = snapshot.data!.docs;
+                      total = docs.length;
+                      // Contamos cuántas están completadas
+                      completed = docs
+                          .where((doc) => doc['estado'] == 'Completada')
+                          .length;
+                      
+                      if (total > 0) {
+                        progress = completed / total;
+                      }
+                    }
 
-                _buildMetaRow(
-                  Icons.task_alt,
-                  'Tareas completadas: 8/12',
+                    return Column(
+                      children: [
+                        _buildMetaRow(
+                          Icons.trending_up,
+                          'Progreso: ${(progress * 100).toInt()}%',
+                        ),
+                        const SizedBox(height: 10),
+
+                        // Barra de progreso dinámica
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(10),
+                          child: LinearProgressIndicator(
+                            value: progress,
+                            backgroundColor: Colors.grey.shade300,
+                            valueColor: const AlwaysStoppedAnimation<Color>(
+                                AppColors.primaryOrange),
+                            minHeight: 8,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+
+                        _buildMetaRow(
+                          Icons.task_alt,
+                          'Tareas completadas: $completed/$total',
+                        ),
+                      ],
+                    );
+                  },
                 ),
+                // --- FIN DEL CAMBIO ---
+
                 const SizedBox(height: 15),
 
                 // Sección de Miembros
@@ -181,7 +216,7 @@ class ProjectCardWidget extends StatelessWidget {
 
                 const SizedBox(height: 15),
 
-                // BOTONES DE ACCIÓN (Ahora en columna si es móvil)
+                // BOTONES DE ACCIÓN
                 isMobile && isAdmin
                     ? Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,

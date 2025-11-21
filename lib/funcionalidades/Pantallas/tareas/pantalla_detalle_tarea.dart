@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:sistem_proyect/central/constantes/modelos/task_model.dart';
 import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart';
 import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart';
+import 'package:sistem_proyect/central/constantes/servicios/task.service.dart'; // Asegúrate de importar esto
 import 'package:sistem_proyect/central/constantes/colores.dart';
 import 'package:intl/intl.dart';
 
@@ -19,12 +20,16 @@ class PantallaDetalleTarea extends StatefulWidget {
 
 class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
   final UserDataService _userDataService = UserDataService();
+  final TaskService _taskService = TaskService(); // Instancia del servicio
+  
   List<Usuario> _miembros = [];
   bool _isLoading = true;
+  late String _currentStatus; // Variable local para el estado
 
   @override
   void initState() {
     super.initState();
+    _currentStatus = widget.tarea.estado; // Inicializamos con el estado actual
     _cargarMiembros();
   }
 
@@ -48,6 +53,32 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
           _miembros = [];
           _isLoading = false;
         });
+      }
+    }
+  }
+
+  // Función para actualizar el estado en BD y visualmente
+  Future<void> _updateStatus(String newStatus) async {
+    try {
+      await _taskService.updateTaskStatus(widget.tarea.id,widget.tarea.id, newStatus);
+      
+      if (mounted) {
+        setState(() {
+          _currentStatus = newStatus;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Estado actualizado a $newStatus'),
+            backgroundColor: Colors.green,
+            duration: const Duration(seconds: 2),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Error al actualizar: $e'), backgroundColor: Colors.red),
+        );
       }
     }
   }
@@ -122,7 +153,7 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Título y Estado
+              // Título y Selector de Estado
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -136,24 +167,41 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
                       ),
                     ),
                   ),
+                  const SizedBox(width: 10),
+                  // WIDGET DE ESTADO MODIFICADO (Dropdown)
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     decoration: BoxDecoration(
-                      color:
-                          _getStatusColor(widget.tarea.estado).withValues(alpha: 0.15),
+                      color: _getStatusColor(_currentStatus).withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(20),
                       border: Border.all(
-                        color: _getStatusColor(widget.tarea.estado),
+                        color: _getStatusColor(_currentStatus),
                         width: 1,
                       ),
                     ),
-                    child: Text(
-                      widget.tarea.estado.toUpperCase(),
-                      style: TextStyle(
-                        color: _getStatusColor(widget.tarea.estado),
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                    child: DropdownButtonHideUnderline(
+                      child: DropdownButton<String>(
+                        value: _currentStatus,
+                        icon: Icon(Icons.arrow_drop_down, 
+                            color: _getStatusColor(_currentStatus)),
+                        isDense: true,
+                        style: TextStyle(
+                          color: _getStatusColor(_currentStatus),
+                          fontWeight: FontWeight.bold,
+                          fontSize: 12,
+                        ),
+                        items: ['Pendiente', 'Completada']
+                            .map((String estado) {
+                          return DropdownMenuItem<String>(
+                            value: estado,
+                            child: Text(estado.toUpperCase()),
+                          );
+                        }).toList(),
+                        onChanged: (String? newValue) {
+                          if (newValue != null && newValue != _currentStatus) {
+                            _updateStatus(newValue);
+                          }
+                        },
                       ),
                     ),
                   ),
@@ -368,7 +416,7 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
             date: _formatDate(widget.tarea.fechaVencimiento),
             isOverdue: widget.tarea.fechaVencimiento != null &&
                 widget.tarea.fechaVencimiento!.isBefore(DateTime.now()) &&
-                widget.tarea.estado != 'Completada',
+                _currentStatus != 'Completada', // Usamos _currentStatus aquí también
           ),
         ],
       ),

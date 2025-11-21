@@ -8,11 +8,12 @@ class Proyecto {
   final DateTime fechaCreacion;
   final DateTime fechaInicio;
   final DateTime fechaLimite;
-  final int progreso;
+  final double progreso; // <--- CAMBIO IMPORTANTE: de int a double
   final String estado;
   final String creadorUid;
   final List<String> miembrosUid;
-  final List<RecursoMaterial> recursosMateriales; 
+  final List<RecursoMaterial> recursosMateriales;
+
   Proyecto({
     required this.id,
     required this.nombre,
@@ -24,7 +25,7 @@ class Proyecto {
     required this.estado,
     required this.creadorUid,
     required this.miembrosUid,
-    required this.recursosMateriales, 
+    required this.recursosMateriales,
   });
 
   factory Proyecto.fromMap(Map<String, dynamic> map, String id) {
@@ -45,11 +46,12 @@ class Proyecto {
       fechaCreacion: (map['fechaCreacion'] as Timestamp?)?.toDate() ?? DateTime.now(),
       fechaInicio: (map['fechaInicio'] as Timestamp?)?.toDate() ?? DateTime.now(),
       fechaLimite: (map['fechaLimite'] as Timestamp?)?.toDate() ?? DateTime.now(),
-      progreso: map['progreso'] ?? 0,
+      // CAMBIO AQUI: .toDouble() asegura que lea 0.5 correctamente en lugar de redondear a 0
+      progreso: (map['progreso'] ?? 0).toDouble(), 
       estado: map['estado'] ?? 'Activo',
       creadorUid: map['creadorUid'] ?? '',
       miembrosUid: List<String>.from(map['miembrosUid'] ?? []),
-      recursosMateriales: recursos, 
+      recursosMateriales: recursos,
     );
   }
 
@@ -75,7 +77,7 @@ class Proyecto {
     DateTime? fechaCreacion,
     DateTime? fechaInicio,
     DateTime? fechaLimite,
-    int? progreso,
+    double? progreso, // <--- CAMBIO AQUI TAMBIÉN
     String? estado,
     String? creadorUid,
     List<String>? miembrosUid,

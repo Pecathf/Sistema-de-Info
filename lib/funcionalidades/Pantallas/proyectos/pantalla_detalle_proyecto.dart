@@ -33,8 +33,8 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
   final ProjectService _projectService = ProjectService();
   final UserDataService _userDataService = UserDataService();
   final AuthService _authService = AuthService();
-  final TaskService _taskService = TaskService();
   final ResourceService _resourceService = ResourceService();
+  final TaskService _taskService = TaskService();
 
   Proyecto? _proyecto;
   List<Usuario> _miembros = [];
@@ -51,7 +51,11 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
     super.initState();
     _checkIfAdmin();
     _cargarDatosProyecto();
+
+    
   }
+
+  
 
   Future<void> _checkIfAdmin() async {
     final isAdmin = await _authService.isAdmin();
@@ -289,57 +293,76 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
   }
 
   Widget _buildTaskManagementSection() {
-    // Título dinámico según el rol
-    final String tituloSeccion =
-        _isAdmin ? 'Tareas del Proyecto' : 'Mis Tareas Asignadas';
+  // Título dinámico según el rol
+  final String tituloSeccion =
+      _isAdmin ? 'Tareas del Proyecto' : 'Mis Tareas Asignadas';
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              tituloSeccion,
-              style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: AppColors.darkBackground,
+  return Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: [
+      // --- Encabezado: Título y Botón "Nueva Tarea" ---
+      Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          Text(
+            tituloSeccion,
+            style: const TextStyle(
+              fontSize: 18,
+              fontWeight: FontWeight.bold,
+              color: AppColors.darkBackground,
+            ),
+          ),
+          if (_isAdmin)
+            ElevatedButton.icon(
+              onPressed: _abrirPantallaCrearTarea,
+              icon: const Icon(Icons.add, color: Colors.white, size: 18),
+              label: const Text(
+                'Nueva Tarea',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                  fontSize: 14,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppColors.primaryOrange,
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 12,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                elevation: 0,
               ),
             ),
-            if (_isAdmin)
-              ElevatedButton.icon(
-                onPressed: _abrirPantallaCrearTarea,
-                icon: const Icon(Icons.add, color: Colors.white, size: 18),
-                label: const Text(
-                  'Nueva Tarea',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppColors.primaryOrange,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(6),
-                  ),
-                  elevation: 0,
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(height: 20),
-        _buildTaskFilters(),
-        const SizedBox(height: 20),
-        _buildTasksDataTable(),
-      ],
-    );
-  }
+        ],
+      ),
+
+      const SizedBox(height: 20),
+
+      // --- Filtros de Tareas ---
+      _buildTaskFilters(),
+
+      const SizedBox(height: 20),
+
+      // --- AQUÍ ESTÁ EL CAMBIO PARA MÓVIL / ESCRITORIO ---
+      LayoutBuilder(
+        builder: (context, constraints) {
+          // Si el ancho es mayor a 800px, mostramos la Tabla (Escritorio)
+          if (constraints.maxWidth > 800) {
+            return _buildTasksDataTable();
+          } 
+          // Si es menor, mostramos la Lista de Tarjetas (Móvil)
+          else {
+            // Asegúrate de haber copiado la función _buildMobileTaskList que te di antes
+            return _buildMobileTaskList(); 
+          }
+        },
+      ),
+    ],
+  );
+}
 
   Widget _buildTaskFilters() {
     final filters = ['Todas', 'Pendientes', 'Completadas', 'Vencidas'];
@@ -383,6 +406,7 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
   }
 
   Widget _buildTasksDataTable() {
+
     final tareasFiltradas = _tareas;
 
     if (tareasFiltradas.isEmpty) {
@@ -605,6 +629,7 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+    // --- BOTÓN VER (MODIFICADO CON EL REFRESH) ---
                 IconButton(
                   icon: const Icon(Icons.visibility_outlined, size: 20),
                   color: AppColors.accentColor,
@@ -615,7 +640,10 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
                         builder: (context) =>
                             PantallaDetalleTarea(tarea: tarea),
                       ),
-                    );
+                    ).then((_) {
+                      // Al volver del detalle, recargamos los datos para actualizar barra y checks
+                      _cargarDatosProyecto();
+                    });
                   },
                   tooltip: 'Ver',
                 ),
@@ -674,22 +702,25 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
 
     return DataRow(
       cells: [
-        DataCell(Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isCompletada ? Colors.green.shade600 : Colors.transparent,
-            border: Border.all(
-              color:
-                  isCompletada ? Colors.green.shade600 : Colors.grey.shade400,
-              width: 2,
+        DataCell(
+  // YA NO HAY INKWELL NI ONTAP AQUÍ
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              // Mantiene la lógica visual: Verde si es completada, transparente si no
+              color: isCompletada ? Colors.green.shade600 : Colors.transparent,
+              border: Border.all(
+                color: isCompletada ? Colors.green.shade600 : Colors.grey.shade400,
+                width: 2,
+              ),
             ),
+            child: isCompletada
+                ? const Icon(Icons.check, color: Colors.white, size: 16)
+                : null,
           ),
-          child: isCompletada
-              ? const Icon(Icons.check, color: Colors.white, size: 14)
-              : null,
-        )),
+        ),
         DataCell(SizedBox(
           width: 200,
           child: Column(
@@ -790,6 +821,33 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
       ],
     );
   }
+
+// Pega esta función antes del @override Widget build(BuildContext context)
+  
+  Future<void> _toggleTaskStatus(TaskModel tarea) async {
+    // Lógica simple: si está completada pasa a pendiente, si no, a completada.
+    final nuevoEstado = tarea.estado == 'Completada' ? 'Pendiente' : 'Completada';
+
+    try {
+      await _taskService.updateTaskStatus(tarea.id, tarea.proyectoId, nuevoEstado);
+      
+      // Recargamos los datos para que la barra de progreso se actualice
+      _cargarDatosProyecto(); 
+      
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Tarea marcada como $nuevoEstado'),
+          duration: const Duration(seconds: 1),
+          backgroundColor: nuevoEstado == 'Completada' ? Colors.green : Colors.orange,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Error al actualizar: $e')),
+      );
+    }
+  }
+
 
   @override
   Widget build(BuildContext context) {
@@ -1018,4 +1076,171 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
       ),
     );
   }
+  // Función para obtener el color según la prioridad
+  Color _getPriorityColor(String prioridad) {
+    switch (prioridad.toLowerCase()) {
+      case 'alta':
+        return Colors.red.shade400;
+      case 'media':
+        return Colors.orange.shade400;
+      case 'baja':
+        return Colors.blue.shade400;
+      default:
+        return Colors.grey.shade400;
+    }
+  }
+
+  // Función para formatear la fecha (también la usa la lista móvil)
+  
+  Widget _buildMobileTaskList() {
+  if (_tareas.isEmpty) {
+    return const Padding(
+      padding: EdgeInsets.all(20.0),
+      child: Text('No hay tareas que coincidan con los filtros.', 
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.grey)
+      ),
+    );
+  }
+
+  return ListView.separated(
+    shrinkWrap: true,
+    physics: const NeverScrollableScrollPhysics(),
+    itemCount: _tareas.length,
+    separatorBuilder: (context, index) => const SizedBox(height: 12),
+    itemBuilder: (context, index) {
+      final tarea = _tareas[index];
+      final isCompletada = tarea.estado == 'Completada';
+
+      return Container(
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: Colors.grey.shade200),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.03),
+              blurRadius: 4,
+              offset: const Offset(0, 2),
+            )
+          ],
+        ),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                // Círculo de estado (Solo visual, no clickable)
+                Container(
+                  margin: const EdgeInsets.only(right: 12),
+                  width: 24,
+                  height: 24,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isCompletada ? Colors.green.shade600 : Colors.transparent,
+                    border: Border.all(
+                      color: isCompletada ? Colors.green.shade600 : Colors.grey.shade400,
+                      width: 2,
+                    ),
+                  ),
+                  child: isCompletada
+                      ? const Icon(Icons.check, color: Colors.white, size: 16)
+                      : null,
+                ),
+                // Nombre de la tarea
+                Expanded(
+                  child: Text(
+                    tarea.nombre,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.bold,
+                      fontSize: 16,
+                      color: AppColors.darkBackground,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            // Prioridad y Fecha
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: _getPriorityColor(tarea.prioridad).withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                  child: Text(
+                    tarea.prioridad,
+                    style: TextStyle(
+                      color: _getPriorityColor(tarea.prioridad),
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Text(
+                  tarea.fechaVencimiento != null
+                      ? _formatDate(tarea.fechaVencimiento!)
+                      : 'Sin fecha',
+                  style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            
+            // Botones de acción
+            Row(
+              mainAxisAlignment: MainAxisAlignment.end,
+              children: [
+                // BOTÓN VER (Con recarga automática)
+                IconButton(
+                  icon: const Icon(Icons.visibility_outlined, size: 20),
+                  color: AppColors.accentColor,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => PantallaDetalleTarea(tarea: tarea),
+                      ),
+                    ).then((_) {
+                      // ESTO ES LO IMPORTANTE: Recarga al volver
+                      _cargarDatosProyecto();
+                    });
+                  },
+                  tooltip: 'Ver detalle',
+                ),
+                
+                // Botón Editar
+                IconButton(
+                  icon: const Icon(Icons.edit_outlined, size: 20),
+                  color: Colors.blueGrey,
+                  onPressed: () {
+                    // Tu lógica existente de editar
+                    developer.log('Editar tarea: ${tarea.nombre}');
+                  },
+                  tooltip: 'Editar',
+                ),
+                
+                // Botón Eliminar (Solo Admin)
+                if (_isAdmin)
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline, size: 20),
+                    color: Colors.red,
+                    onPressed: () {
+                      // Tu lógica existente de eliminar
+                      developer.log('Eliminar tarea: ${tarea.nombre}');
+                    },
+                    tooltip: 'Eliminar',
+                  ),
+              ],
+            ),
+          ],
+        ),
+      );
+    },
+  );
+}
 }
