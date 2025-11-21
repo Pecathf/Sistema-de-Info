@@ -31,7 +31,6 @@ class TaskService {
   Stream<List<TaskModel>> getTasksStreamByProject(String proyectoId) {
     return _firestore
         .collection(_collectionName)
-        // Mantenemos 'proyectoId' porque así está en tu base de datos
         .where('proyectoId', isEqualTo: proyectoId)
         .orderBy('fechaCreacion', descending: true)
         .snapshots()
@@ -49,7 +48,7 @@ class TaskService {
       // Al eliminar, recalculamos el progreso
       await _recalcularProgresoProyecto(projectId);
     } catch (e) {
-      developer.log('Error al eliminar tarea: $e');
+      developer.log('Error al eliminar tarea: $e', name: 'TaskService');
       throw Exception('Fallo al eliminar tarea');
     }
   }
@@ -66,31 +65,31 @@ class TaskService {
       await _recalcularProgresoProyecto(projectId);
 
     } catch (e) {
-      print('Error al actualizar estado y progreso: $e');
+      developer.log('Error al actualizar estado y progreso: $e', name: 'TaskService');
       rethrow;
     }
   }
 
   // ----------------------------------------------------------------------
-  //  NUEVOS MÉTODOS PARA COMENTARIOS (AGREGADOS AQUÍ)
+  //  MÉTODOS PARA COMENTARIOS
   // ----------------------------------------------------------------------
 
-  // 5. Agregar un comentario (Se guarda en una sub-colección dentro de la tarea)
+  // 5. Agregar un comentario
   Future<void> addComment(String taskId, String texto, String autorId, String autorNombre) async {
     try {
       await _firestore
-          .collection(_collectionName) // colección 'tareas'
-          .doc(taskId)                 // documento de la tarea específica
-          .collection('comentarios')   // sub-colección 'comentarios'
+          .collection(_collectionName)
+          .doc(taskId)
+          .collection('comentarios')
           .add({
         'texto': texto,
         'autorId': autorId,
         'autorNombre': autorNombre,
-        'fecha': FieldValue.serverTimestamp(), // Hora del servidor para ordenar
+        'fecha': FieldValue.serverTimestamp(),
       });
     } catch (e) {
-      print('Error al agregar comentario: $e');
-      throw e;
+      developer.log('Error al agregar comentario: $e', name: 'TaskService');
+      rethrow;
     }
   }
 
@@ -100,7 +99,7 @@ class TaskService {
         .collection(_collectionName)
         .doc(taskId)
         .collection('comentarios')
-        .orderBy('fecha', descending: true) // Los más nuevos arriba
+        .orderBy('fecha', descending: true)
         .snapshots();
   }
 
@@ -112,7 +111,6 @@ class TaskService {
       // 1. Obtenemos TODAS las tareas de este proyecto
       final querySnapshot = await _firestore
           .collection(_collectionName)
-          // Mantenemos 'proyectoId' porque así está en tu base de datos
           .where('proyectoId', isEqualTo: projectId)
           .get();
 
@@ -139,10 +137,10 @@ class TaskService {
         'progreso': nuevoProgreso,
       });
       
-      developer.log('Progreso actualizado: ${(nuevoProgreso * 100).toStringAsFixed(1)}%');
+      developer.log('Progreso actualizado: ${(nuevoProgreso * 100).toStringAsFixed(1)}%', name: 'TaskService');
       
     } catch (e) {
-      print('Error crítico recalculando el porcentaje del proyecto: $e');
+      developer.log('Error crítico recalculando el porcentaje del proyecto: $e', name: 'TaskService');
     }
   }
 }
