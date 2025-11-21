@@ -13,7 +13,6 @@ class TaskService {
       final docRef = await _firestore.collection(_collectionName).add(tarea.toMap());
       
       // IMPORTANTE: Al crear tarea, recalculamos el progreso 
-      // (porque aumenta el total de tareas y el % baja)
       await _recalcularProgresoProyecto(tarea.proyectoId);
       
       return docRef.id;
@@ -32,6 +31,7 @@ class TaskService {
   Stream<List<TaskModel>> getTasksStreamByProject(String proyectoId) {
     return _firestore
         .collection(_collectionName)
+        // Mantenemos 'proyectoId' porque así está en tu base de datos
         .where('proyectoId', isEqualTo: proyectoId)
         .orderBy('fechaCreacion', descending: true)
         .snapshots()
@@ -42,7 +42,7 @@ class TaskService {
     });
   }
 
-  // 3. Eliminar tarea (Implementada y conectada al progreso)
+  // 3. Eliminar tarea
   Future<void> eliminarTarea(String taskId, String projectId) async {
     try {
       await _firestore.collection(_collectionName).doc(taskId).delete();
@@ -54,7 +54,7 @@ class TaskService {
     }
   }
 
-  // 4. Actualizar estado (MODIFICADO para actualizar barra de proyecto)
+  // 4. Actualizar estado
   Future<void> updateTaskStatus(String taskId, String projectId, String newStatus) async {
     try {
       // A. Actualizamos el estado de la tarea
@@ -72,13 +72,47 @@ class TaskService {
   }
 
   // ----------------------------------------------------------------------
-  // MÉTODO PRIVADO: EL CEREBRO MATEMÁTICO
+  //  NUEVOS MÉTODOS PARA COMENTARIOS (AGREGADOS AQUÍ)
+  // ----------------------------------------------------------------------
+
+  // 5. Agregar un comentario (Se guarda en una sub-colección dentro de la tarea)
+  Future<void> addComment(String taskId, String texto, String autorId, String autorNombre) async {
+    try {
+      await _firestore
+          .collection(_collectionName) // colección 'tareas'
+          .doc(taskId)                 // documento de la tarea específica
+          .collection('comentarios')   // sub-colección 'comentarios'
+          .add({
+        'texto': texto,
+        'autorId': autorId,
+        'autorNombre': autorNombre,
+        'fecha': FieldValue.serverTimestamp(), // Hora del servidor para ordenar
+      });
+    } catch (e) {
+      print('Error al agregar comentario: $e');
+      throw e;
+    }
+  }
+
+  // 6. Leer comentarios en tiempo real
+  Stream<QuerySnapshot> getCommentsStream(String taskId) {
+    return _firestore
+        .collection(_collectionName)
+        .doc(taskId)
+        .collection('comentarios')
+        .orderBy('fecha', descending: true) // Los más nuevos arriba
+        .snapshots();
+  }
+
+  // ----------------------------------------------------------------------
+  // MÉTODO PRIVADO: CÁLCULO DE PROGRESO
   // ----------------------------------------------------------------------
   Future<void> _recalcularProgresoProyecto(String projectId) async {
     try {
       // 1. Obtenemos TODAS las tareas de este proyecto
       final querySnapshot = await _firestore
           .collection(_collectionName)
+          // Mantenemos 'proyectoId' porque así está en tu base de datos
           .where('proyectoId', isEqualTo: projectId)
           .get();
 
@@ -103,8 +137,6 @@ class TaskService {
       // 4. Guardamos el nuevo progreso en el documento del PROYECTO
       await _firestore.collection(_projectsCollection).doc(projectId).update({
         'progreso': nuevoProgreso,
-        // Opcional: Actualizar estado del proyecto si llega al 100%
-        // 'estado': nuevoProgreso == 1.0 ? 'Completado' : 'En Progreso',
       });
       
       developer.log('Progreso actualizado: ${(nuevoProgreso * 100).toStringAsFixed(1)}%');
