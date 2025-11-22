@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // <--- IMPORTANTE: Agregado
+import 'package:cloud_firestore/cloud_firestore.dart'; 
 import 'package:sistem_proyect/central/constantes/modelos/project_model.dart';
 import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart';
 import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart';
@@ -25,14 +25,16 @@ class ProjectCardWidget extends StatelessWidget {
   Color _getStatusColor(String estado) {
     switch (estado.toLowerCase()) {
       case 'activo':
-        return Colors.green.shade700;
+        return AppColors.estadoActivo;          
       case 'completado':
-        return Colors.blue.shade700;
+        return AppColors.estadoCompletado;      
+      case 'en progreso':
+        return AppColors.estadoEnProgreso;       
       case 'en pausa':
-        return Colors.orange.shade700;
+        return AppColors.estadoPausado;        
       case 'pendiente':
       default:
-        return Colors.red.shade700;
+        return AppColors.estadoActivo;           
     }
   }
 
@@ -70,7 +72,7 @@ class ProjectCardWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Determinar si estamos en modo móvil
+        // Determinar si estamos en modo movil
         final isMobile = constraints.maxWidth < 400;
 
         return Container(
@@ -92,7 +94,7 @@ class ProjectCardWidget extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Sección Superior: Título y Descripción
+                // Seccion Superior: Ti­tulo y Descripcion
                 Text(
                   proyecto.nombre,
                   style: TextStyle(
@@ -115,7 +117,7 @@ class ProjectCardWidget extends StatelessWidget {
                 ),
                 const SizedBox(height: 15),
 
-                // Sección Media: Metadata (Fechas)
+                // Seccion Media: Metadata (Fechas)
                 _buildMetaRow(
                   Icons.date_range,
                   'Inicio: ${_formatDate(proyecto.fechaInicio)}',
@@ -142,7 +144,7 @@ class ProjectCardWidget extends StatelessWidget {
                     if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
                       final docs = snapshot.data!.docs;
                       total = docs.length;
-                      // Contamos cuántas están completadas
+                      // Contamos cuantas estan completadas
                       completed = docs
                           .where((doc) => doc['estado'] == 'Completada')
                           .length;
@@ -160,7 +162,7 @@ class ProjectCardWidget extends StatelessWidget {
                         ),
                         const SizedBox(height: 10),
 
-                        // Barra de progreso dinámica
+                        // Barra de progreso dinÃ¡mica
                         ClipRRect(
                           borderRadius: BorderRadius.circular(10),
                           child: LinearProgressIndicator(
@@ -185,7 +187,7 @@ class ProjectCardWidget extends StatelessWidget {
 
                 const SizedBox(height: 15),
 
-                // Sección de Miembros
+                // Seccion de Miembros
                 _buildMembersStack(),
 
                 const SizedBox(height: 15),
@@ -216,7 +218,7 @@ class ProjectCardWidget extends StatelessWidget {
 
                 const SizedBox(height: 15),
 
-                // BOTONES DE ACCIÓN
+                // BOTONES DE ACCION
                 isMobile && isAdmin
                     ? Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,

@@ -45,17 +45,17 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
     final roleResult = await _authService.getUserRole();
     if (mounted) {
       setState(() {
-        _isAdmin = (roleResult == 'admin'); 
+        _isAdmin = (roleResult == 'admin');
         _isLoadingRole = false;
       });
     }
   }
-  
+
   void _navigateToProjectDetail(Proyecto proyecto) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => PantallaDetalleProyecto(
-          projectId: proyecto.id, 
+          projectId: proyecto.id,
         ),
       ),
     );
@@ -86,7 +86,9 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
         return AlertDialog(
           title: const Text('Confirmar eliminación'),
           content: Text(
-            '¿Estás seguro de que deseas eliminar el proyecto "${proyecto.nombre}"?\n\nEsta acción no se puede deshacer.',
+            '¿Estás seguro de que deseas eliminar el proyecto "${proyecto.nombre}"?\n\n'
+            'Solo se pueden eliminar proyectos que no tienen tareas iniciadas.\n\n'
+            'Esta acción no se puede deshacer.',
           ),
           actions: [
             TextButton(
@@ -98,7 +100,8 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
               ),
-              child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
+              child:
+                  const Text('Eliminar', style: TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -107,6 +110,8 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
 
     if (confirmar == true) {
       if (!mounted) return;
+
+      
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -115,23 +120,32 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
         ),
       );
 
-      final bool exitoso = await _projectService.eliminarProyecto(proyecto.id);
+      try {
+        final bool exitoso =
+            await _projectService.eliminarProyecto(proyecto.id);
 
-      if (!mounted) return;
-      Navigator.of(context).pop();
+        if (!mounted) return;
+        Navigator.of(context).pop();
 
-      if (exitoso) {
+        if (exitoso) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content:
+                  Text('Proyecto "${proyecto.nombre}" eliminado exitosamente'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      } catch (e) {
+        if (!mounted) return;
+        Navigator.of(context).pop();
+
+        // Mostrar el mensaje de error específico
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Proyecto "${proyecto.nombre}" eliminado exitosamente'),
-            backgroundColor: Colors.green,
-          ),
-        );
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Error al eliminar el proyecto. Intenta nuevamente.'),
+            content: Text(e.toString().replaceAll('Exception: ', '')),
             backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
           ),
         );
       }
@@ -144,7 +158,8 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
   }
 
   PreferredSizeWidget _buildAppBar(String userInitial, bool isDesktop) {
-    final Color avatarColor = _isAdmin ? AppColors.accentColor : AppColors.primaryOrange; 
+    final Color avatarColor =
+        _isAdmin ? AppColors.accentColor : AppColors.primaryOrange;
 
     final profileWidget = HoverableProfileAvatar(
       userInitial: userInitial,
@@ -323,7 +338,7 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
         border: Border.all(color: Colors.grey.shade300),
         boxShadow: [
           BoxShadow(
-              color: Colors.grey.withValues(alpha:0.1),
+              color: Colors.grey.withValues(alpha: 0.1),
               blurRadius: 4,
               offset: const Offset(0, 1)),
         ],
@@ -411,13 +426,15 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
             final proyecto = proyectos[index];
             return ProjectCardWidget(
               proyecto: proyecto,
-              isAdmin: _isAdmin, 
+              isAdmin: _isAdmin,
               onTapView: () {
                 _navigateToProjectDetail(proyecto);
               },
-              onTapDelete: _isAdmin ? () {
-                _confirmarEliminarProyecto(proyecto);
-              } : null, 
+              onTapDelete: _isAdmin
+                  ? () {
+                      _confirmarEliminarProyecto(proyecto);
+                    }
+                  : null,
             );
           },
         );

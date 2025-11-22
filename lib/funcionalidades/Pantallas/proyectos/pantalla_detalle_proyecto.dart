@@ -13,7 +13,7 @@ import 'dart:developer' as developer;
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/shared_footer_widget.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/tareas/pantalla_detalle_tarea.dart';
 import 'package:sistem_proyect/central/constantes/modelos/task_model.dart';
-import 'package:sistem_proyect/central/constantes/servicios/task.service.dart';
+import 'package:sistem_proyect/central/constantes/servicios/task_service.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/tareas/pantalla_crear_tarea.dart';
 
 class PantallaDetalleProyecto extends StatefulWidget {
@@ -682,7 +682,8 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
               shape: BoxShape.circle,
               color: isCompletada ? Colors.green.shade600 : Colors.transparent,
               border: Border.all(
-                color: isCompletada ? Colors.green.shade600 : Colors.grey.shade400,
+                color:
+                    isCompletada ? Colors.green.shade600 : Colors.grey.shade400,
                 width: 2,
               ),
             ),
@@ -799,8 +800,7 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
       return const Padding(
         padding: EdgeInsets.all(20.0),
         child: Text('No hay tareas que coincidan con los filtros.',
-            textAlign: TextAlign.center,
-            style: TextStyle(color: Colors.grey)),
+            textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
       );
     }
 
@@ -889,8 +889,7 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
                     tarea.fechaVencimiento != null
                         ? _formatDate(tarea.fechaVencimiento!)
                         : 'Sin fecha',
-                    style:
-                        TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
                   ),
                 ],
               ),
@@ -943,11 +942,11 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
   Color _getPriorityColor(String prioridad) {
     switch (prioridad.toLowerCase()) {
       case 'alta':
-        return Colors.red.shade400;
+        return AppColors.prioridadAlta;
       case 'media':
-        return Colors.orange.shade400;
+        return AppColors.prioridadMedia;
       case 'baja':
-        return Colors.blue.shade400;
+        return AppColors.prioridadBaja;
       default:
         return Colors.grey.shade400;
     }

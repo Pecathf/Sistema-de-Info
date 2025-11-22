@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Necesario para los comentarios
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sistem_proyect/central/constantes/modelos/task_model.dart';
 import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart';
 import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart';
-import 'package:sistem_proyect/central/constantes/servicios/task.service.dart';
+import 'package:sistem_proyect/central/constantes/servicios/task_service.dart';
 import 'package:sistem_proyect/central/constantes/colores.dart';
 import 'package:intl/intl.dart';
 
@@ -41,7 +41,7 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
 
   @override
   void dispose() {
-    _commentController.dispose(); // Limpiar memoria
+    _commentController.dispose();
     super.dispose();
   }
 
@@ -81,9 +81,8 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
 
       if (!mounted) return;
 
-      // Clear input and hide keyboard only if widget is still mounted
       _commentController.clear();
-      FocusScope.of(context).unfocus(); // Ocultar teclado
+      FocusScope.of(context).unfocus();
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -97,7 +96,6 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
 
   Future<void> _updateStatus(String newStatus) async {
     try {
-      // Corregido: Usamos widget.tarea.proyectoId como segundo parámetro
       await _taskService.updateTaskStatus(
           widget.tarea.id, widget.tarea.proyectoId, newStatus);
 
@@ -138,11 +136,11 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
   Color _getPriorityColor(String prioridad) {
     switch (prioridad.toLowerCase()) {
       case 'alta':
-        return Colors.red.shade400;
+        return AppColors.prioridadAlta;
       case 'media':
-        return Colors.orange.shade400;
+        return AppColors.prioridadMedia;
       case 'baja':
-        return Colors.blue.shade400;
+        return AppColors.prioridadBaja;
       default:
         return Colors.grey.shade400;
     }
@@ -151,11 +149,11 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
   Color _getStatusColor(String estado) {
     switch (estado.toLowerCase()) {
       case 'completada':
-        return Colors.green.shade700;
+        return AppColors.estadoCompletado;
       case 'en progreso':
-        return Colors.blue.shade700;
+        return AppColors.estadoEnProgreso;
       case 'pendiente':
-        return Colors.orange.shade700;
+        return AppColors.estadoActivo;
       default:
         return Colors.grey.shade700;
     }
@@ -198,7 +196,6 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Cabecera y Estado
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
@@ -232,11 +229,42 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
                             color: _getStatusColor(_currentStatus),
                             fontWeight: FontWeight.bold,
                             fontSize: 12),
-                        items: ['Pendiente', 'En Progreso', 'Completada']
-                            .map((String estado) {
-                          return DropdownMenuItem<String>(
-                              value: estado, child: Text(estado.toUpperCase()));
-                        }).toList(),
+                        dropdownColor: Colors.white,
+                        items: [
+                          DropdownMenuItem(
+                            value: 'Pendiente',
+                            child: Text(
+                              'PENDIENTE',
+                              style: TextStyle(
+                                color: AppColors.estadoActivo,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          DropdownMenuItem(
+                            value: 'En Progreso',
+                            child: Text(
+                              'EN PROGRESO',
+                              style: TextStyle(
+                                color: AppColors.estadoEnProgreso,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Completada',
+                            child: Text(
+                              'COMPLETADA',
+                              style: TextStyle(
+                                color: AppColors.estadoCompletado,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
                         onChanged: (v) => (v != null && v != _currentStatus)
                             ? _updateStatus(v)
                             : null,
@@ -253,7 +281,6 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
                 style: TextStyle(
                     fontSize: 15, color: Colors.grey.shade700, height: 1.5),
               ),
-
               const SizedBox(height: 30),
               _buildInfoCards(),
               const SizedBox(height: 30),
@@ -263,10 +290,7 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
               const SizedBox(height: 30),
               _buildMembersSection(),
               const SizedBox(height: 30),
-
-              // --- SECCIÓN COMENTARIOS FUNCIONAL ---
               _buildCommentsSection(),
-
               const SizedBox(height: 30),
               Center(
                 child: ElevatedButton(
@@ -293,7 +317,7 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
     );
   }
 
-  // --- COMENTARIOS (MODIFICADO PARA FUNCIONAR) ---
+  // --- COMENTARIOS ---
   Widget _buildCommentsSection() {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -444,7 +468,7 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
     );
   }
 
-  // --- WIDGETS DE INFORMACIÓN (NO CAMBIADOS) ---
+  // --- WIDGETS DE INFORMACIÓN ---
 
   Widget _buildInfoCards() {
     return LayoutBuilder(builder: (context, constraints) {
