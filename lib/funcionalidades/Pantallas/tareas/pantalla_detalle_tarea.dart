@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; // Necesario para los comentarios
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sistem_proyect/central/constantes/modelos/task_model.dart';
 import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart';
 import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart';
-import 'package:sistem_proyect/central/constantes/servicios/task.service.dart';
+import 'package:sistem_proyect/central/constantes/servicios/task_service.dart';
 import 'package:sistem_proyect/central/constantes/colores.dart';
 import 'package:intl/intl.dart';
 
@@ -23,7 +23,7 @@ class PantallaDetalleTarea extends StatefulWidget {
 class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
   final UserDataService _userDataService = UserDataService();
   final TaskService _taskService = TaskService();
-  
+
   // Controlador para escribir comentarios
   final TextEditingController _commentController = TextEditingController();
   final User? _currentUser = FirebaseAuth.instance.currentUser;
@@ -41,14 +41,15 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
 
   @override
   void dispose() {
-    _commentController.dispose(); // Limpiar memoria
+    _commentController.dispose();
     super.dispose();
   }
 
   Future<void> _cargarMiembros() async {
     setState(() => _isLoading = true);
     try {
-      final miembrosUids = widget.tarea.miembrosUid.where((uid) => uid.isNotEmpty).toList();
+      final miembrosUids =
+          widget.tarea.miembrosUid.where((uid) => uid.isNotEmpty).toList();
       final miembros = await _userDataService.getUsuariosByIds(miembrosUids);
       if (mounted) {
         setState(() {
@@ -72,29 +73,32 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
     if (texto.isEmpty) return;
 
     try {
-      String nombreAutor = _currentUser?.displayName ?? _currentUser?.email ?? 'Usuario';
-      
+      String nombreAutor =
+          _currentUser?.displayName ?? _currentUser?.email ?? 'Usuario';
+
       await _taskService.addComment(
-        widget.tarea.id, 
-        texto, 
-        _currentUser?.uid ?? '', 
-        nombreAutor
-      );
+          widget.tarea.id, texto, _currentUser?.uid ?? '', nombreAutor);
+
+      if (!mounted) return;
 
       _commentController.clear();
-      FocusScope.of(context).unfocus(); // Ocultar teclado
+      FocusScope.of(context).unfocus();
     } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al enviar: $e'), backgroundColor: Colors.red),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+              content: Text('Error al enviar: $e'),
+              backgroundColor: Colors.red),
+        );
+      }
     }
   }
 
   Future<void> _updateStatus(String newStatus) async {
     try {
-      // Corregido: Usamos widget.tarea.proyectoId como segundo parámetro
-      await _taskService.updateTaskStatus(widget.tarea.id, widget.tarea.proyectoId, newStatus);
-      
+      await _taskService.updateTaskStatus(
+          widget.tarea.id, widget.tarea.proyectoId, newStatus);
+
       if (mounted) {
         setState(() {
           _currentStatus = newStatus;
@@ -110,7 +114,9 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al actualizar: $e'), backgroundColor: Colors.red),
+          SnackBar(
+              content: Text('Error al actualizar: $e'),
+              backgroundColor: Colors.red),
         );
       }
     }
@@ -129,19 +135,27 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
 
   Color _getPriorityColor(String prioridad) {
     switch (prioridad.toLowerCase()) {
-      case 'alta': return Colors.red.shade400;
-      case 'media': return Colors.orange.shade400;
-      case 'baja': return Colors.blue.shade400;
-      default: return Colors.grey.shade400;
+      case 'alta':
+        return AppColors.prioridadAlta;
+      case 'media':
+        return AppColors.prioridadMedia;
+      case 'baja':
+        return AppColors.prioridadBaja;
+      default:
+        return Colors.grey.shade400;
     }
   }
 
   Color _getStatusColor(String estado) {
     switch (estado.toLowerCase()) {
-      case 'completada': return Colors.green.shade700;
-      case 'en progreso': return Colors.blue.shade700;
-      case 'pendiente': return Colors.orange.shade700;
-      default: return Colors.grey.shade700;
+      case 'completada':
+        return AppColors.estadoCompletado;
+      case 'en progreso':
+        return AppColors.estadoEnProgreso;
+      case 'pendiente':
+        return AppColors.estadoActivo;
+      default:
+        return Colors.grey.shade700;
     }
   }
 
@@ -154,7 +168,8 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
           backgroundColor: Colors.white,
           elevation: 0.5,
         ),
-        body: const Center(child: CircularProgressIndicator(color: AppColors.primaryOrange)),
+        body: const Center(
+            child: CircularProgressIndicator(color: AppColors.primaryOrange)),
       );
     }
 
@@ -169,7 +184,10 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
         ),
         title: Text(
           widget.tarea.nombre,
-          style: const TextStyle(color: AppColors.darkBackground, fontSize: 18, fontWeight: FontWeight.bold),
+          style: const TextStyle(
+              color: AppColors.darkBackground,
+              fontSize: 18,
+              fontWeight: FontWeight.bold),
         ),
       ),
       body: SingleChildScrollView(
@@ -178,34 +196,78 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              // Cabecera y Estado
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Expanded(
                     child: Text(
                       widget.tarea.nombre,
-                      style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: AppColors.darkBackground),
+                      style: const TextStyle(
+                          fontSize: 28,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.darkBackground),
                     ),
                   ),
                   const SizedBox(width: 10),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                     decoration: BoxDecoration(
-                      color: _getStatusColor(_currentStatus).withValues(alpha: 0.15),
+                      color: _getStatusColor(_currentStatus)
+                          .withValues(alpha: 0.15),
                       borderRadius: BorderRadius.circular(20),
-                      border: Border.all(color: _getStatusColor(_currentStatus), width: 1),
+                      border: Border.all(
+                          color: _getStatusColor(_currentStatus), width: 1),
                     ),
                     child: DropdownButtonHideUnderline(
                       child: DropdownButton<String>(
                         value: _currentStatus,
-                        icon: Icon(Icons.arrow_drop_down, color: _getStatusColor(_currentStatus)),
+                        icon: Icon(Icons.arrow_drop_down,
+                            color: _getStatusColor(_currentStatus)),
                         isDense: true,
-                        style: TextStyle(color: _getStatusColor(_currentStatus), fontWeight: FontWeight.bold, fontSize: 12),
-                        items: ['Pendiente', 'En Progreso', 'Completada'].map((String estado) {
-                          return DropdownMenuItem<String>(value: estado, child: Text(estado.toUpperCase()));
-                        }).toList(),
-                        onChanged: (v) => (v != null && v != _currentStatus) ? _updateStatus(v) : null,
+                        style: TextStyle(
+                            color: _getStatusColor(_currentStatus),
+                            fontWeight: FontWeight.bold,
+                            fontSize: 12),
+                        dropdownColor: Colors.white,
+                        items: [
+                          DropdownMenuItem(
+                            value: 'Pendiente',
+                            child: Text(
+                              'PENDIENTE',
+                              style: TextStyle(
+                                color: AppColors.estadoActivo,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          DropdownMenuItem(
+                            value: 'En Progreso',
+                            child: Text(
+                              'EN PROGRESO',
+                              style: TextStyle(
+                                color: AppColors.estadoEnProgreso,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                          DropdownMenuItem(
+                            value: 'Completada',
+                            child: Text(
+                              'COMPLETADA',
+                              style: TextStyle(
+                                color: AppColors.estadoCompletado,
+                                fontWeight: FontWeight.bold,
+                                fontSize: 12,
+                              ),
+                            ),
+                          ),
+                        ],
+                        onChanged: (v) => (v != null && v != _currentStatus)
+                            ? _updateStatus(v)
+                            : null,
                       ),
                     ),
                   ),
@@ -213,10 +275,12 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
               ),
               const SizedBox(height: 8),
               Text(
-                widget.tarea.descripcion.isNotEmpty ? widget.tarea.descripcion : 'Sin descripción',
-                style: TextStyle(fontSize: 15, color: Colors.grey.shade700, height: 1.5),
+                widget.tarea.descripcion.isNotEmpty
+                    ? widget.tarea.descripcion
+                    : 'Sin descripción',
+                style: TextStyle(
+                    fontSize: 15, color: Colors.grey.shade700, height: 1.5),
               ),
-              
               const SizedBox(height: 30),
               _buildInfoCards(),
               const SizedBox(height: 30),
@@ -226,21 +290,24 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
               const SizedBox(height: 30),
               _buildMembersSection(),
               const SizedBox(height: 30),
-              
-              // --- SECCIÓN COMENTARIOS FUNCIONAL ---
               _buildCommentsSection(),
-              
               const SizedBox(height: 30),
               Center(
                 child: ElevatedButton(
                   onPressed: () => Navigator.of(context).pop(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryOrange,
-                    padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 14),
-                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 50, vertical: 14),
+                    shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(6)),
                     elevation: 0,
                   ),
-                  child: const Text('Volver', style: TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
+                  child: const Text('Volver',
+                      style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 15,
+                          fontWeight: FontWeight.w600)),
                 ),
               ),
             ],
@@ -250,7 +317,7 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
     );
   }
 
-  // --- COMENTARIOS (MODIFICADO PARA FUNCIONAR) ---
+  // --- COMENTARIOS ---
   Widget _buildCommentsSection() {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -268,7 +335,10 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
               const SizedBox(width: 8),
               const Text(
                 'Comentarios',
-                style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkBackground),
+                style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: AppColors.darkBackground),
               ),
             ],
           ),
@@ -314,10 +384,15 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
                     children: [
                       CircleAvatar(
                         radius: 16,
-                        backgroundColor: esMio ? AppColors.primaryOrange : Colors.grey.shade300,
+                        backgroundColor: esMio
+                            ? AppColors.primaryOrange
+                            : Colors.grey.shade300,
                         child: Text(
                           autor.isNotEmpty ? autor[0].toUpperCase() : '?',
-                          style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold),
                         ),
                       ),
                       const SizedBox(width: 12),
@@ -328,12 +403,20 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
                             Row(
                               mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Text(esMio ? 'Tú' : autor, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13)),
-                                Text(_formatCommentDate(fecha), style: TextStyle(fontSize: 11, color: Colors.grey.shade500)),
+                                Text(esMio ? 'Tú' : autor,
+                                    style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 13)),
+                                Text(_formatCommentDate(fecha),
+                                    style: TextStyle(
+                                        fontSize: 11,
+                                        color: Colors.grey.shade500)),
                               ],
                             ),
                             const SizedBox(height: 4),
-                            Text(texto, style: TextStyle(color: Colors.grey.shade800, fontSize: 14)),
+                            Text(texto,
+                                style: TextStyle(
+                                    color: Colors.grey.shade800, fontSize: 14)),
                           ],
                         ),
                       ),
@@ -356,11 +439,15 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
                   controller: _commentController,
                   decoration: InputDecoration(
                     hintText: 'Escribe un comentario...',
-                    hintStyle: TextStyle(color: Colors.grey.shade400, fontSize: 14),
+                    hintStyle:
+                        TextStyle(color: Colors.grey.shade400, fontSize: 14),
                     filled: true,
                     fillColor: Colors.grey.shade100,
-                    border: OutlineInputBorder(borderRadius: BorderRadius.circular(30), borderSide: BorderSide.none),
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(30),
+                        borderSide: BorderSide.none),
+                    contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 20, vertical: 10),
                   ),
                   minLines: 1,
                   maxLines: 3,
@@ -381,32 +468,62 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
     );
   }
 
-  // --- WIDGETS DE INFORMACIÓN (NO CAMBIADOS) ---
+  // --- WIDGETS DE INFORMACIÓN ---
 
   Widget _buildInfoCards() {
     return LayoutBuilder(builder: (context, constraints) {
       final isDesktop = constraints.maxWidth > 800;
       List<Widget> cards = [
-        _buildInfoCard(label: 'PRIORIDAD', value: widget.tarea.prioridad, color: _getPriorityColor(widget.tarea.prioridad)),
-        _buildInfoCard(label: 'MIEMBROS', value: _miembros.length.toString(), color: AppColors.accentColor),
-        _buildInfoCard(label: 'RECURSOS', value: widget.tarea.recursosAsignados.length.toString(), color: AppColors.primaryOrange),
+        _buildInfoCard(
+            label: 'PRIORIDAD',
+            value: widget.tarea.prioridad,
+            color: _getPriorityColor(widget.tarea.prioridad)),
+        _buildInfoCard(
+            label: 'MIEMBROS',
+            value: _miembros.length.toString(),
+            color: AppColors.accentColor),
+        _buildInfoCard(
+            label: 'RECURSOS',
+            value: widget.tarea.recursosAsignados.length.toString(),
+            color: AppColors.primaryOrange),
       ];
       if (isDesktop) {
-        return Row(children: cards.map((c) => Expanded(child: Padding(padding: const EdgeInsets.symmetric(horizontal: 5), child: c))).toList());
+        return Row(
+            children: cards
+                .map((c) => Expanded(
+                    child: Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 5),
+                        child: c)))
+                .toList());
       } else {
-        return Column(children: cards.map((c) => Padding(padding: const EdgeInsets.only(bottom: 15), child: c)).toList());
+        return Column(
+            children: cards
+                .map((c) => Padding(
+                    padding: const EdgeInsets.only(bottom: 15), child: c))
+                .toList());
       }
     });
   }
 
-  Widget _buildInfoCard({required String label, required String value, required Color color}) {
+  Widget _buildInfoCard(
+      {required String label, required String value, required Color color}) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(4), border: Border.all(color: Colors.grey.shade300, width: 1)),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(4),
+          border: Border.all(color: Colors.grey.shade300, width: 1)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.w500, color: Colors.grey.shade600, letterSpacing: 0.3)),
+        Text(label,
+            style: TextStyle(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: Colors.grey.shade600,
+                letterSpacing: 0.3)),
         const SizedBox(height: 8),
-        Text(value, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: color)),
+        Text(value,
+            style: TextStyle(
+                fontSize: 24, fontWeight: FontWeight.bold, color: color)),
       ]),
     );
   }
@@ -414,49 +531,137 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
   Widget _buildDatesAndPriority() {
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.grey.shade200)),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.grey.shade200)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        const Text('Información de Fechas', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkBackground)),
+        const Text('Información de Fechas',
+            style: TextStyle(
+                fontSize: 18,
+                fontWeight: FontWeight.bold,
+                color: AppColors.darkBackground)),
         const SizedBox(height: 20),
-        _buildDateRow(icon: Icons.event, label: 'Fecha de Creación', date: _formatDate(widget.tarea.fechaCreacion)),
+        _buildDateRow(
+            icon: Icons.event,
+            label: 'Fecha de Creación',
+            date: _formatDate(widget.tarea.fechaCreacion)),
         const Divider(height: 24),
-        _buildDateRow(icon: Icons.play_circle_outline, label: 'Fecha de Inicio', date: _formatDate(widget.tarea.fechaInicio)),
+        _buildDateRow(
+            icon: Icons.play_circle_outline,
+            label: 'Fecha de Inicio',
+            date: _formatDate(widget.tarea.fechaInicio)),
         const Divider(height: 24),
-        _buildDateRow(icon: Icons.calendar_today, label: 'Fecha de Vencimiento', date: _formatDate(widget.tarea.fechaVencimiento), isOverdue: widget.tarea.fechaVencimiento != null && widget.tarea.fechaVencimiento!.isBefore(DateTime.now()) && _currentStatus != 'Completada'),
+        _buildDateRow(
+            icon: Icons.calendar_today,
+            label: 'Fecha de Vencimiento',
+            date: _formatDate(widget.tarea.fechaVencimiento),
+            isOverdue: widget.tarea.fechaVencimiento != null &&
+                widget.tarea.fechaVencimiento!.isBefore(DateTime.now()) &&
+                _currentStatus != 'Completada'),
       ]),
     );
   }
 
-  Widget _buildDateRow({required IconData icon, required String label, required String date, bool isOverdue = false}) {
+  Widget _buildDateRow(
+      {required IconData icon,
+      required String label,
+      required String date,
+      bool isOverdue = false}) {
     return Row(children: [
       Icon(icon, size: 20, color: AppColors.primaryOrange),
       const SizedBox(width: 12),
-      Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text(label, style: TextStyle(fontSize: 13, color: Colors.grey.shade600, fontWeight: FontWeight.w500)),
+      Expanded(
+          child:
+              Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+        Text(label,
+            style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade600,
+                fontWeight: FontWeight.w500)),
         const SizedBox(height: 4),
-        Text(date, style: TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: isOverdue ? Colors.red : AppColors.darkBackground)),
+        Text(date,
+            style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: isOverdue ? Colors.red : AppColors.darkBackground)),
       ])),
-      if (isOverdue) Container(padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4), decoration: BoxDecoration(color: Colors.red.shade50, borderRadius: BorderRadius.circular(12)), child: Text('VENCIDA', style: TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.red.shade700))),
+      if (isOverdue)
+        Container(
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+            decoration: BoxDecoration(
+                color: Colors.red.shade50,
+                borderRadius: BorderRadius.circular(12)),
+            child: Text('VENCIDA',
+                style: TextStyle(
+                    fontSize: 10,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.red.shade700))),
     ]);
   }
 
   Widget _buildResourcesSection() {
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.grey.shade200)),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.grey.shade200)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [Icon(Icons.inventory_2, size: 22, color: AppColors.accentColor), const SizedBox(width: 8), const Text('Recursos Asignados', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkBackground))]),
+        Row(children: [
+          Icon(Icons.inventory_2, size: 22, color: AppColors.accentColor),
+          const SizedBox(width: 8),
+          const Text('Recursos Asignados',
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.darkBackground))
+        ]),
         const SizedBox(height: 20),
-        widget.tarea.recursosAsignados.isEmpty 
-          ? Center(child: Padding(padding: const EdgeInsets.all(20.0), child: Column(children: [Icon(Icons.inventory_2_outlined, size: 48, color: Colors.grey.shade400), const SizedBox(height: 12), Text('No hay recursos asignados a esta tarea', style: TextStyle(color: Colors.grey.shade600, fontSize: 14))])))
-          : ListView.separated(shrinkWrap: true, physics: const NeverScrollableScrollPhysics(), itemCount: widget.tarea.recursosAsignados.length, separatorBuilder: (context, index) => const Divider(height: 16), itemBuilder: (context, index) {
-              final recurso = widget.tarea.recursosAsignados[index];
-              return Row(children: [
-                Container(padding: const EdgeInsets.all(12), decoration: BoxDecoration(color: AppColors.accentColor.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(8)), child: Text(recurso.icono, style: const TextStyle(fontSize: 28))),
-                const SizedBox(width: 16),
-                Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(recurso.nombre, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.w600, color: AppColors.darkBackground)), const SizedBox(height: 4), Text('Cantidad: ${recurso.cantidad} unidades', style: TextStyle(fontSize: 14, color: Colors.grey.shade600))])),
-              ]);
-            }),
+        widget.tarea.recursosAsignados.isEmpty
+            ? Center(
+                child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(children: [
+                      Icon(Icons.inventory_2_outlined,
+                          size: 48, color: Colors.grey.shade400),
+                      const SizedBox(height: 12),
+                      Text('No hay recursos asignados a esta tarea',
+                          style: TextStyle(
+                              color: Colors.grey.shade600, fontSize: 14))
+                    ])))
+            : ListView.separated(
+                shrinkWrap: true,
+                physics: const NeverScrollableScrollPhysics(),
+                itemCount: widget.tarea.recursosAsignados.length,
+                separatorBuilder: (context, index) => const Divider(height: 16),
+                itemBuilder: (context, index) {
+                  final recurso = widget.tarea.recursosAsignados[index];
+                  return Row(children: [
+                    Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                            color: AppColors.accentColor.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8)),
+                        child: Text(recurso.icono,
+                            style: const TextStyle(fontSize: 28))),
+                    const SizedBox(width: 16),
+                    Expanded(
+                        child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                          Text(recurso.nombre,
+                              style: const TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppColors.darkBackground)),
+                          const SizedBox(height: 4),
+                          Text('Cantidad: ${recurso.cantidad} unidades',
+                              style: TextStyle(
+                                  fontSize: 14, color: Colors.grey.shade600))
+                        ])),
+                  ]);
+                }),
       ]),
     );
   }
@@ -464,19 +669,75 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
   Widget _buildMembersSection() {
     return Container(
       padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(6), border: Border.all(color: Colors.grey.shade200)),
+      decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Colors.grey.shade200)),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(children: [Icon(Icons.people, size: 22, color: AppColors.primaryOrange), const SizedBox(width: 8), const Text('Miembros Asignados', style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: AppColors.darkBackground))]),
+        Row(children: [
+          Icon(Icons.people, size: 22, color: AppColors.primaryOrange),
+          const SizedBox(width: 8),
+          const Text('Miembros Asignados',
+              style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppColors.darkBackground))
+        ]),
         const SizedBox(height: 20),
-        _miembros.isEmpty 
-          ? Center(child: Padding(padding: const EdgeInsets.all(20.0), child: Column(children: [Icon(Icons.people_outline, size: 48, color: Colors.grey.shade400), const SizedBox(height: 12), Text('No hay miembros asignados a esta tarea', style: TextStyle(color: Colors.grey.shade600, fontSize: 14))])))
-          : Wrap(spacing: 12.0, runSpacing: 12.0, children: _miembros.map((miembro) {
-              return Container(padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12), decoration: BoxDecoration(color: Colors.grey.shade50, borderRadius: BorderRadius.circular(8), border: Border.all(color: Colors.grey.shade300)), child: Row(mainAxisSize: MainAxisSize.min, children: [
-                CircleAvatar(radius: 20, backgroundColor: AppColors.accentColor, child: Text(miembro.nombre.isNotEmpty ? miembro.nombre[0].toUpperCase() : '?', style: const TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold))),
-                const SizedBox(width: 12),
-                Column(crossAxisAlignment: CrossAxisAlignment.start, children: [Text(miembro.nombre.isNotEmpty ? miembro.nombre : 'Sin nombre', style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: AppColors.darkBackground)), Text(miembro.email, style: TextStyle(fontSize: 12, color: Colors.grey.shade600))]),
-              ]));
-            }).toList()),
+        _miembros.isEmpty
+            ? Center(
+                child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: Column(children: [
+                      Icon(Icons.people_outline,
+                          size: 48, color: Colors.grey.shade400),
+                      const SizedBox(height: 12),
+                      Text('No hay miembros asignados a esta tarea',
+                          style: TextStyle(
+                              color: Colors.grey.shade600, fontSize: 14))
+                    ])))
+            : Wrap(
+                spacing: 12.0,
+                runSpacing: 12.0,
+                children: _miembros.map((miembro) {
+                  return Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 12),
+                      decoration: BoxDecoration(
+                          color: Colors.grey.shade50,
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(color: Colors.grey.shade300)),
+                      child: Row(mainAxisSize: MainAxisSize.min, children: [
+                        CircleAvatar(
+                            radius: 20,
+                            backgroundColor: AppColors.accentColor,
+                            child: Text(
+                                miembro.nombre.isNotEmpty
+                                    ? miembro.nombre[0].toUpperCase()
+                                    : '?',
+                                style: const TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold))),
+                        const SizedBox(width: 12),
+                        Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                  miembro.nombre.isNotEmpty
+                                      ? miembro.nombre
+                                      : 'Sin nombre',
+                                  style: const TextStyle(
+                                      fontSize: 14,
+                                      fontWeight: FontWeight.w600,
+                                      color: AppColors.darkBackground)),
+                              Text(miembro.email,
+                                  style: TextStyle(
+                                      fontSize: 12,
+                                      color: Colors.grey.shade600))
+                            ]),
+                      ]));
+                }).toList()),
       ]),
     );
   }

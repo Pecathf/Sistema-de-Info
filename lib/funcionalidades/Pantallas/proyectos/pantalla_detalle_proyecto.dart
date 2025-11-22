@@ -4,6 +4,7 @@ import 'package:sistem_proyect/central/constantes/modelos/project_model.dart';
 import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart';
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/project_service.dart';
+import 'package:sistem_proyect/central/constantes/servicios/task_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/resource_service.dart';
 import 'package:sistem_proyect/central/constantes/colores.dart';
@@ -13,7 +14,6 @@ import 'dart:developer' as developer;
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/shared_footer_widget.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/tareas/pantalla_detalle_tarea.dart';
 import 'package:sistem_proyect/central/constantes/modelos/task_model.dart';
-import 'package:sistem_proyect/central/constantes/servicios/task.service.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/tareas/pantalla_crear_tarea.dart';
 
 class PantallaDetalleProyecto extends StatefulWidget {
@@ -818,33 +818,6 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
   }
 
 // Pega esta función antes del @override Widget build(BuildContext context)
-
-  Future<void> _toggleTaskStatus(TaskModel tarea) async {
-    // Lógica simple: si está completada pasa a pendiente, si no, a completada.
-    final nuevoEstado =
-        tarea.estado == 'Completada' ? 'Pendiente' : 'Completada';
-
-    try {
-      await _taskService.updateTaskStatus(
-          tarea.id, tarea.proyectoId, nuevoEstado);
-
-      // Recargamos los datos para que la barra de progreso se actualice
-      _cargarDatosProyecto();
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Tarea marcada como $nuevoEstado'),
-          duration: const Duration(seconds: 1),
-          backgroundColor:
-              nuevoEstado == 'Completada' ? Colors.green : Colors.orange,
-        ),
-      );
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error al actualizar: $e')),
-      );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {

@@ -45,17 +45,17 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
     final roleResult = await _authService.getUserRole();
     if (mounted) {
       setState(() {
-        _isAdmin = (roleResult == 'admin'); 
+        _isAdmin = (roleResult == 'admin');
         _isLoadingRole = false;
       });
     }
   }
-  
+
   void _navigateToProjectDetail(Proyecto proyecto) {
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => PantallaDetalleProyecto(
-          projectId: proyecto.id, 
+          projectId: proyecto.id,
         ),
       ),
     );
@@ -98,7 +98,8 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.red,
               ),
-              child: const Text('Eliminar', style: TextStyle(color: Colors.white)),
+              child:
+                  const Text('Eliminar', style: TextStyle(color: Colors.white)),
             ),
           ],
         );
@@ -123,7 +124,8 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
       if (exitoso) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Proyecto "${proyecto.nombre}" eliminado exitosamente'),
+            content:
+                Text('Proyecto "${proyecto.nombre}" eliminado exitosamente'),
             backgroundColor: Colors.green,
           ),
         );
@@ -144,7 +146,8 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
   }
 
   PreferredSizeWidget _buildAppBar(String userInitial, bool isDesktop) {
-    final Color avatarColor = _isAdmin ? AppColors.accentColor : AppColors.primaryOrange; 
+    final Color avatarColor =
+        _isAdmin ? AppColors.accentColor : AppColors.primaryOrange;
 
     final profileWidget = HoverableProfileAvatar(
       userInitial: userInitial,
@@ -163,6 +166,7 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
                 fontWeight: FontWeight.bold,
                 fontSize: 20)),
         centerTitle: false,
+        automaticallyImplyLeading: true,
         actions: [
           Expanded(
             child: Row(
@@ -323,7 +327,7 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
         border: Border.all(color: Colors.grey.shade300),
         boxShadow: [
           BoxShadow(
-              color: Colors.grey.withValues(alpha:0.1),
+              color: Colors.grey.withValues(alpha: 0.1),
               blurRadius: 4,
               offset: const Offset(0, 1)),
         ],
@@ -411,13 +415,15 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
             final proyecto = proyectos[index];
             return ProjectCardWidget(
               proyecto: proyecto,
-              isAdmin: _isAdmin, 
+              isAdmin: _isAdmin, // 🎯 Pasar si es admin
               onTapView: () {
                 _navigateToProjectDetail(proyecto);
               },
-              onTapDelete: _isAdmin ? () {
-                _confirmarEliminarProyecto(proyecto);
-              } : null, 
+              onTapDelete: _isAdmin
+                  ? () {
+                      _confirmarEliminarProyecto(proyecto);
+                    }
+                  : null, // Solo permitir eliminar si es admin
             );
           },
         );

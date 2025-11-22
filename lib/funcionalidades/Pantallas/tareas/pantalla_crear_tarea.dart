@@ -4,45 +4,28 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart';
-import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart';
-
-// --- Importa tus modelos y servicios ---
 import 'package:sistem_proyect/central/constantes/modelos/project_model.dart';
-import 'package:sistem_proyect/central/constantes/modelos/task_model.dart';
+import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart';
 import 'package:sistem_proyect/central/constantes/modelos/recurso_model.dart';
-import 'package:sistem_proyect/central/constantes/servicios/task.service.dart';
-import 'package:sistem_proyect/central/constantes/colores.dart'; // Asumo que esto contiene tus colores
+import 'package:sistem_proyect/central/constantes/modelos/task_model.dart';
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
-
-// --- Importa tus DIÁLOGOS de selección (REUTILIZADOS) ---
+import 'package:sistem_proyect/central/constantes/servicios/task_service.dart';
+import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/profile_menu_widget.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/resource_selection_dialog.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/tareas/task_member_selection.dart';
-// --- Importa los widgets compartidos (COMO EN 'pantalla_principal.dart') ---
-// No necesitamos 'SharedFooter' porque lo recrearemos aquí para que coincida con la imagen
-// import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/shared_footer_widget.dart';
-import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/profile_menu_widget.dart';
-
-// ======== INICIO DE MODIFICACIÓN: Constantes de color del diseño ========
-// Si ya los tienes en 'colores.dart', puedes borrarlos.
-// Los pongo aquí para que el código sea autocontenido.
-const Color kAppRed = Color(0xFFE74C3C);
-const Color kButtonOrange = Color(0xFFF39C12);
-const Color kIconBlue = Color(0xFF3498DB);
-const Color kDarkFooter = Color(0xFF343A40);
-const Color kLightGrayBg = Color(0xFFF4F4F7);
-const Color kDividerColor = Color(0xFFEEEEEE);
-// ======== FIN DE MODIFICACIÓN ========
+import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/widgets_principal.dart';
 
 class PantallaCrearTarea extends StatefulWidget {
   final Proyecto proyecto;
 
   const PantallaCrearTarea({
-    Key? key,
+    super.key,
     required this.proyecto,
-  }) : super(key: key);
+  });
 
   @override
+  // ignore: library_private_types_in_public_api
   _PantallaCrearTareaState createState() => _PantallaCrearTareaState();
 }
 
@@ -69,7 +52,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
   // Datos de la tarea
   DateTime? _fechaInicio; // MODIFICADO: Añadido
   DateTime? _fechaLimite;
-  String _prioridad =
+  final String _prioridad =
       'Media'; // Lo mantenemos por lógica, aunque no está en la imagen
   List<Usuario> _selectedMembers = [];
   List<RecursoMaterial> _selectedResources = [];
@@ -141,6 +124,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
     final availableUsers = await _miembrosDelProyecto;
 
     final List<Usuario>? result = await showDialog(
+      // ignore: use_build_context_synchronously
       context: context,
       builder: (_) => TaskMemberSelectionDialog(
         initialSelectedMembers: _selectedMembers,
@@ -210,10 +194,13 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
 
     try {
       await _taskService.crearTarea(nuevaTarea);
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(content: Text('Tarea creada exitosamente')));
+      // ignore: use_build_context_synchronously
       Navigator.of(context).pop();
     } catch (e) {
+      // ignore: use_build_context_synchronously
       ScaffoldMessenger.of(context)
           .showSnackBar(SnackBar(content: Text('Error al crear la tarea: $e')));
     } finally {
@@ -239,7 +226,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
 
     return Scaffold(
       appBar: appBar, // AppBar blanco con links
-      backgroundColor: kLightGrayBg, // Fondo gris claro
+      backgroundColor: Colors.grey, // Fondo gris claro
       body: SingleChildScrollView(
         child: Center(
           // Centra el contenido
@@ -288,7 +275,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
               fontFamily: 'Poppins'), // Asegúrate de tener la fuente Poppins
           children: [
             TextSpan(text: "Proyect"),
-            TextSpan(text: "App", style: TextStyle(color: kAppRed)),
+            TextSpan(text: "App", style: TextStyle(color: Colors.red)),
           ],
         ),
       ),
@@ -340,7 +327,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
                   Expanded(flex: 2, child: _buildTaskForm()), // Formulario
                   const SizedBox(width: 28),
                   Container(
-                      width: 1, height: 450, color: kDividerColor), // Divisor
+                      width: 1, height: 450, color: Colors.grey), // Divisor
                   const SizedBox(width: 28),
                   Expanded(flex: 1, child: _buildResourcesPanel()), // Recursos
                 ],
@@ -350,7 +337,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   _buildTaskForm(),
-                  const Divider(height: 40, thickness: 1, color: kDividerColor),
+                  const Divider(height: 40, thickness: 1, color: Colors.grey),
                   _buildResourcesPanel(),
                 ],
               ),
@@ -415,7 +402,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
             readOnly: true, // Este campo solo muestra
             hintText: '${_selectedMembers.length} miembros asignados',
             onTap: _selectMembers, // Tocarlo abre el selector
-            suffixIcon: Icon(Icons.add_circle, color: kIconBlue),
+            suffixIcon: Icon(Icons.add_circle, color: Colors.blue),
           ),
           const SizedBox(height: 24),
 
@@ -473,7 +460,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
               title: "Observador",
               subtitle: creador.nombre,
               avatarContent: CircleAvatar(
-                  backgroundColor: kIconBlue,
+                  backgroundColor: Colors.blue,
                   radius: 18,
                   child: Text(initial,
                       style: TextStyle(color: Colors.white, fontSize: 12))),
@@ -488,12 +475,12 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
           subtitle:
               "${_selectedMembers.length} miembro(s)\n${_selectedMembers.map((e) => e.nombre).join(', ')}",
           avatarContent: CircleAvatar(
-              backgroundColor: kIconBlue,
+              backgroundColor: Colors.blue,
               radius: 18,
               child: Text(_selectedMembers.length.toString(),
                   style: TextStyle(color: Colors.white, fontSize: 12))),
           trailing: IconButton(
-            icon: Icon(Icons.add_circle, color: kIconBlue, size: 28),
+            icon: Icon(Icons.add_circle, color: Colors.blue, size: 28),
             onPressed: _selectMembers, // La lógica ya existe
           ),
         ),
@@ -505,9 +492,9 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
           subtitle:
               "${_selectedResources.length} recurso(s)\n${_selectedResources.map((e) => e.nombre).join(', ')}",
           // Puedes poner un icono si quieres
-          // avatarContent: CircleAvatar(backgroundColor: kIconBlue, ...),
+          // avatarContent: CircleAvatar(backgroundColor: Colors.blue, ...),
           trailing: IconButton(
-            icon: Icon(Icons.add_circle, color: kIconBlue, size: 28),
+            icon: Icon(Icons.add_circle, color: Colors.blue, size: 28),
             onPressed: _selectResources, // La lógica ya existe
           ),
         ),
@@ -520,7 +507,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
     return Center(
       child: ElevatedButton(
         style: ElevatedButton.styleFrom(
-          backgroundColor: kButtonOrange,
+          backgroundColor: Colors.orange,
           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
         ),
@@ -545,7 +532,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
       children: [
         Container(
           width: double.infinity,
-          color: kDarkFooter,
+          color: Colors.black,
           padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 30),
           child: Center(
             child: Container(
@@ -584,12 +571,14 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
         // Barra naranja inferior
         Container(
           width: double.infinity,
-          color: kButtonOrange,
+          color: Colors.orange,
           padding: const EdgeInsets.symmetric(vertical: 15),
           child: Center(
             child: Text("2025 ProyectApp. UNIMET. Derechos Reservados.",
                 style: TextStyle(
-                    color: Colors.white.withOpacity(0.8), fontSize: 13)),
+                    // ignore: deprecated_member_use
+                    color: Colors.white.withOpacity(0.8),
+                    fontSize: 13)),
           ),
         ),
       ],
@@ -610,7 +599,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
                 fontFamily: 'Poppins'),
             children: [
               TextSpan(text: "Proyect"),
-              TextSpan(text: "App", style: TextStyle(color: kAppRed)),
+              TextSpan(text: "App", style: TextStyle(color: Colors.red)),
             ],
           ),
         ),
@@ -744,6 +733,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
   }
 
   // --- Helper para los items de Recursos (Añadido) ---
+  // ignore: non_constant_identifier_names
   Widget _ResourceInfoTile({
     required String title,
     required String subtitle,
@@ -842,6 +832,7 @@ class _HoverableProfileAvatarState extends State<HoverableProfileAvatar> {
             boxShadow: _isHovered
                 ? [
                     BoxShadow(
+                      // ignore: deprecated_member_use
                       color: widget.avatarColor.withOpacity(0.5),
                       blurRadius: 12,
                       offset: const Offset(0, 4),
