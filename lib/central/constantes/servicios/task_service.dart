@@ -162,7 +162,7 @@ class TaskService {
         }
       }
     } catch (e) {
-      // Error crítico recalculando el porcentaje del proyecto: $e
+      rethrow;
     }
   }
 }

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sistem_proyect/central/constantes/modelos/project_model.dart';
 import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart';
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
@@ -159,49 +160,67 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
   }
 
   Widget _buildMetricsRow() {
-    final tareasTotales = _tareas.length;
-    final tareasCompletadas =
-        _tareas.where((t) => t.estado == 'Completada').length;
-    final tareasPendientes =
-        _tareas.where((t) => t.estado == 'Pendiente').length;
-    final miembrosCount = _miembros.length;
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('tareas')
+          .where('proyectoId', isEqualTo: widget.projectId)
+          .snapshots(),
+      builder: (context, snapshot) {
+        int tareasTotales = 0;
+        int tareasCompletadas = 0;
+        int tareasPendientes = 0;
 
-    final String tareasLabel = _isAdmin ? 'TAREAS TOTALES' : 'MIS TAREAS';
+        if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
+          final docs = snapshot.data!.docs;
+          tareasTotales = docs.length;
+          tareasCompletadas =
+              docs.where((doc) => doc['estado'] == 'Completada').length;
+          tareasPendientes =
+              docs.where((doc) => doc['estado'] == 'Pendiente').length;
+        }
 
-    return Row(
-      children: [
-        Expanded(
-          child: _buildMetricCard(
-            label: tareasLabel,
-            value: tareasTotales.toString(),
-            color: AppColors.primaryOrange,
-          ),
-        ),
-        const SizedBox(width: 15),
-        Expanded(
-          child: _buildMetricCard(
-            label: 'COMPLETADAS',
-            value: tareasCompletadas.toString(),
-            color: AppColors.primaryOrange,
-          ),
-        ),
-        const SizedBox(width: 15),
-        Expanded(
-          child: _buildMetricCard(
-            label: 'PENDIENTES',
-            value: tareasPendientes.toString(),
-            color: AppColors.primaryOrange,
-          ),
-        ),
-        const SizedBox(width: 15),
-        Expanded(
-          child: _buildMetricCard(
-            label: 'MIEMBROS',
-            value: miembrosCount.toString(),
-            color: AppColors.primaryOrange,
-          ),
-        ),
-      ],
+        final miembrosCount = _miembros.length;
+
+        // Cambia el label dependiendo de si es admin o usuario
+        final String tareasLabel =
+            _isAdmin ? 'TAREAS TOTALES' : 'TAREAS DEL PROYECTO';
+
+        return Row(
+          children: [
+            Expanded(
+              child: _buildMetricCard(
+                label: tareasLabel,
+                value: tareasTotales.toString(),
+                color: AppColors.primaryOrange,
+              ),
+            ),
+            const SizedBox(width: 15),
+            Expanded(
+              child: _buildMetricCard(
+                label: 'COMPLETADAS',
+                value: tareasCompletadas.toString(),
+                color: AppColors.primaryOrange,
+              ),
+            ),
+            const SizedBox(width: 15),
+            Expanded(
+              child: _buildMetricCard(
+                label: 'PENDIENTES',
+                value: tareasPendientes.toString(),
+                color: AppColors.primaryOrange,
+              ),
+            ),
+            const SizedBox(width: 15),
+            Expanded(
+              child: _buildMetricCard(
+                label: 'MIEMBROS',
+                value: miembrosCount.toString(),
+                color: AppColors.primaryOrange,
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 
@@ -619,15 +638,16 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
                   },
                   tooltip: 'Ver',
                 ),
-                IconButton(
-                  icon: const Icon(Icons.edit_outlined, size: 20),
-                  color: Colors.blueGrey,
-                  onPressed: () {
-                    developer.log('Editar tarea: ${tarea.nombre}',
-                        name: 'TaskAction');
-                  },
-                  tooltip: 'Editar',
-                ),
+                if (_isAdmin)
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 20),
+                    color: Colors.blueGrey,
+                    onPressed: () {
+                      developer.log('Editar tarea: ${tarea.nombre}',
+                          name: 'TaskAction');
+                    },
+                    tooltip: 'Editar',
+                  ),
                 if (_isAdmin)
                   IconButton(
                     icon: const Icon(Icons.delete_outline, size: 20),
@@ -770,15 +790,16 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
               },
               tooltip: 'Ver',
             ),
-            IconButton(
-              icon: const Icon(Icons.edit_outlined, size: 18),
-              color: Colors.blueGrey,
-              onPressed: () {
-                developer.log('Editar tarea: ${tarea.nombre}',
-                    name: 'TaskAction');
-              },
-              tooltip: 'Editar',
-            ),
+            if (_isAdmin)
+              IconButton(
+                icon: const Icon(Icons.edit_outlined, size: 18),
+                color: Colors.blueGrey,
+                onPressed: () {
+                  developer.log('Editar tarea: ${tarea.nombre}',
+                      name: 'TaskAction');
+                },
+                tooltip: 'Editar',
+              ),
             if (_isAdmin)
               IconButton(
                 icon: const Icon(Icons.delete_outline, size: 18),
@@ -913,14 +934,15 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
                     },
                     tooltip: 'Ver detalle',
                   ),
-                  IconButton(
-                    icon: const Icon(Icons.edit_outlined, size: 20),
-                    color: Colors.blueGrey,
-                    onPressed: () {
-                      developer.log('Editar tarea: ${tarea.nombre}');
-                    },
-                    tooltip: 'Editar',
-                  ),
+                  if (_isAdmin)
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 20),
+                      color: Colors.blueGrey,
+                      onPressed: () {
+                        developer.log('Editar tarea: ${tarea.nombre}');
+                      },
+                      tooltip: 'Editar',
+                    ),
                   if (_isAdmin)
                     IconButton(
                       icon: const Icon(Icons.delete_outline, size: 20),
@@ -980,23 +1002,6 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
     }
 
     final proyecto = _proyecto!;
-
-    final tareasTotales = _tareas.length;
-    final tareasCompletadas =
-        _tareas.where((t) => t.estado == 'Completada').length;
-    final progresoTareas = tareasTotales > 0
-        ? (tareasCompletadas / tareasTotales * 100).round()
-        : 0;
-
-    int totalRecursos = 0;
-    int recursosDisponibles = 0;
-    for (var recurso in _recursos) {
-      totalRecursos += recurso.cantidad;
-      recursosDisponibles += recurso.cantidadDisponible;
-    }
-    final progresoRecursos = totalRecursos > 0
-        ? (recursosDisponibles / totalRecursos * 100).round()
-        : 100;
 
     return Scaffold(
       backgroundColor: Colors.grey.shade50,
@@ -1102,35 +1107,73 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
                 ),
               ),
               const SizedBox(height: 30),
+              
               _buildMetricsRow(),
+
               const SizedBox(height: 30),
-              Container(
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: Colors.white,
-                  borderRadius: BorderRadius.circular(6),
-                  border: Border.all(color: Colors.grey.shade200),
-                ),
-                child: Column(
-                  children: [
-                    _buildProgressBar(
-                      label: 'Progreso del Proyecto',
-                      percentage: '$progresoTareas%',
-                      subtitle:
-                          '$progresoTareas% completado - $tareasCompletadas de $tareasTotales tareas finalizadas',
-                      color: AppColors.primaryOrange,
+              StreamBuilder<QuerySnapshot>(
+                stream: FirebaseFirestore.instance
+                    .collection('tareas')
+                    .where('proyectoId', isEqualTo: widget.projectId)
+                    .snapshots(),
+                builder: (context, snapshotTareas) {
+                  double progresoProyecto = 0.0;
+                  int tareasTotales = 0;
+                  int tareasCompletadas = 0;
+
+                  if (snapshotTareas.hasData &&
+                      snapshotTareas.data!.docs.isNotEmpty) {
+                    final docs = snapshotTareas.data!.docs;
+                    tareasTotales = docs.length;
+                    tareasCompletadas = docs
+                        .where((doc) => doc['estado'] == 'Completada')
+                        .length;
+
+                    if (tareasTotales > 0) {
+                      progresoProyecto = tareasCompletadas / tareasTotales;
+                    }
+                  }
+
+                  int totalRecursos = 0;
+                  int recursosDisponibles = 0;
+                  for (var recurso in _recursos) {
+                    totalRecursos += recurso.cantidad;
+                    recursosDisponibles += recurso.cantidadDisponible;
+                  }
+                  final progresoRecursos = totalRecursos > 0
+                      ? (recursosDisponibles / totalRecursos * 100).round()
+                      : 100;
+
+                  return Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: Colors.white,
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.grey.shade200),
                     ),
-                    const SizedBox(height: 24),
-                    _buildProgressBar(
-                      label: 'Recursos',
-                      percentage: '$progresoRecursos%',
-                      subtitle:
-                          '$progresoRecursos% de recursos disponibles ($recursosDisponibles de $totalRecursos)',
-                      color: AppColors.primaryOrange,
+                    child: Column(
+                      children: [
+                        _buildProgressBar(
+                          label: 'Progreso del Proyecto',
+                          percentage: '${(progresoProyecto * 100).round()}%',
+                          subtitle:
+                              '${(progresoProyecto * 100).round()}% completado - $tareasCompletadas de $tareasTotales tareas finalizadas',
+                          color: AppColors.primaryOrange,
+                        ),
+                        const SizedBox(height: 24),
+                        _buildProgressBar(
+                          label: 'Recursos',
+                          percentage: '$progresoRecursos%',
+                          subtitle:
+                              '$progresoRecursos% de recursos disponibles ($recursosDisponibles de $totalRecursos)',
+                          color: AppColors.primaryOrange,
+                        ),
+                      ],
                     ),
-                  ],
-                ),
+                  );
+                },
               ),
+
               const SizedBox(height: 30),
               Container(
                 padding: const EdgeInsets.all(24),
