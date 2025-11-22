@@ -3,6 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sistem_proyect/central/constantes/modelos/task_model.dart';
 import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart';
+import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/task_service.dart';
 import 'package:sistem_proyect/central/constantes/colores.dart';
@@ -21,6 +22,9 @@ class PantallaDetalleTarea extends StatefulWidget {
 }
 
 class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
+  final AuthService _authService = AuthService(); // Servicio de autenticación
+  bool _esAdmin = false;
+
   final UserDataService _userDataService = UserDataService();
   final TaskService _taskService = TaskService();
 
@@ -37,12 +41,29 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
     super.initState();
     _currentStatus = widget.tarea.estado;
     _cargarMiembros();
+    _verificarAdmin();
   }
 
   @override
   void dispose() {
     _commentController.dispose();
     super.dispose();
+  }
+
+  Future<void> _verificarAdmin() async {
+    // --- NUEVO: Preguntamos el rol exacto para verlo en consola ---
+    String? rolReal = await _authService.getUserRole();
+    print("🕵️ CLAVE DE MISTERIO: El rol en Firebase es: '$rolReal'");
+
+    bool admin = await _authService.isAdmin();
+    print("🕵️ RESULTADO: ¿La App cree que soy admin?: $admin");
+    // -------------------------------------------------------------
+
+    if (mounted) {
+      setState(() {
+        _esAdmin = admin;
+      });
+    }
   }
 
   Future<void> _cargarMiembros() async {
@@ -189,6 +210,13 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
               fontSize: 18,
               fontWeight: FontWeight.bold),
         ),
+        actions: [
+          if (_esAdmin)
+            IconButton(
+              icon: const Icon(Icons.edit, color: AppColors.primaryOrange),
+              onPressed: () {},
+            ),
+        ],
       ),
       body: SingleChildScrollView(
         child: Padding(
