@@ -160,7 +160,7 @@ class _PantallaRegistroState extends State<PantallaRegistro> {
   @override
   Widget build(BuildContext context) {
     // Definir la imagen de fondo con un filtro oscuro
-    const String backgroundImage = 'assets/Imagen login.JPG';
+    const String backgroundImage = 'assets/Imagen login.jpg';
 
     return Scaffold(
       body: Stack(

@@ -3,7 +3,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart';
 import 'package:sistem_proyect/central/constantes/modelos/recurso_model.dart';
 import 'package:sistem_proyect/central/constantes/modelos/task_model.dart';
-import 'package:sistem_proyect/central/constantes/servicios/task.service.dart';
+import 'package:sistem_proyect/central/constantes/servicios/task_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/resource_service.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/tareas/task_member_selection.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/widgets_principal.dart';

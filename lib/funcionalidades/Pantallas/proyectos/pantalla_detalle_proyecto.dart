@@ -13,7 +13,7 @@ import 'dart:developer' as developer;
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/shared_footer_widget.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/tareas/pantalla_detalle_tarea.dart';
 import 'package:sistem_proyect/central/constantes/modelos/task_model.dart';
-import 'package:sistem_proyect/central/constantes/servicios/task.service.dart';
+import 'package:sistem_proyect/central/constantes/servicios/task_service.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/tareas/pantalla_crear_tarea.dart';
 
 class PantallaDetalleProyecto extends StatefulWidget {
@@ -33,8 +33,8 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
   final ProjectService _projectService = ProjectService();
   final UserDataService _userDataService = UserDataService();
   final AuthService _authService = AuthService();
-  final TaskService _taskService = TaskService();
   final ResourceService _resourceService = ResourceService();
+  final TaskService _taskService = TaskService();
 
   Proyecto? _proyecto;
   List<Usuario> _miembros = [];
@@ -77,25 +77,20 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
             proyecto.miembrosUid.where((uid) => uid.isNotEmpty).toList();
         final miembros = await _userDataService.getUsuariosByIds(miembrosUids);
 
-        // Obtener todas las tareas del proyecto
         final todasLasTareas =
             await _taskService.getTasksStreamByProject(widget.projectId).first;
 
-        // FILTRAR tareas según el rol del usuario
         List<TaskModel> tareasFiltradas;
         final currentUserUid = FirebaseAuth.instance.currentUser?.uid;
 
         if (_isAdmin) {
-          // Admin ve todas las tareas
           tareasFiltradas = todasLasTareas;
         } else {
-          // Miembro solo ve tareas donde está asignado
           tareasFiltradas = todasLasTareas.where((tarea) {
             return tarea.miembrosUid.contains(currentUserUid);
           }).toList();
         }
 
-        // Cargar recursos del proyecto
         final recursos = await _resourceService
             .getRecursosStreamByProject(widget.projectId)
             .first;
@@ -124,12 +119,14 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
 
   Future<void> _abrirPantallaCrearTarea() async {
     if (!_isAdmin) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('No tienes permisos para crear tareas.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('No tienes permisos para crear tareas.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
       return;
     }
 
@@ -169,7 +166,6 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
         _tareas.where((t) => t.estado == 'Pendiente').length;
     final miembrosCount = _miembros.length;
 
-    // Texto descriptivo según el rol
     final String tareasLabel = _isAdmin ? 'TAREAS TOTALES' : 'MIS TAREAS';
 
     return Row(
@@ -289,7 +285,6 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
   }
 
   Widget _buildTaskManagementSection() {
-    // Título dinámico según el rol
     final String tituloSeccion =
         _isAdmin ? 'Tareas del Proyecto' : 'Mis Tareas Asignadas';
 
@@ -336,7 +331,15 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
         const SizedBox(height: 20),
         _buildTaskFilters(),
         const SizedBox(height: 20),
-        _buildTasksDataTable(),
+        LayoutBuilder(
+          builder: (context, constraints) {
+            if (constraints.maxWidth > 800) {
+              return _buildTasksDataTable();
+            } else {
+              return _buildMobileTaskList();
+            }
+          },
+        ),
       ],
     );
   }
@@ -386,7 +389,6 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
     final tareasFiltradas = _tareas;
 
     if (tareasFiltradas.isEmpty) {
-      // Mensaje diferente según el rol
       final String mensaje = _isAdmin
           ? 'Este proyecto aún no tiene tareas.'
           : 'No tienes tareas asignadas en este proyecto.';
@@ -409,11 +411,9 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
 
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Determinar si estamos en móvil o desktop
         final isDesktop = constraints.maxWidth > 900;
 
         if (isDesktop) {
-          // Vista de tabla para desktop
           return Container(
             width: double.infinity,
             decoration: BoxDecoration(
@@ -452,7 +452,6 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
             ),
           );
         } else {
-          // Vista de cards para móvil
           return Container(
             decoration: BoxDecoration(
               border: Border.all(color: Colors.grey.shade200),
@@ -471,7 +470,6 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
     );
   }
 
-  // Nuevo widget para vista móvil
   Widget _buildTaskCard(TaskModel tarea) {
     final isCompletada = tarea.estado == 'Completada';
 
@@ -615,7 +613,9 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
                         builder: (context) =>
                             PantallaDetalleTarea(tarea: tarea),
                       ),
-                    );
+                    ).then((_) {
+                      _cargarDatosProyecto();
+                    });
                   },
                   tooltip: 'Ver',
                 ),
@@ -674,22 +674,24 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
 
     return DataRow(
       cells: [
-        DataCell(Container(
-          width: 20,
-          height: 20,
-          decoration: BoxDecoration(
-            shape: BoxShape.circle,
-            color: isCompletada ? Colors.green.shade600 : Colors.transparent,
-            border: Border.all(
-              color:
-                  isCompletada ? Colors.green.shade600 : Colors.grey.shade400,
-              width: 2,
+        DataCell(
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isCompletada ? Colors.green.shade600 : Colors.transparent,
+              border: Border.all(
+                color:
+                    isCompletada ? Colors.green.shade600 : Colors.grey.shade400,
+                width: 2,
+              ),
             ),
+            child: isCompletada
+                ? const Icon(Icons.check, color: Colors.white, size: 16)
+                : null,
           ),
-          child: isCompletada
-              ? const Icon(Icons.check, color: Colors.white, size: 14)
-              : null,
-        )),
+        ),
         DataCell(SizedBox(
           width: 200,
           child: Column(
@@ -755,17 +757,19 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
           children: [
             IconButton(
               icon: const Icon(Icons.visibility_outlined, size: 20),
-                  color: AppColors.accentColor,
-                  onPressed: () {
-                    Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                        builder: (context) => PantallaDetalleTarea(tarea: tarea),
-                      ),
-                    );
-                  },
-                  tooltip: 'Ver',
-                ),
+              color: AppColors.accentColor,
+              onPressed: () {
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => PantallaDetalleTarea(tarea: tarea),
+                  ),
+                ).then((_) {
+                  _cargarDatosProyecto();
+                });
+              },
+              tooltip: 'Ver',
+            ),
             IconButton(
               icon: const Icon(Icons.edit_outlined, size: 18),
               color: Colors.blueGrey,
@@ -789,6 +793,163 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
         )),
       ],
     );
+  }
+
+  Widget _buildMobileTaskList() {
+    if (_tareas.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(20.0),
+        child: Text('No hay tareas que coincidan con los filtros.',
+            textAlign: TextAlign.center, style: TextStyle(color: Colors.grey)),
+      );
+    }
+
+    return ListView.separated(
+      shrinkWrap: true,
+      physics: const NeverScrollableScrollPhysics(),
+      itemCount: _tareas.length,
+      separatorBuilder: (context, index) => const SizedBox(height: 12),
+      itemBuilder: (context, index) {
+        final tarea = _tareas[index];
+        final isCompletada = tarea.estado == 'Completada';
+
+        return Container(
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade200),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.03),
+                blurRadius: 4,
+                offset: const Offset(0, 2),
+              )
+            ],
+          ),
+          padding: const EdgeInsets.all(16),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Container(
+                    margin: const EdgeInsets.only(right: 12),
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      color: isCompletada
+                          ? Colors.green.shade600
+                          : Colors.transparent,
+                      border: Border.all(
+                        color: isCompletada
+                            ? Colors.green.shade600
+                            : Colors.grey.shade400,
+                        width: 2,
+                      ),
+                    ),
+                    child: isCompletada
+                        ? const Icon(Icons.check, color: Colors.white, size: 16)
+                        : null,
+                  ),
+                  Expanded(
+                    child: Text(
+                      tarea.nombre,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 16,
+                        color: AppColors.darkBackground,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Row(
+                children: [
+                  Container(
+                    padding:
+                        const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: _getPriorityColor(tarea.prioridad)
+                          .withValues(alpha: .1),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: Text(
+                      tarea.prioridad,
+                      style: TextStyle(
+                        color: _getPriorityColor(tarea.prioridad),
+                        fontSize: 12,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Text(
+                    tarea.fechaVencimiento != null
+                        ? _formatDate(tarea.fechaVencimiento!)
+                        : 'Sin fecha',
+                    style: TextStyle(fontSize: 12, color: Colors.grey.shade600),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  IconButton(
+                    icon: const Icon(Icons.visibility_outlined, size: 20),
+                    color: AppColors.accentColor,
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              PantallaDetalleTarea(tarea: tarea),
+                        ),
+                      ).then((_) {
+                        _cargarDatosProyecto();
+                      });
+                    },
+                    tooltip: 'Ver detalle',
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.edit_outlined, size: 20),
+                    color: Colors.blueGrey,
+                    onPressed: () {
+                      developer.log('Editar tarea: ${tarea.nombre}');
+                    },
+                    tooltip: 'Editar',
+                  ),
+                  if (_isAdmin)
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 20),
+                      color: Colors.red,
+                      onPressed: () {
+                        developer.log('Eliminar tarea: ${tarea.nombre}');
+                      },
+                      tooltip: 'Eliminar',
+                    ),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Color _getPriorityColor(String prioridad) {
+    switch (prioridad.toLowerCase()) {
+      case 'alta':
+        return AppColors.prioridadAlta;
+      case 'media':
+        return AppColors.prioridadMedia;
+      case 'baja':
+        return AppColors.prioridadBaja;
+      default:
+        return Colors.grey.shade400;
+    }
   }
 
   @override
@@ -820,7 +981,6 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
 
     final proyecto = _proyecto!;
 
-    // Calcular progreso de tareas
     final tareasTotales = _tareas.length;
     final tareasCompletadas =
         _tareas.where((t) => t.estado == 'Completada').length;
@@ -828,7 +988,6 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
         ? (tareasCompletadas / tareasTotales * 100).round()
         : 0;
 
-    // Calcular progreso de recursos
     int totalRecursos = 0;
     int recursosDisponibles = 0;
     for (var recurso in _recursos) {

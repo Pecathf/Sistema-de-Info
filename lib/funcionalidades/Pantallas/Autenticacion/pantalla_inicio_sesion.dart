@@ -4,8 +4,6 @@ import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
 import 'dart:developer' as developer;
 import 'pantalla_registro.dart';
 import 'package:sistem_proyect/central/constantes/colores.dart';
-
-// Importamos la Pantalla Principal
 import '../pantalla_principal.dart';
 
 class PantallaInicioSesion extends StatefulWidget {
@@ -104,7 +102,7 @@ class _PantallaInicioSesionState extends State<PantallaInicioSesion> {
 
   @override
   Widget build(BuildContext context) {
-    const String backgroundImage = 'assets/Imagen login.JPG';
+    const String backgroundImage = 'assets/Imagen login.jpg';
 
     return Scaffold(
       body: Stack(
