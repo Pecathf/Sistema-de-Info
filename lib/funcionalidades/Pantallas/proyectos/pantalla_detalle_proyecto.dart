@@ -642,9 +642,21 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
                   IconButton(
                     icon: const Icon(Icons.edit_outlined, size: 20),
                     color: Colors.blueGrey,
-                    onPressed: () {
-                      developer.log('Editar tarea: ${tarea.nombre}',
-                          name: 'TaskAction');
+                    onPressed: () async {
+                      final bool? resultado = await Navigator.push<bool>(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => PantallaCrearTarea(
+                            projectId: widget.projectId,
+                            projectMembers: _miembros,
+                            tareaExistente: tarea, // Pasamos la tarea existente
+                          ),
+                        ),
+                      );
+
+                      if (resultado == true && mounted) {
+                        _cargarDatosProyecto(); // Recargar datos
+                      }
                     },
                     tooltip: 'Editar',
                   ),
@@ -794,9 +806,21 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
               IconButton(
                 icon: const Icon(Icons.edit_outlined, size: 18),
                 color: Colors.blueGrey,
-                onPressed: () {
-                  developer.log('Editar tarea: ${tarea.nombre}',
-                      name: 'TaskAction');
+                onPressed: () async {
+                  final bool? resultado = await Navigator.push<bool>(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => PantallaCrearTarea(
+                        projectId: widget.projectId,
+                        projectMembers: _miembros,
+                        tareaExistente: tarea,
+                      ),
+                    ),
+                  );
+
+                  if (resultado == true && mounted) {
+                    _cargarDatosProyecto();
+                  }
                 },
                 tooltip: 'Editar',
               ),
@@ -947,10 +971,23 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
                     IconButton(
                       icon: const Icon(Icons.delete_outline, size: 20),
                       color: Colors.red,
-                      onPressed: () {
-                        developer.log('Eliminar tarea: ${tarea.nombre}');
+                      onPressed: () async {
+                        final bool? resultado = await Navigator.push<bool>(
+                          context,
+                          MaterialPageRoute(
+                            builder: (context) => PantallaCrearTarea(
+                              projectId: widget.projectId,
+                              projectMembers: _miembros,
+                              tareaExistente: tarea,
+                            ),
+                          ),
+                        );
+
+                        if (resultado == true && mounted) {
+                          _cargarDatosProyecto();
+                        }
                       },
-                      tooltip: 'Eliminar',
+                      tooltip: 'Editar',
                     ),
                 ],
               ),
@@ -1107,9 +1144,7 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
                 ),
               ),
               const SizedBox(height: 30),
-              
               _buildMetricsRow(),
-
               const SizedBox(height: 30),
               StreamBuilder<QuerySnapshot>(
                 stream: FirebaseFirestore.instance
@@ -1173,7 +1208,6 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
                   );
                 },
               ),
-
               const SizedBox(height: 30),
               Container(
                 padding: const EdgeInsets.all(24),

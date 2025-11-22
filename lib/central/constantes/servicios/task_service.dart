@@ -1,5 +1,6 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sistem_proyect/central/constantes/modelos/task_model.dart';
+import 'package:sistem_proyect/central/constantes/modelos/recurso_model.dart';
 
 class TaskService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
@@ -62,6 +63,35 @@ class TaskService {
     }
   }
 
+  // 5. Actualizar una tarea completa
+  Future<void> updateTarea(
+    String taskId, {
+    required String nombre,
+    required String descripcion,
+    required List<String> miembrosUid,
+    required List<RecursoMaterial> recursosAsignados,
+    required DateTime? fechaInicio,
+    required DateTime? fechaVencimiento,
+    required String prioridad,
+  }) async {
+    try {
+      await _firestore.collection(_collectionName).doc(taskId).update({
+        'nombre': nombre,
+        'descripcion': descripcion,
+        'miembrosUid': miembrosUid,
+        'recursosAsignados': recursosAsignados.map((r) => r.toMap()).toList(),
+        'fechaInicio':
+            fechaInicio != null ? Timestamp.fromDate(fechaInicio) : null,
+        'fechaVencimiento': fechaVencimiento != null
+            ? Timestamp.fromDate(fechaVencimiento)
+            : null,
+        'prioridad': prioridad,
+      });
+    } catch (e) {
+      throw Exception('Fallo al actualizar tarea: $e');
+    }
+  }
+
   // ----------------------------------------------------------------------
   //  MÉTODOS PARA COMENTARIOS
   // ----------------------------------------------------------------------
@@ -100,7 +130,6 @@ class TaskService {
   // ----------------------------------------------------------------------
   Future<void> _recalcularProgresoProyecto(String projectId) async {
     try {
-
       try {
         // Intentar obtener TODAS las tareas del proyecto
         final querySnapshot = await _firestore
@@ -157,7 +186,6 @@ class TaskService {
         });
       } on FirebaseException catch (e) {
         if (e.code == 'permission-denied') {
-
           rethrow;
         }
       }

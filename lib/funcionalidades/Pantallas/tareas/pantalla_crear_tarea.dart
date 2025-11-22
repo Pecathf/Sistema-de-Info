@@ -8,15 +8,16 @@ import 'package:sistem_proyect/central/constantes/servicios/resource_service.dar
 import 'package:sistem_proyect/funcionalidades/Pantallas/tareas/task_member_selection.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/widgets_principal.dart';
 
-
 class PantallaCrearTarea extends StatefulWidget {
   final String projectId;
   final List<Usuario> projectMembers;
+  final TaskModel? tareaExistente;
 
   const PantallaCrearTarea({
     super.key,
     required this.projectId,
     required this.projectMembers,
+    this.tareaExistente,
   });
 
   @override
@@ -36,16 +37,53 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
   String _prioridad = 'Media';
   List<Usuario> _selectedMembers = [];
   Map<String, int> _selectedResources = {};
+  final Map<String, int> _recursosOriginales = {};
   List<RecursoMaterial> _availableResources = [];
   bool _isCreating = false;
   bool _isLoadingResources = true;
 
   final List<String> _priorities = ['Alta', 'Media', 'Baja'];
 
+  bool get _isEditMode => widget.tareaExistente != null;
+
   @override
   void initState() {
     super.initState();
-    _cargarRecursos();
+
+    // Primero cargamos los recursos disponibles
+    _cargarRecursos().then((_) {
+      // Después de cargar recursos, si estamos en modo edición, cargamos los datos
+      if (_isEditMode && mounted) {
+        _cargarDatosExistentes();
+      }
+    });
+  }
+
+  void _cargarDatosExistentes() {
+    final tarea = widget.tareaExistente!;
+
+    setState(() {
+      _nombreController.text = tarea.nombre;
+      _descripcionController.text = tarea.descripcion;
+      _fechaInicio = tarea.fechaInicio;
+      _fechaVencimiento = tarea.fechaVencimiento;
+      _prioridad = tarea.prioridad;
+
+      // Cargar miembros seleccionados
+      _selectedMembers = widget.projectMembers
+          .where((m) => tarea.miembrosUid.contains(m.uid))
+          .toList();
+
+      // Cargar recursos asignados 
+      for (var recurso in tarea.recursosAsignados) {
+        // Verificar que el recurso todavía existe en el proyecto
+        final existe = _availableResources.any((r) => r.id == recurso.id);
+        if (existe) {
+          _selectedResources[recurso.id] = recurso.cantidad;
+          _recursosOriginales[recurso.id] = recurso.cantidad;
+        }
+      }
+    });
   }
 
   @override
@@ -87,7 +125,8 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
   Future<void> _selectDate(BuildContext context, bool isFechaInicio) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: (isFechaInicio ? _fechaInicio : _fechaVencimiento) ?? DateTime.now(),
+      initialDate:
+          (isFechaInicio ? _fechaInicio : _fechaVencimiento) ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
       builder: (context, child) {
@@ -179,27 +218,129 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
   Future<void> _createTask() async {
     if (!_formKey.currentState!.validate()) return;
 
-    if (_fechaInicio == null || _fechaVencimiento == null) {
+  if (_fechaInicio == null || _fechaVencimiento == null) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Por favor, selecciona las fechas de inicio y vencimiento.'),
+        backgroundColor: Colors.red,
+      ),
+    );
+    return;
+  }
+
+  setState(() => _isCreating = true);
+
+  try {
+    final currentUserUid = FirebaseAuth.instance.currentUser!.uid;
+
+    if (_isEditMode) {
+      // ============================================
+      // MODO EDICIÓN
+      // ============================================
+      
+      // 1. Liberar recursos que se quitaron
+      for (var entry in _recursosOriginales.entries) {
+        final recursoId = entry.key;
+        final cantidadOriginal = entry.value;
+        final cantidadNueva = _selectedResources[recursoId] ?? 0;
+        
+        // Verificar que el recurso todavía existe
+        final recursoIndex = _availableResources.indexWhere((r) => r.id == recursoId);
+        if (recursoIndex == -1) {
+          // El recurso ya no existe, saltarlo
+          continue;
+        }
+        
+        if (cantidadNueva < cantidadOriginal) {
+          // Se liberaron recursos
+          final recurso = _availableResources[recursoIndex];
+          final cantidadALiberar = cantidadOriginal - cantidadNueva;
+          final nuevaCantidadDisponible = recurso.cantidadDisponible + cantidadALiberar;
+          
+          await _resourceService.actualizarCantidadDisponible(
+            recursoId,
+            nuevaCantidadDisponible,
+          );
+        }
+      }
+
+      // 2. Asignar nuevos recursos o aumentar cantidad
+      for (var entry in _selectedResources.entries) {
+        final recursoId = entry.key;
+        final cantidadNueva = entry.value;
+        final cantidadOriginal = _recursosOriginales[recursoId] ?? 0;
+        
+        // Verificar que el recurso existe
+        final recursoIndex = _availableResources.indexWhere((r) => r.id == recursoId);
+        if (recursoIndex == -1) {
+          // El recurso no existe, mostrar advertencia y continuar
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Text('Advertencia: El recurso con ID $recursoId ya no existe'),
+                backgroundColor: Colors.orange,
+              ),
+            );
+          }
+          continue;
+        }
+        
+        if (cantidadNueva > cantidadOriginal) {
+          // Se agregaron más recursos
+          final recurso = _availableResources[recursoIndex];
+          final cantidadAAgregar = cantidadNueva - cantidadOriginal;
+          final nuevaCantidadDisponible = recurso.cantidadDisponible - cantidadAAgregar;
+          
+          await _resourceService.actualizarCantidadDisponible(
+            recursoId,
+            nuevaCantidadDisponible,
+          );
+        }
+      }
+
+      // 3. Preparar recursos asignados actualizados (solo los que existen)
+      List<RecursoMaterial> recursosAsignados = [];
+      for (var entry in _selectedResources.entries) {
+        final recursoIndex = _availableResources.indexWhere((r) => r.id == entry.key);
+        if (recursoIndex != -1) {
+          final recurso = _availableResources[recursoIndex];
+          recursosAsignados.add(recurso.copyWith(cantidad: entry.value));
+        }
+      }
+
+      // 4. Actualizar la tarea
+      await _taskService.updateTarea(
+        widget.tareaExistente!.id,
+        nombre: _nombreController.text.trim(),
+        descripcion: _descripcionController.text.trim(),
+        miembrosUid: _selectedMembers.map((m) => m.uid).toList(),
+        recursosAsignados: recursosAsignados,
+        fechaInicio: _fechaInicio,
+        fechaVencimiento: _fechaVencimiento,
+        prioridad: _prioridad,
+      );
+
+      if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Por favor, selecciona las fechas de inicio y vencimiento.'),
-          backgroundColor: Colors.red,
+          content: Text('Tarea actualizada exitosamente'),
+          backgroundColor: Colors.green,
         ),
       );
-      return;
-    }
 
-    setState(() => _isCreating = true);
-
-    try {
-      final currentUserUid = FirebaseAuth.instance.currentUser!.uid;
-
+    } else {
+      // ============================================
+      // MODO CREACIÓN (código original)
+      // ============================================
+      
       // Preparar recursos asignados
       List<RecursoMaterial> recursosAsignados = [];
       for (var entry in _selectedResources.entries) {
-        final recurso =
-            _availableResources.firstWhere((r) => r.id == entry.key);
-        recursosAsignados.add(recurso.copyWith(cantidad: entry.value));
+        final recursoIndex = _availableResources.indexWhere((r) => r.id == entry.key);
+        if (recursoIndex != -1) {
+          final recurso = _availableResources[recursoIndex];
+          recursosAsignados.add(recurso.copyWith(cantidad: entry.value));
+        }
       }
 
       final newTask = TaskModel(
@@ -221,42 +362,44 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
       if (taskId != null) {
         // Actualizar cantidades disponibles de recursos
         for (var entry in _selectedResources.entries) {
-          final recurso =
-              _availableResources.firstWhere((r) => r.id == entry.key);
-          final nuevaCantidadDisponible =
-              recurso.cantidadDisponible - entry.value;
-          await _resourceService.actualizarCantidadDisponible(
-            entry.key,
-            nuevaCantidadDisponible,
-          );
+          final recursoIndex = _availableResources.indexWhere((r) => r.id == entry.key);
+          if (recursoIndex != -1) {
+            final recurso = _availableResources[recursoIndex];
+            final nuevaCantidadDisponible = recurso.cantidadDisponible - entry.value;
+            await _resourceService.actualizarCantidadDisponible(
+              entry.key,
+              nuevaCantidadDisponible,
+            );
+          }
         }
 
         if (!mounted) return;
-
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
             content: Text('Tarea creada exitosamente'),
             backgroundColor: Colors.green,
           ),
         );
-
-        Navigator.of(context).pop(true);
-      }
-    } catch (e) {
-      if (!mounted) return;
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Error al crear la tarea: $e'),
-          backgroundColor: Colors.red,
-        ),
-      );
-    } finally {
-      if (mounted) {
-        setState(() => _isCreating = false);
       }
     }
+
+    Navigator.of(context).pop(true);
+    
+  } catch (e) {
+    if (!mounted) return;
+
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text('Error: $e'),
+        backgroundColor: Colors.red,
+      ),
+    );
+  } finally {
+    if (mounted) {
+      setState(() => _isCreating = false);
+    }
   }
+}
 
   String _formatDate(DateTime? date) {
     if (date == null) return '';
@@ -279,10 +422,10 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
               icon: const Icon(Icons.arrow_back, color: Colors.black87),
               onPressed: () => Navigator.pop(context),
             ),
-            title: const Text(
-              'Crear Nueva Tarea',
-              style:
-                  TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+            title: Text(
+              _isEditMode ? 'Editar Tarea' : 'Crear Nueva Tarea',
+              style: const TextStyle(
+                  color: Colors.black87, fontWeight: FontWeight.bold),
             ),
           ),
           body: SingleChildScrollView(
@@ -315,9 +458,9 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
                               color: Colors.white,
                             ),
                           )
-                        : const Text(
-                            'Crear',
-                            style: TextStyle(
+                        : Text(
+                            _isEditMode ? 'Guardar Cambios' : 'Crear',
+                            style: const TextStyle(
                               color: Colors.white,
                               fontSize: 18,
                               fontWeight: FontWeight.bold,
@@ -328,7 +471,8 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
                 const SizedBox(height: 20),
                 Center(
                   child: OutlinedButton(
-                    onPressed: _isCreating ? null : () => Navigator.pop(context),
+                    onPressed:
+                        _isCreating ? null : () => Navigator.pop(context),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: AppColors.primaryOrange,
                       side: BorderSide(color: AppColors.primaryOrange),
@@ -384,12 +528,12 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text(
-                'Crear Tarea',
-                style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              Text(
+                _isEditMode ? 'Editar Tarea' : 'Crear Tarea',
+                style:
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
               ),
               const SizedBox(height: 20),
-
               // Nombre
               TextFormField(
                 controller: _nombreController,
@@ -496,9 +640,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
                         ? 'Seleccionar fecha'
                         : _formatDate(_fechaInicio),
                     style: TextStyle(
-                      color: _fechaInicio == null
-                          ? Colors.grey
-                          : Colors.black,
+                      color: _fechaInicio == null ? Colors.grey : Colors.black,
                       fontSize: 16,
                     ),
                   ),
@@ -634,7 +776,8 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
               width: double.infinity,
               child: ElevatedButton.icon(
                 onPressed: _selectMembers,
-                icon: const Icon(Icons.person_add, color: Colors.white, size: 20),
+                icon:
+                    const Icon(Icons.person_add, color: Colors.white, size: 20),
                 label: const Text('Agregar miembros',
                     style: TextStyle(
                         color: Colors.white, fontWeight: FontWeight.bold)),
@@ -673,8 +816,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
                 padding: const EdgeInsets.only(top: 4.0),
                 child: Text(
                   '${_availableResources.where((r) => r.cantidadDisponible > 0).length} disponibles en el proyecto',
-                  style: TextStyle(
-                      fontSize: 11, color: Colors.grey.shade600),
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
                 ),
               ),
             const SizedBox(height: 15),
@@ -704,7 +846,8 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
                   ],
                 ),
               )
-            else if (_availableResources.every((r) => r.cantidadDisponible == 0))
+            else if (_availableResources
+                .every((r) => r.cantidadDisponible == 0))
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
@@ -777,13 +920,14 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
             SizedBox(
               width: double.infinity,
               child: ElevatedButton.icon(
-                onPressed: (_isLoadingResources || 
-                           _availableResources.isEmpty || 
-                           _availableResources.every((r) => r.cantidadDisponible == 0))
-                    ? null 
+                onPressed: (_isLoadingResources ||
+                        _availableResources.isEmpty ||
+                        _availableResources
+                            .every((r) => r.cantidadDisponible == 0))
+                    ? null
                     : _showResourceSelector,
-                icon:
-                    const Icon(Icons.inventory_2, color: Colors.white, size: 20),
+                icon: const Icon(Icons.inventory_2,
+                    color: Colors.white, size: 20),
                 label: const Text('Agregar recursos',
                     style: TextStyle(
                         color: Colors.white, fontWeight: FontWeight.bold)),
