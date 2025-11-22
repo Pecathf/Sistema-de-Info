@@ -1,0 +1,336 @@
+import 'package:flutter/material.dart';
+import 'package:table_calendar/table_calendar.dart';
+import 'package:intl/intl.dart';
+import 'package:intl/date_symbol_data_local.dart';
+import 'package:sistem_proyect/central/constantes/modelos/project_model.dart';
+import 'package:sistem_proyect/central/constantes/servicios/project_service.dart';
+import 'package:sistem_proyect/central/constantes/colores.dart';
+
+class PantallaCalendario extends StatefulWidget {
+  const PantallaCalendario({super.key});
+
+  @override
+  State<PantallaCalendario> createState() => _PantallaCalendarioState();
+}
+
+class _PantallaCalendarioState extends State<PantallaCalendario> {
+  final ProjectService _projectService = ProjectService();
+
+  CalendarFormat _calendarFormat = CalendarFormat.month;
+  DateTime _focusedDay = DateTime.now();
+  DateTime? _selectedDay;
+
+  Map<DateTime, List<Proyecto>> _proyectosPorFecha = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _selectedDay = _focusedDay;
+    initializeDateFormatting('es_ES', null);
+  }
+
+  // Función para Mayúscula (Enero)
+  String _capitalize(String text) {
+    if (text.isEmpty) return text;
+    return text[0].toUpperCase() + text.substring(1);
+  }
+
+  List<Proyecto> _getEventosDelDia(DateTime day) {
+    final fechaNormalizada = DateTime(day.year, day.month, day.day);
+    return _proyectosPorFecha[fechaNormalizada] ?? [];
+  }
+
+  void _procesarEventos(List<Proyecto> proyectos) {
+    _proyectosPorFecha = {};
+    for (var proyecto in proyectos) {
+      final fecha = DateTime(
+        proyecto.fechaLimite.year,
+        proyecto.fechaLimite.month,
+        proyecto.fechaLimite.day,
+      );
+
+      if (_proyectosPorFecha[fecha] == null) {
+        _proyectosPorFecha[fecha] = [];
+      }
+      _proyectosPorFecha[fecha]!.add(proyecto);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: Colors.white,
+      appBar: AppBar(
+        title: const Text('Agenda de Proyectos',
+            style: TextStyle(
+                color: Colors.black87,
+                fontWeight: FontWeight.bold,
+                fontSize: 22)), // Título más grande
+        centerTitle: true,
+        backgroundColor: Colors.white,
+        elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
+      ),
+      body: StreamBuilder<List<Proyecto>>(
+        stream: _projectService.getProyectosStream(),
+        builder: (context, snapshot) {
+          if (snapshot.hasData) {
+            _procesarEventos(snapshot.data!);
+          }
+
+          return Column(
+            children: [
+              _buildLegend(),
+              const Divider(height: 1),
+              Expanded(
+                child: SingleChildScrollView(
+                  child: TableCalendar<Proyecto>(
+                    locale: 'es_ES',
+                    firstDay: DateTime.utc(2020, 1, 1),
+                    lastDay: DateTime.utc(2030, 12, 31),
+                    focusedDay: _focusedDay,
+                    calendarFormat: _calendarFormat,
+
+                    // --- AUMENTO DE TAMAÑO GENERAL ---
+                    rowHeight: 120, // Mucho más alto para que quepa el texto
+                    daysOfWeekHeight:
+                        40, // Cabecera de días (L M X...) más alta
+
+                    headerStyle: HeaderStyle(
+                      titleCentered: true,
+                      formatButtonVisible: false,
+                      // Título del mes más grande
+                      titleTextStyle: const TextStyle(
+                          fontSize: 22, fontWeight: FontWeight.bold),
+                      titleTextFormatter: (date, locale) =>
+                          _capitalize(DateFormat.yMMMM(locale).format(date)),
+                      leftChevronIcon: const Icon(Icons.chevron_left, size: 30),
+                      rightChevronIcon:
+                          const Icon(Icons.chevron_right, size: 30),
+                    ),
+
+                    calendarBuilders: CalendarBuilders(
+                      defaultBuilder: (context, day, focusedDay) =>
+                          _buildCustomCell(day,
+                              isToday: false, isSelected: false),
+                      todayBuilder: (context, day, focusedDay) =>
+                          _buildCustomCell(day,
+                              isToday: true, isSelected: false),
+                      selectedBuilder: (context, day, focusedDay) =>
+                          _buildCustomCell(day,
+                              isToday: isSameDay(day, DateTime.now()),
+                              isSelected: true),
+                      outsideBuilder: (context, day, focusedDay) {
+                        return Container(
+                          decoration: BoxDecoration(
+                            border: Border.all(color: Colors.grey.shade100),
+                            color: Colors.grey.shade50,
+                          ),
+                          child: Align(
+                            alignment: Alignment.topLeft,
+                            child: Padding(
+                              padding: const EdgeInsets.all(6.0),
+                              child: Text('${day.day}',
+                                  style: TextStyle(
+                                      color: Colors.grey.shade300,
+                                      fontSize: 14)),
+                            ),
+                          ),
+                        );
+                      },
+
+                      // Marcador azul pequeño
+                      markerBuilder: (context, day, events) {
+                        if (events.isEmpty) return null;
+                        return Align(
+                          alignment: Alignment.bottomCenter,
+                          child: Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            width: 8, // Un pelín más grande para que se note
+                            height: 8,
+                            decoration: const BoxDecoration(
+                              color: Colors.blue,
+                              shape: BoxShape.circle,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+
+                    selectedDayPredicate: (day) => isSameDay(_selectedDay, day),
+                    onDaySelected: (selectedDay, focusedDay) {
+                      setState(() {
+                        _selectedDay = selectedDay;
+                        _focusedDay = focusedDay;
+                      });
+                    },
+                    onPageChanged: (focusedDay) => _focusedDay = focusedDay,
+                    eventLoader: _getEventosDelDia,
+                  ),
+                ),
+              ),
+            ],
+          );
+        },
+      ),
+    );
+  }
+
+  // --- CELDA PERSONALIZADA MÁS GRANDE ---
+  Widget _buildCustomCell(DateTime day,
+      {required bool isToday, required bool isSelected}) {
+    final eventos = _getEventosDelDia(day);
+
+    Color borderColor =
+        isSelected ? AppColors.primaryOrange : Colors.grey.shade300;
+    double borderWidth = isSelected ? 2.5 : 0.5;
+    Color? bgColor =
+        isToday ? AppColors.primaryOrange.withOpacity(0.05) : Colors.white;
+
+    return Container(
+      margin: const EdgeInsets.all(0),
+      padding: const EdgeInsets.all(3), // Un poco más de padding interno
+      decoration: BoxDecoration(
+        color: bgColor,
+        border: Border.all(color: borderColor, width: borderWidth),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: isToday
+                    ? BoxDecoration(
+                        color: AppColors.primaryOrange,
+                        borderRadius: BorderRadius.circular(4))
+                    : null,
+                child: Text(
+                  '${day.day}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14, // Número del día más grande
+                    color: isToday ? Colors.white : Colors.black87,
+                  ),
+                ),
+              ),
+            ],
+          ),
+
+          const SizedBox(height: 4), // Más espacio entre número y tareas
+
+          Expanded(
+            child: ListView.builder(
+              physics: const NeverScrollableScrollPhysics(),
+              // Ahora intentamos mostrar hasta 3 tareas porque hay más espacio
+              itemCount: eventos.length > 3 ? 3 : eventos.length,
+              itemBuilder: (context, index) {
+                final proyecto = eventos[index];
+                final config = _obtenerConfiguracionVisual(proyecto, day);
+
+                return Container(
+                  margin: const EdgeInsets.only(
+                      bottom: 3), // Más separación entre tareas
+                  padding: const EdgeInsets.symmetric(
+                      horizontal: 6, vertical: 3), // Cajas de texto más grandes
+                  decoration: BoxDecoration(
+                    color: config['colorFondo'],
+                    borderRadius: BorderRadius.circular(3),
+                    border: Border(
+                        left:
+                            BorderSide(color: config['colorBorde'], width: 3)),
+                  ),
+                  child: Text(
+                    proyecto.nombre,
+                    style: TextStyle(
+                      fontSize: 11, // <--- TEXTO DE LA TAREA MUCHO MÁS LLEGIBLE
+                      color: config['colorTexto'],
+                      fontWeight: FontWeight.w600,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Map<String, dynamic> _obtenerConfiguracionVisual(
+      Proyecto proyecto, DateTime fechaEvento) {
+    final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
+    final fechaEventoNorm =
+        DateTime(fechaEvento.year, fechaEvento.month, fechaEvento.day);
+
+    if (proyecto.estado.toLowerCase().contains('completad')) {
+      return {
+        'colorFondo': Colors.green.shade50,
+        'colorBorde': Colors.green,
+        'colorTexto': Colors.green.shade800
+      };
+    }
+    if (fechaEventoNorm.isBefore(today)) {
+      return {
+        'colorFondo': Colors.red.shade50,
+        'colorBorde': Colors.red,
+        'colorTexto': Colors.red.shade800
+      };
+    }
+    // Normal (Azul)
+    return {
+      'colorFondo': Colors.blue.shade50,
+      'colorBorde': Colors.blue,
+      'colorTexto': Colors.blue.shade800
+    };
+  }
+
+  Widget _buildLegend() {
+    return Padding(
+      padding: const EdgeInsets.all(15.0), // Más padding en la leyenda
+      child: Wrap(
+        spacing: 20, // Más espacio horizontal
+        runSpacing: 12, // Más espacio vertical
+        alignment: WrapAlignment.center,
+        children: [
+          _legendItem("Completada", Colors.green),
+          _legendItem("Vencida", Colors.red),
+          _legendItem("Normal", Colors.blue),
+          _legendItem("Día Actual", AppColors.primaryOrange, isCircle: true),
+        ],
+      ),
+    );
+  }
+
+  Widget _legendItem(String label, Color color, {bool isCircle = false}) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 14, // Cuadritos de leyenda más grandes
+          height: 14,
+          decoration: BoxDecoration(
+            color: isCircle ? color : color.withOpacity(0.2),
+            shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
+            borderRadius: isCircle ? null : BorderRadius.circular(3),
+            border: isCircle ? null : Border.all(color: color, width: 1.5),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Text(label,
+            style: const TextStyle(
+                fontSize: 13,
+                color: Colors.grey,
+                fontWeight: FontWeight.bold)), // Texto leyenda más grande
+      ],
+    );
+  }
+}
