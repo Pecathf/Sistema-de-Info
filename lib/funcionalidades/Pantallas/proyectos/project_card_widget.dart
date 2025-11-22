@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; 
 import 'package:sistem_proyect/central/constantes/modelos/project_model.dart';
 import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart';
 import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart';
@@ -25,16 +24,14 @@ class ProjectCardWidget extends StatelessWidget {
   Color _getStatusColor(String estado) {
     switch (estado.toLowerCase()) {
       case 'activo':
-        return AppColors.estadoActivo;          
+        return Colors.green.shade700;
       case 'completado':
-        return AppColors.estadoCompletado;      
-      case 'en progreso':
-        return AppColors.estadoEnProgreso;       
+        return Colors.blue.shade700;
       case 'en pausa':
-        return AppColors.estadoPausado;        
+        return Colors.orange.shade700;
       case 'pendiente':
       default:
-        return AppColors.estadoActivo;           
+        return Colors.red.shade700;
     }
   }
 
@@ -72,7 +69,7 @@ class ProjectCardWidget extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        // Determinar si estamos en modo movil
+        // Determinar si estamos en modo móvil
         final isMobile = constraints.maxWidth < 400;
 
         return Container(
@@ -94,7 +91,7 @@ class ProjectCardWidget extends StatelessWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Seccion Superior: Ti­tulo y Descripcion
+                // Sección Superior: Título y Descripción
                 Text(
                   proyecto.nombre,
                   style: TextStyle(
@@ -117,7 +114,7 @@ class ProjectCardWidget extends StatelessWidget {
                 ),
                 const SizedBox(height: 15),
 
-                // Seccion Media: Metadata (Fechas)
+                // Sección Media: Metadata
                 _buildMetaRow(
                   Icons.date_range,
                   'Inicio: ${_formatDate(proyecto.fechaInicio)}',
@@ -127,67 +124,33 @@ class ProjectCardWidget extends StatelessWidget {
                   Icons.calendar_today,
                   'Límite: ${_formatDate(proyecto.fechaLimite)}',
                 ),
-                
-                // --- AQUI COMIENZA EL CAMBIO IMPORTANTE ---
-                // Usamos StreamBuilder para calcular el progreso EN VIVO
                 const SizedBox(height: 5),
-                StreamBuilder<QuerySnapshot>(
-                  stream: FirebaseFirestore.instance
-                      .collection('tareas')
-                      .where('proyectoId', isEqualTo: proyecto.id)
-                      .snapshots(),
-                  builder: (context, snapshot) {
-                    double progress = 0.0;
-                    int total = 0;
-                    int completed = 0;
-
-                    if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
-                      final docs = snapshot.data!.docs;
-                      total = docs.length;
-                      // Contamos cuantas estan completadas
-                      completed = docs
-                          .where((doc) => doc['estado'] == 'Completada')
-                          .length;
-                      
-                      if (total > 0) {
-                        progress = completed / total;
-                      }
-                    }
-
-                    return Column(
-                      children: [
-                        _buildMetaRow(
-                          Icons.trending_up,
-                          'Progreso: ${(progress * 100).toInt()}%',
-                        ),
-                        const SizedBox(height: 10),
-
-                        // Barra de progreso dinÃ¡mica
-                        ClipRRect(
-                          borderRadius: BorderRadius.circular(10),
-                          child: LinearProgressIndicator(
-                            value: progress,
-                            backgroundColor: Colors.grey.shade300,
-                            valueColor: const AlwaysStoppedAnimation<Color>(
-                                AppColors.primaryOrange),
-                            minHeight: 8,
-                          ),
-                        ),
-                        const SizedBox(height: 10),
-
-                        _buildMetaRow(
-                          Icons.task_alt,
-                          'Tareas completadas: $completed/$total',
-                        ),
-                      ],
-                    );
-                  },
+                _buildMetaRow(
+                  Icons.trending_up,
+                  'Progreso: ${proyecto.progreso}%',
                 ),
-                // --- FIN DEL CAMBIO ---
+                const SizedBox(height: 10),
 
+                // Barra de progreso
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(10),
+                  child: LinearProgressIndicator(
+                    value: proyecto.progreso / 100,
+                    backgroundColor: Colors.grey.shade300,
+                    valueColor: const AlwaysStoppedAnimation<Color>(
+                        AppColors.primaryOrange),
+                    minHeight: 8,
+                  ),
+                ),
+                const SizedBox(height: 10),
+
+                _buildMetaRow(
+                  Icons.task_alt,
+                  'Tareas completadas: 8/12',
+                ),
                 const SizedBox(height: 15),
 
-                // Seccion de Miembros
+                // Sección de Miembros
                 _buildMembersStack(),
 
                 const SizedBox(height: 15),
@@ -218,7 +181,7 @@ class ProjectCardWidget extends StatelessWidget {
 
                 const SizedBox(height: 15),
 
-                // BOTONES DE ACCION
+                // BOTONES DE ACCIÓN (Ahora en columna si es móvil)
                 isMobile && isAdmin
                     ? Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
