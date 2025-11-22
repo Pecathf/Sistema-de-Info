@@ -74,7 +74,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
           .where((m) => tarea.miembrosUid.contains(m.uid))
           .toList();
 
-      // Cargar recursos asignados 
+      // Cargar recursos asignados
       for (var recurso in tarea.recursosAsignados) {
         // Verificar que el recurso todavía existe en el proyecto
         final existe = _availableResources.any((r) => r.id == recurso.id);
@@ -145,6 +145,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
     );
 
     if (picked != null) {
+      if (!mounted) return;
       setState(() {
         if (isFechaInicio) {
           _fechaInicio = picked;
@@ -164,6 +165,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
       ),
     );
 
+    if (!mounted) return;
     if (result != null) {
       setState(() => _selectedMembers = result);
     }
@@ -218,188 +220,215 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
   Future<void> _createTask() async {
     if (!_formKey.currentState!.validate()) return;
 
-  if (_fechaInicio == null || _fechaVencimiento == null) {
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Por favor, selecciona las fechas de inicio y vencimiento.'),
-        backgroundColor: Colors.red,
-      ),
-    );
-    return;
-  }
-
-  setState(() => _isCreating = true);
-
-  try {
-    final currentUserUid = FirebaseAuth.instance.currentUser!.uid;
-
-    if (_isEditMode) {
-      // ============================================
-      // MODO EDICIÓN
-      // ============================================
-      
-      // 1. Liberar recursos que se quitaron
-      for (var entry in _recursosOriginales.entries) {
-        final recursoId = entry.key;
-        final cantidadOriginal = entry.value;
-        final cantidadNueva = _selectedResources[recursoId] ?? 0;
-        
-        // Verificar que el recurso todavía existe
-        final recursoIndex = _availableResources.indexWhere((r) => r.id == recursoId);
-        if (recursoIndex == -1) {
-          // El recurso ya no existe, saltarlo
-          continue;
-        }
-        
-        if (cantidadNueva < cantidadOriginal) {
-          // Se liberaron recursos
-          final recurso = _availableResources[recursoIndex];
-          final cantidadALiberar = cantidadOriginal - cantidadNueva;
-          final nuevaCantidadDisponible = recurso.cantidadDisponible + cantidadALiberar;
-          
-          await _resourceService.actualizarCantidadDisponible(
-            recursoId,
-            nuevaCantidadDisponible,
-          );
-        }
-      }
-
-      // 2. Asignar nuevos recursos o aumentar cantidad
-      for (var entry in _selectedResources.entries) {
-        final recursoId = entry.key;
-        final cantidadNueva = entry.value;
-        final cantidadOriginal = _recursosOriginales[recursoId] ?? 0;
-        
-        // Verificar que el recurso existe
-        final recursoIndex = _availableResources.indexWhere((r) => r.id == recursoId);
-        if (recursoIndex == -1) {
-          // El recurso no existe, mostrar advertencia y continuar
-          if (mounted) {
-            ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(
-                content: Text('Advertencia: El recurso con ID $recursoId ya no existe'),
-                backgroundColor: Colors.orange,
-              ),
-            );
-          }
-          continue;
-        }
-        
-        if (cantidadNueva > cantidadOriginal) {
-          // Se agregaron más recursos
-          final recurso = _availableResources[recursoIndex];
-          final cantidadAAgregar = cantidadNueva - cantidadOriginal;
-          final nuevaCantidadDisponible = recurso.cantidadDisponible - cantidadAAgregar;
-          
-          await _resourceService.actualizarCantidadDisponible(
-            recursoId,
-            nuevaCantidadDisponible,
-          );
-        }
-      }
-
-      // 3. Preparar recursos asignados actualizados (solo los que existen)
-      List<RecursoMaterial> recursosAsignados = [];
-      for (var entry in _selectedResources.entries) {
-        final recursoIndex = _availableResources.indexWhere((r) => r.id == entry.key);
-        if (recursoIndex != -1) {
-          final recurso = _availableResources[recursoIndex];
-          recursosAsignados.add(recurso.copyWith(cantidad: entry.value));
-        }
-      }
-
-      // 4. Actualizar la tarea
-      await _taskService.updateTarea(
-        widget.tareaExistente!.id,
-        nombre: _nombreController.text.trim(),
-        descripcion: _descripcionController.text.trim(),
-        miembrosUid: _selectedMembers.map((m) => m.uid).toList(),
-        recursosAsignados: recursosAsignados,
-        fechaInicio: _fechaInicio,
-        fechaVencimiento: _fechaVencimiento,
-        prioridad: _prioridad,
-      );
-
-      if (!mounted) return;
+    if (_fechaInicio == null || _fechaVencimiento == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Tarea actualizada exitosamente'),
-          backgroundColor: Colors.green,
+          content:
+              Text('Por favor, selecciona las fechas de inicio y vencimiento.'),
+          backgroundColor: Colors.red,
         ),
       );
+      return;
+    }
 
-    } else {
-      // ============================================
-      // MODO CREACIÓN (código original)
-      // ============================================
-      
-      // Preparar recursos asignados
-      List<RecursoMaterial> recursosAsignados = [];
-      for (var entry in _selectedResources.entries) {
-        final recursoIndex = _availableResources.indexWhere((r) => r.id == entry.key);
-        if (recursoIndex != -1) {
-          final recurso = _availableResources[recursoIndex];
-          recursosAsignados.add(recurso.copyWith(cantidad: entry.value));
-        }
-      }
+    setState(() => _isCreating = true);
 
-      final newTask = TaskModel(
-        nombre: _nombreController.text.trim(),
-        descripcion: _descripcionController.text.trim(),
-        proyectoId: widget.projectId,
-        creadorUid: currentUserUid,
-        miembrosUid: _selectedMembers.map((m) => m.uid).toList(),
-        recursosAsignados: recursosAsignados,
-        fechaInicio: _fechaInicio,
-        fechaVencimiento: _fechaVencimiento,
-        prioridad: _prioridad,
-        fechaCreacion: DateTime.now(),
-        estado: 'Pendiente',
-      );
+    try {
+      final currentUserUid = FirebaseAuth.instance.currentUser!.uid;
 
-      final taskId = await _taskService.crearTarea(newTask);
+      if (_isEditMode) {
+        // ============================================
+        // MODO EDICIÓN
+        // ============================================
 
-      if (taskId != null) {
-        // Actualizar cantidades disponibles de recursos
-        for (var entry in _selectedResources.entries) {
-          final recursoIndex = _availableResources.indexWhere((r) => r.id == entry.key);
-          if (recursoIndex != -1) {
+        // 1. Liberar recursos que se quitaron
+        for (var entry in _recursosOriginales.entries) {
+          final recursoId = entry.key;
+          final cantidadOriginal = entry.value;
+          final cantidadNueva = _selectedResources[recursoId] ?? 0;
+
+          // Verificar que el recurso todavía existe
+          final recursoIndex =
+              _availableResources.indexWhere((r) => r.id == recursoId);
+          if (recursoIndex == -1) {
+            // El recurso ya no existe, saltarlo
+            continue;
+          }
+
+          if (cantidadNueva < cantidadOriginal) {
+            // Se liberaron recursos
             final recurso = _availableResources[recursoIndex];
-            final nuevaCantidadDisponible = recurso.cantidadDisponible - entry.value;
+            final cantidadALiberar = cantidadOriginal - cantidadNueva;
+            final nuevaCantidadDisponible =
+                recurso.cantidadDisponible + cantidadALiberar;
+
             await _resourceService.actualizarCantidadDisponible(
-              entry.key,
+              recursoId,
               nuevaCantidadDisponible,
             );
           }
         }
 
+        // 2. Asignar nuevos recursos o aumentar cantidad
+        for (var entry in _selectedResources.entries) {
+          final recursoId = entry.key;
+          final cantidadNueva = entry.value;
+          final cantidadOriginal = _recursosOriginales[recursoId] ?? 0;
+
+          // Verificar que el recurso existe
+          final recursoIndex =
+              _availableResources.indexWhere((r) => r.id == recursoId);
+          if (recursoIndex == -1) {
+            // El recurso no existe, mostrar advertencia y continuar
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                      'Advertencia: El recurso con ID $recursoId ya no existe'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+            }
+            continue;
+          }
+
+          if (cantidadNueva > cantidadOriginal) {
+            // Se agregaron más recursos
+            final recurso = _availableResources[recursoIndex];
+            final cantidadAAgregar = cantidadNueva - cantidadOriginal;
+            final nuevaCantidadDisponible =
+                recurso.cantidadDisponible - cantidadAAgregar;
+
+            await _resourceService.actualizarCantidadDisponible(
+              recursoId,
+              nuevaCantidadDisponible,
+            );
+          }
+        }
+
+        // 3. Preparar recursos asignados actualizados (solo los que existen)
+        List<RecursoMaterial> recursosAsignados = [];
+        for (var entry in _selectedResources.entries) {
+          final recursoIndex =
+              _availableResources.indexWhere((r) => r.id == entry.key);
+          if (recursoIndex != -1) {
+            final recurso = _availableResources[recursoIndex];
+            recursosAsignados.add(
+              RecursoMaterial(
+                id: recurso.id,
+                nombre: recurso.nombre,
+                cantidad: entry.value,
+                icono: recurso.icono,
+                proyectoId: recurso.proyectoId,
+                cantidadDisponible: recurso.cantidadDisponible,
+              ),
+            );
+          }
+        }
+
+        // 4. Actualizar la tarea
+        await _taskService.updateTarea(
+          widget.tareaExistente!.id,
+          nombre: _nombreController.text.trim(),
+          descripcion: _descripcionController.text.trim(),
+          miembrosUid: _selectedMembers.map((m) => m.uid).toList(),
+          recursosAsignados: recursosAsignados,
+          fechaInicio: _fechaInicio,
+          fechaVencimiento: _fechaVencimiento,
+          prioridad: _prioridad,
+        );
+
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-            content: Text('Tarea creada exitosamente'),
+            content: Text('Tarea actualizada exitosamente'),
             backgroundColor: Colors.green,
           ),
         );
+      } else {
+        // ============================================
+        // MODO CREACIÓN (código original)
+        // ============================================
+
+        // Preparar recursos asignados
+        List<RecursoMaterial> recursosAsignados = [];
+        for (var entry in _selectedResources.entries) {
+          final recursoIndex =
+              _availableResources.indexWhere((r) => r.id == entry.key);
+          if (recursoIndex != -1) {
+            final recurso = _availableResources[recursoIndex];
+            recursosAsignados.add(
+              RecursoMaterial(
+                id: recurso.id,
+                nombre: recurso.nombre,
+                cantidad: entry.value,
+                icono: recurso.icono,
+                proyectoId: recurso.proyectoId,
+                cantidadDisponible: recurso.cantidadDisponible,
+              ),
+            );
+          }
+        }
+
+        final newTask = TaskModel(
+          nombre: _nombreController.text.trim(),
+          descripcion: _descripcionController.text.trim(),
+          proyectoId: widget.projectId,
+          creadorUid: currentUserUid,
+          miembrosUid: _selectedMembers.map((m) => m.uid).toList(),
+          recursosAsignados: recursosAsignados,
+          fechaInicio: _fechaInicio,
+          fechaVencimiento: _fechaVencimiento,
+          prioridad: _prioridad,
+          fechaCreacion: DateTime.now(),
+          estado: 'Pendiente',
+        );
+
+        final taskId = await _taskService.crearTarea(newTask);
+
+        if (taskId != null) {
+          // Actualizar cantidades disponibles de recursos
+          for (var entry in _selectedResources.entries) {
+            final recursoIndex =
+                _availableResources.indexWhere((r) => r.id == entry.key);
+            if (recursoIndex != -1) {
+              final recurso = _availableResources[recursoIndex];
+              final nuevaCantidadDisponible =
+                  recurso.cantidadDisponible - entry.value;
+              await _resourceService.actualizarCantidadDisponible(
+                entry.key,
+                nuevaCantidadDisponible,
+              );
+            }
+          }
+
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Tarea creada exitosamente'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
+    } catch (e) {
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } finally {
+      if (mounted) {
+        setState(() => _isCreating = false);
       }
     }
-
-    Navigator.of(context).pop(true);
-    
-  } catch (e) {
-    if (!mounted) return;
-
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text('Error: $e'),
-        backgroundColor: Colors.red,
-      ),
-    );
-  } finally {
-    if (mounted) {
-      setState(() => _isCreating = false);
-    }
   }
-}
 
   String _formatDate(DateTime? date) {
     if (date == null) return '';

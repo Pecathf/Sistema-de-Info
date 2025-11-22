@@ -6,13 +6,13 @@ class TaskModel {
   final String nombre;
   final String descripcion;
   final String proyectoId;
-  final String creadorUid; // Quién creó la tarea
-  final List<String> miembrosUid; // UIDs de los miembros asignados
-  final List<RecursoMaterial> recursosAsignados; // Lista de recursos
-  final DateTime? fechaInicio; // NUEVO CAMPO
+  final String creadorUid; 
+  final List<String> miembrosUid; 
+  final List<RecursoMaterial> recursosAsignados;
+  final DateTime? fechaInicio; 
   final DateTime? fechaVencimiento;
-  final String prioridad; // 'Alta', 'Media', 'Baja'
-  final String estado; // 'Pendiente', 'En Progreso', 'Completada'
+  final String prioridad; 
+  final String estado; 
   final DateTime fechaCreacion;
 
   TaskModel({
@@ -23,7 +23,7 @@ class TaskModel {
     required this.creadorUid,
     required this.miembrosUid,
     required this.recursosAsignados,
-    this.fechaInicio, // NUEVO CAMPO
+    this.fechaInicio, 
     this.fechaVencimiento,
     this.prioridad = 'Media',
     this.estado = 'Pendiente',
@@ -38,16 +38,18 @@ class TaskModel {
       'proyectoId': proyectoId,
       'creadorUid': creadorUid,
       'miembrosUid': miembrosUid,
-      'recursosAsignados': recursosAsignados.map((r) => r.toMap()).toList(),
-      'fechaInicio': fechaInicio != null
-          ? Timestamp.fromDate(fechaInicio!)
-          : null, // NUEVO CAMPO
+      'recursosAsignados': recursosAsignados
+          .map((recurso) =>
+              recurso.toMapWithId()) 
+          .toList(),
+      'fechaInicio':
+          fechaInicio != null ? Timestamp.fromDate(fechaInicio!) : null,
       'fechaVencimiento': fechaVencimiento != null
           ? Timestamp.fromDate(fechaVencimiento!)
           : null,
       'prioridad': prioridad,
-      'estado': estado,
       'fechaCreacion': Timestamp.fromDate(fechaCreacion),
+      'estado': estado,
     };
   }
 
@@ -55,21 +57,25 @@ class TaskModel {
   factory TaskModel.fromMap(Map<String, dynamic> map, String id) {
     return TaskModel(
       id: id,
-      nombre: map['nombre'] as String? ?? '',
-      descripcion: map['descripcion'] as String? ?? '',
-      proyectoId: map['proyectoId'] as String? ?? '',
-      creadorUid: map['creadorUid'] as String? ?? '',
-      miembrosUid:
-          List<String>.from(map['miembrosUid'] as List<dynamic>? ?? []),
-      recursosAsignados: (map['recursosAsignados'] as List<dynamic>? ?? [])
-          .map((r) => RecursoMaterial.fromMap(
-              r as Map<String, dynamic>, r['id'] as String? ?? ''))
-          .toList(),
-      fechaInicio: (map['fechaInicio'] as Timestamp?)?.toDate(), // NUEVO CAMPO
-      fechaVencimiento: (map['fechaVencimiento'] as Timestamp?)?.toDate(),
-      prioridad: map['prioridad'] as String? ?? 'Media',
-      estado: map['estado'] as String? ?? 'Pendiente',
+      nombre: map['nombre'] ?? '',
+      descripcion: map['descripcion'] ?? '',
+      proyectoId: map['proyectoId'] ?? '',
+      creadorUid: map['creadorUid'] ?? '',
+      miembrosUid: List<String>.from(map['miembrosUid'] ?? []),
+      recursosAsignados: (map['recursosAsignados'] as List<dynamic>?)
+              ?.map((item) =>
+                  RecursoMaterial.fromMap(item as Map<String, dynamic>))
+              .toList() ??
+          [],
+      fechaInicio: map['fechaInicio'] != null
+          ? (map['fechaInicio'] as Timestamp).toDate()
+          : null,
+      fechaVencimiento: map['fechaVencimiento'] != null
+          ? (map['fechaVencimiento'] as Timestamp).toDate()
+          : null,
+      prioridad: map['prioridad'] ?? 'Media',
       fechaCreacion: (map['fechaCreacion'] as Timestamp).toDate(),
+      estado: map['estado'] ?? 'Pendiente',
     );
   }
 }

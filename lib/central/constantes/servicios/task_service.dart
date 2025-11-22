@@ -13,7 +13,7 @@ class TaskService {
       final docRef =
           await _firestore.collection(_collectionName).add(tarea.toMap());
 
-      // IMPORTANTE: Al crear tarea, recalculamos el progreso
+      // Recalculamos el progreso del proyecto
       await _recalcularProgresoProyecto(tarea.proyectoId);
 
       return docRef.id;
@@ -36,14 +36,118 @@ class TaskService {
     });
   }
 
-  // 3. Eliminar tarea
-  Future<void> eliminarTarea(String taskId, String projectId) async {
+  // 3. Eliminar tarea con validación y liberación de recursos
+  Future<Map<String, dynamic>> eliminarTareaConValidacion(
+    String taskId,
+    String projectId,
+  ) async {
     try {
+      // 1. Obtener la tarea
+      final tareaDoc =
+          await _firestore.collection(_collectionName).doc(taskId).get();
+
+      if (!tareaDoc.exists) {
+        return {
+          'success': false,
+          'message': 'La tarea no existe',
+        };
+      }
+
+      final tareaData = tareaDoc.data() as Map<String, dynamic>;
+      final estado = tareaData['estado'] as String;
+
+      // 2. Validar estado: solo se pueden eliminar tareas 'Pendiente'
+      if (estado != 'Pendiente') {
+        return {
+          'success': false,
+          'message':
+              'Solo se pueden eliminar tareas en estado Pendiente.\nEsta tarea está en estado: $estado',
+        };
+      }
+
+      // 3. Liberar recursos
+      final recursosAsignados =
+          tareaData['recursosAsignados'] as List<dynamic>? ?? [];
+      int recursosLiberados = 0;
+
+      for (var recursoMap in recursosAsignados) {
+        final recursoData = recursoMap as Map<String, dynamic>;
+        final recursoId = recursoData['id'] as String?;
+        final cantidadAsignada = recursoData['cantidad'] as int? ?? 0;
+
+        if (recursoId == null || cantidadAsignada <= 0) {
+          continue;
+        }
+
+        try {
+          // Obtener recurso actual
+          final recursoDoc = await _firestore
+              .collection('recursos_materiales')
+              .doc(recursoId)
+              .get();
+
+          if (!recursoDoc.exists) {
+            continue;
+          }
+
+          final recursoActual = recursoDoc.data() as Map<String, dynamic>;
+          final cantidadDisponibleActual =
+              recursoActual['cantidadDisponible'] as int? ?? 0;
+
+          // CALCULAR nueva cantidad disponible
+          final nuevaCantidadDisponible =
+              cantidadDisponibleActual + cantidadAsignada;
+
+          // ACTUALIZAR en Firestore
+          await _firestore
+              .collection('recursos_materiales')
+              .doc(recursoId)
+              .update({
+            'cantidadDisponible': nuevaCantidadDisponible,
+          });
+
+          recursosLiberados++;
+        } catch (e) {
+          // Omitimos el logging aquí, si hay un error en un recurso,
+          // se intenta liberar el siguiente.
+        }
+      }
+
+      // 4. Eliminar la tarea
       await _firestore.collection(_collectionName).doc(taskId).delete();
-      // Al eliminar, recalculamos el progreso
+
+      // 5. Recalcular progreso
       await _recalcularProgresoProyecto(projectId);
+
+      return {
+        'success': true,
+        'message':
+            'Tarea eliminada exitosamente.\n$recursosLiberados recursos liberados.',
+      };
     } catch (e) {
-      throw Exception('Fallo al eliminar tarea');
+      return {
+        'success': false,
+        'message': 'Error al eliminar tarea: $e',
+      };
+    }
+  }
+
+  // Método para diagnóstico de recursos (manteniendo solo la funcionalidad de Firestore)
+  Future<void> diagnosticarRecursos(String projectId) async {
+    try {
+      // 1. Ver recursos del proyecto (funcionalidad no alterada)
+      await _firestore
+          .collection('recursos_materiales')
+          .where('proyectoId', isEqualTo: projectId)
+          .get();
+
+      // 2. Ver tareas del proyecto (funcionalidad no alterada)
+      await _firestore
+          .collection('tareas')
+          .where('proyectoId', isEqualTo: projectId)
+          .get();
+    } catch (e) {
+      // Manejo de errores simplificado.
     }
   }
 
@@ -79,7 +183,8 @@ class TaskService {
         'nombre': nombre,
         'descripcion': descripcion,
         'miembrosUid': miembrosUid,
-        'recursosAsignados': recursosAsignados.map((r) => r.toMap()).toList(),
+        'recursosAsignados':
+            recursosAsignados.map((r) => r.toMapWithId()).toList(),
         'fechaInicio':
             fechaInicio != null ? Timestamp.fromDate(fechaInicio) : null,
         'fechaVencimiento': fechaVencimiento != null
@@ -93,7 +198,7 @@ class TaskService {
   }
 
   // ----------------------------------------------------------------------
-  //  MÉTODOS PARA COMENTARIOS
+  //  MÉTODOS PARA COMENTARIOS
   // ----------------------------------------------------------------------
 
   // 5. Agregar un comentario
@@ -130,67 +235,54 @@ class TaskService {
   // ----------------------------------------------------------------------
   Future<void> _recalcularProgresoProyecto(String projectId) async {
     try {
-      try {
-        // Intentar obtener TODAS las tareas del proyecto
-        final querySnapshot = await _firestore
-            .collection(_collectionName)
-            .where('proyectoId', isEqualTo: projectId)
-            .get();
+      final querySnapshot = await _firestore
+          .collection(_collectionName)
+          .where('proyectoId', isEqualTo: projectId)
+          .get();
 
-        final totalTareas = querySnapshot.docs.length;
+      final totalTareas = querySnapshot.docs.length;
 
-        // Total de tareas encontradas: $totalTareas
-
-        // Si no hay tareas, el progreso es 0 y estado Activo
-        if (totalTareas == 0) {
-          await _firestore
-              .collection(_projectsCollection)
-              .doc(projectId)
-              .update({
-            'progreso': 0.0,
-            'estado': 'Activo',
-          });
-
-          // Proyecto actualizado: Sin tareas - Progreso 0%, Estado Activo
-          return;
-        }
-
-        // Contamos cuántas dicen 'Completada' y cuántas 'En Progreso'
-        final tareasCompletadas = querySnapshot.docs
-            .where((doc) => doc['estado'] == 'Completada')
-            .length;
-
-        final tareasEnProgreso = querySnapshot.docs
-            .where((doc) => doc['estado'] == 'En Progreso')
-            .length;
-
-        // Calculamos el decimal
-        double nuevoProgreso = tareasCompletadas / totalTareas;
-
-        // DETERMINAR ESTADO DEL PROYECTO
-        String nuevoEstado;
-        if (tareasCompletadas == totalTareas) {
-          nuevoEstado = 'Completado';
-        } else if (tareasEnProgreso > 0 || tareasCompletadas > 0) {
-          nuevoEstado = 'En Progreso';
-        } else {
-          nuevoEstado = 'Activo';
-        }
-
-        // Calculando actualización de progreso y estado
-
-        // Guardamos el nuevo progreso Y estado
+      // Si no hay tareas, el progreso es 0 y estado Activo
+      if (totalTareas == 0) {
         await _firestore.collection(_projectsCollection).doc(projectId).update({
-          'progreso': nuevoProgreso,
-          'estado': nuevoEstado,
+          'progreso': 0.0,
+          'estado': 'Activo',
         });
-      } on FirebaseException catch (e) {
-        if (e.code == 'permission-denied') {
-          rethrow;
-        }
+        return;
       }
+
+      // Contamos cuántas tareas están 'Completada'
+      final tareasCompletadas = querySnapshot.docs
+          .where((doc) => doc['estado'] == 'Completada')
+          .length;
+
+      // Contamos cuántas tareas están 'En Progreso'
+      final tareasEnProgreso = querySnapshot.docs
+          .where((doc) => doc['estado'] == 'En Progreso')
+          .length;
+
+      // Calculamos el decimal del progreso
+      double nuevoProgreso = tareasCompletadas / totalTareas;
+
+      // DETERMINAR ESTADO DEL PROYECTO
+      String nuevoEstado;
+      if (tareasCompletadas == totalTareas) {
+        nuevoEstado = 'Completado';
+      } else if (tareasEnProgreso > 0 || tareasCompletadas > 0) {
+        nuevoEstado = 'En Progreso';
+      } else {
+        nuevoEstado = 'Activo';
+      }
+
+      // Guardamos el nuevo progreso Y estado
+      await _firestore.collection(_projectsCollection).doc(projectId).update({
+        'progreso': nuevoProgreso,
+        'estado': nuevoEstado,
+      });
+    } on FirebaseException {
+      rethrow; // Re-lanza la excepción de Firebase
     } catch (e) {
-      rethrow;
+      rethrow; // Re-lanza cualquier otra excepción
     }
   }
 }

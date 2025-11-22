@@ -64,6 +64,143 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
     }
   }
 
+  Future<void> _confirmarEliminarTarea(TaskModel tarea) async {
+    // Validar que la tarea esté en estado Pendiente
+    if (tarea.estado != 'Pendiente') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            'Solo se pueden eliminar tareas en estado Pendiente.\n'
+            'Esta tarea está en estado: ${tarea.estado}',
+          ),
+          backgroundColor: Colors.red,
+          duration: const Duration(seconds: 4),
+        ),
+      );
+      return;
+    }
+
+    // Mostrar diálogo de confirmación
+    final bool? confirmar = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: const Text('Confirmar eliminación'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '¿Estás seguro de que deseas eliminar la tarea "${tarea.nombre}"?',
+                style: const TextStyle(fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 12),
+              const Text(
+                'Esta acción:',
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+              ),
+              const SizedBox(height: 8),
+              _buildConfirmacionItem('Eliminará la tarea permanentemente'),
+              _buildConfirmacionItem('Liberará los recursos asignados'),
+              _buildConfirmacionItem('Actualizará el progreso del proyecto'),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.warning_amber_rounded,
+                        color: Colors.orange.shade700, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Esta acción no se puede deshacer',
+                        style: TextStyle(
+                          color: Colors.orange.shade900,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.red,
+              ),
+              child:
+                  const Text('Eliminar', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        );
+      },
+    );
+
+    if (confirmar == true) {
+      if (!mounted) return;
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (context) => const Center(
+          child: CircularProgressIndicator(),
+        ),
+      );
+
+      try {
+        // Eliminar la tarea
+        final resultado = await _taskService.eliminarTareaConValidacion(
+          tarea.id,
+          widget.projectId,
+        );
+
+        if (!mounted) return;
+        Navigator.of(context).pop();
+
+        if (resultado['success']) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(resultado['message']),
+              backgroundColor: Colors.green,
+            ),
+          );
+
+          _cargarDatosProyecto();
+        } else {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(resultado['message']),
+              backgroundColor: Colors.red,
+              duration: const Duration(seconds: 4),
+            ),
+          );
+        }
+      } catch (e) {
+        if (!mounted) return;
+        Navigator.of(context).pop();
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al eliminar tarea: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _cargarDatosProyecto() async {
     setState(() {
       _isLoading = true;
@@ -221,6 +358,29 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
           ],
         );
       },
+    );
+  }
+
+  // Método auxiliar para los items de confirmación
+  Widget _buildConfirmacionItem(String texto) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8, bottom: 4),
+      child: Row(
+        children: [
+          Icon(Icons.check_circle_outline,
+              size: 16, color: Colors.grey.shade600),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              texto,
+              style: TextStyle(
+                fontSize: 13,
+                color: Colors.grey.shade700,
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -664,10 +824,7 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
                   IconButton(
                     icon: const Icon(Icons.delete_outline, size: 20),
                     color: Colors.red,
-                    onPressed: () {
-                      developer.log('Eliminar tarea: ${tarea.nombre}',
-                          name: 'TaskAction');
-                    },
+                    onPressed: () => _confirmarEliminarTarea(tarea),
                     tooltip: 'Eliminar',
                   ),
               ],
@@ -828,10 +985,7 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
               IconButton(
                 icon: const Icon(Icons.delete_outline, size: 18),
                 color: Colors.red,
-                onPressed: () {
-                  developer.log('Eliminar tarea: ${tarea.nombre}',
-                      name: 'TaskAction');
-                },
+                onPressed: () => _confirmarEliminarTarea(tarea),
                 tooltip: 'Eliminar',
               ),
           ],
@@ -988,6 +1142,13 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
                         }
                       },
                       tooltip: 'Editar',
+                    ),
+                    if (_isAdmin)
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline, size: 20),
+                      color: Colors.red,
+                      onPressed: () => _confirmarEliminarTarea(tarea),
+                      tooltip: 'Eliminar',
                     ),
                 ],
               ),

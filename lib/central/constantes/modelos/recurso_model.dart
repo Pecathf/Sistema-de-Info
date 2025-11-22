@@ -1,10 +1,10 @@
 class RecursoMaterial {
   final String id;
   final String nombre;
-  final int cantidad; 
-  final int cantidadDisponible; 
+  final int cantidad;
+  final int cantidadDisponible;
   final String icono;
-  final String? proyectoId; 
+  final String? proyectoId;
 
   RecursoMaterial({
     required this.id,
@@ -16,8 +16,11 @@ class RecursoMaterial {
   }) : cantidadDisponible = cantidadDisponible ?? cantidad;
 
   // Convertir de Firestore a Modelo
-  factory RecursoMaterial.fromMap(Map<String, dynamic> map, String id) {
+  factory RecursoMaterial.fromMap(Map<String, dynamic> map, [String? docId]) {
     final cantidad = map['cantidad'] ?? 0;
+    // Priorizar el id del map (cuando viene de recursosAsignados),
+    // luego el docId (cuando viene de la colección principal)
+    final id = map['id'] ?? docId ?? '';
     return RecursoMaterial(
       id: id,
       nombre: map['nombre'] ?? '',
@@ -28,9 +31,21 @@ class RecursoMaterial {
     );
   }
 
-  // Convertir de Modelo a Firestore
+  // ✅ Convertir de Modelo a Firestore (para la colección principal)
+  // NO incluye el ID porque Firestore lo maneja automáticamente
   Map<String, dynamic> toMap() {
     return {
+      'nombre': nombre,
+      'cantidad': cantidad,
+      'cantidadDisponible': cantidadDisponible,
+      'icono': icono,
+      if (proyectoId != null) 'proyectoId': proyectoId,
+    };
+  }
+
+  Map<String, dynamic> toMapWithId() {
+    return {
+      'id': id, // ← Incluir el ID
       'nombre': nombre,
       'cantidad': cantidad,
       'cantidadDisponible': cantidadDisponible,
