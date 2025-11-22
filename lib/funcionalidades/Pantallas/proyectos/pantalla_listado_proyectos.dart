@@ -111,7 +111,6 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
     if (confirmar == true) {
       if (!mounted) return;
 
-      
       showDialog(
         context: context,
         barrierDismissible: false,

@@ -6,7 +6,7 @@ import 'package:sistem_proyect/central/constantes/modelos/recurso_model.dart';
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/project_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart';
-import 'package:sistem_proyect/central/constantes/servicios/resource_service.dart';  
+import 'package:sistem_proyect/central/constantes/servicios/resource_service.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/pantalla_listado_proyectos.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/member_selection_dialog.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/resource_selection_dialog.dart';
@@ -27,7 +27,7 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
   final ProjectService _projectService = ProjectService();
   final AuthService _authService = AuthService();
   final UserDataService _userDataService = UserDataService();
-  final ResourceService _resourceService = ResourceService(); 
+  final ResourceService _resourceService = ResourceService();
 
   final TextEditingController _nombreController = TextEditingController();
   final TextEditingController _descripcionController = TextEditingController();
@@ -39,7 +39,7 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
 
   bool _isAdmin = false;
   bool _isLoadingRole = true;
-  bool _isCreating = false; 
+  bool _isCreating = false;
 
   @override
   void initState() {
@@ -144,9 +144,9 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
         for (var recurso in _selectedResources) {
           final recursoId = await _resourceService.crearRecurso(
             recurso,
-            projectId, 
+            projectId,
           );
-          
+
           if (recursoId != null) {
             // Crear una copia del recurso con el ID correcto
             recursosGuardados.add(recurso.copyWith(
@@ -306,9 +306,11 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
                       const SizedBox(height: 30),
                       Center(
                         child: OutlinedButton(
-                          onPressed: _isCreating ? null : () {
-                            Navigator.of(context).pop();
-                          },
+                          onPressed: _isCreating
+                              ? null
+                              : () {
+                                  Navigator.of(context).pop();
+                                },
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.primaryOrange,
                             side: BorderSide(color: AppColors.primaryOrange),
@@ -396,31 +398,35 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
                   (date) => setState(() => _fechaLimite = date),
                   isStartDate: false),
               const SizedBox(height: 20),
-              
+
               // Botones de agregar
               Row(
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: _isCreating ? null : () async {
-                        final List<Usuario>? result =
-                            await showDialog<List<Usuario>>(
-                          context: context,
-                          builder: (context) => MemberSelectionDialog(
-                            userDataService: _userDataService,
-                            initialSelectedMembers: _selectedMembers,
-                          ),
-                        );
-                        if (result != null) {
-                          setState(() {
-                            _selectedMembers = result;
-                          });
-                        }
-                      },
-                      icon: const Icon(Icons.person_add, color: Colors.white, size: 20),
+                      onPressed: _isCreating
+                          ? null
+                          : () async {
+                              final List<Usuario>? result =
+                                  await showDialog<List<Usuario>>(
+                                context: context,
+                                builder: (context) => MemberSelectionDialog(
+                                  userDataService: _userDataService,
+                                  initialSelectedMembers: _selectedMembers,
+                                ),
+                              );
+                              if (result != null) {
+                                setState(() {
+                                  _selectedMembers = result;
+                                });
+                              }
+                            },
+                      icon: const Icon(Icons.person_add,
+                          color: Colors.white, size: 20),
                       label: const Text('Agregar miembros',
                           style: TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.bold)),
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.primaryOrange,
                         padding: const EdgeInsets.symmetric(
@@ -433,24 +439,28 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
                   const SizedBox(width: 15),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: _isCreating ? null : () async {
-                        final List<RecursoMaterial>? result =
-                            await showDialog<List<RecursoMaterial>>(
-                          context: context,
-                          builder: (context) => ResourceSelectionDialog(
-                            initialSelectedResources: _selectedResources,
-                          ),
-                        );
-                        if (result != null) {
-                          setState(() {
-                            _selectedResources = result;
-                          });
-                        }
-                      },
-                      icon: const Icon(Icons.inventory_2, color: Colors.white, size: 20),
+                      onPressed: _isCreating
+                          ? null
+                          : () async {
+                              final List<RecursoMaterial>? result =
+                                  await showDialog<List<RecursoMaterial>>(
+                                context: context,
+                                builder: (context) => ResourceSelectionDialog(
+                                  initialSelectedResources: _selectedResources,
+                                ),
+                              );
+                              if (result != null) {
+                                setState(() {
+                                  _selectedResources = result;
+                                });
+                              }
+                            },
+                      icon: const Icon(Icons.inventory_2,
+                          color: Colors.white, size: 20),
                       label: const Text('Agregar recursos',
                           style: TextStyle(
-                              color: Colors.white, fontWeight: FontWeight.bold)),
+                              color: Colors.white,
+                              fontWeight: FontWeight.bold)),
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppColors.accentColor,
                         padding: const EdgeInsets.symmetric(
@@ -570,7 +580,7 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
             const Text('Recursos',
                 style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
             const SizedBox(height: 20),
-            
+
             // RECURSOS HUMANOS
             Text('Recursos Humanos',
                 style: TextStyle(
@@ -628,9 +638,9 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
             else
               Text('No se han asignado miembros.',
                   style: TextStyle(color: Colors.grey.shade600)),
-            
+
             const SizedBox(height: 30),
-            
+
             // RECURSOS MATERIALES
             Text('Recursos Materiales',
                 style: TextStyle(
@@ -640,8 +650,7 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
             const SizedBox(height: 10),
             Row(
               children: [
-                Text(
-                    '${_selectedResources.length}',
+                Text('${_selectedResources.length}',
                     style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
@@ -658,7 +667,8 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
                             children: [
                               CircleAvatar(
                                 radius: 18,
-                                backgroundColor: AppColors.accentColor.withValues(alpha: 0.2),
+                                backgroundColor: AppColors.accentColor
+                                    .withValues(alpha: 0.2),
                                 child: Text(
                                   resource.icono,
                                   style: const TextStyle(fontSize: 20),
