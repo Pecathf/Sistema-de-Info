@@ -17,8 +17,7 @@ import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
 
 // --- Importa tus DIÁLOGOS de selección (REUTILIZADOS) ---
 import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/resource_selection_dialog.dart';
-import 'package:sistem_proyect/funcionalidades/Pantallas/tareas/taskMemberSelection.dart';
-
+import 'package:sistem_proyect/funcionalidades/Pantallas/tareas/task_member_selection.dart';
 // --- Importa los widgets compartidos (COMO EN 'pantalla_principal.dart') ---
 // No necesitamos 'SharedFooter' porque lo recrearemos aquí para que coincida con la imagen
 // import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/shared_footer_widget.dart';

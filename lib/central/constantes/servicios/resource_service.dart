@@ -6,10 +6,14 @@ class ResourceService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String _collectionName = 'recursos_materiales';
 
-  // Crear un nuevo recurso
-  Future<String?> crearRecurso(RecursoMaterial recurso) async {
+  // Crear un nuevo recurso asociado a un proyecto
+  Future<String?> crearRecurso(RecursoMaterial recurso, String projectId) async {
     try {
-      final docRef = await _firestore.collection(_collectionName).add(recurso.toMap());
+      final recursoData = recurso.toMap();
+      recursoData['proyectoId'] = projectId; // Asociar al proyecto
+      recursoData['cantidadDisponible'] = recurso.cantidad; // Cantidad inicial disponible
+      
+      final docRef = await _firestore.collection(_collectionName).add(recursoData);
       return docRef.id;
     } catch (e, st) {
       developer.log(
@@ -22,7 +26,63 @@ class ResourceService {
     }
   }
 
-  // Obtener todos los recursos como Stream
+  // Obtener recursos de un proyecto específico como Stream (para actualizaciones en tiempo real)
+  Stream<List<RecursoMaterial>> getRecursosStreamByProject(String projectId) {
+    return _firestore
+        .collection(_collectionName)
+        .where('proyectoId', isEqualTo: projectId)
+        .orderBy('nombre')
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) => RecursoMaterial.fromMap(doc.data(), doc.id))
+          .toList();
+    });
+  }
+
+  // Obtener recursos de un proyecto específico como Future (para carga única)
+  Future<List<RecursoMaterial>> getRecursosByProject(String projectId) async {
+    try {
+      developer.log(
+        'Consultando recursos para proyecto: $projectId',
+        name: 'ResourceService.getRecursosByProject',
+      );
+      final querySnapshot = await _firestore
+          .collection(_collectionName)
+          .where('proyectoId', isEqualTo: projectId)
+          .get();
+
+      final recursos = querySnapshot.docs
+          .map((doc) {
+            developer.log(
+              'Recurso encontrado: ${doc.data()['nombre']} (ID: ${doc.id})',
+              name: 'ResourceService.getRecursosByProject',
+            );
+            return RecursoMaterial.fromMap(doc.data(), doc.id);
+          })
+          .toList();
+
+      // Ordenar manualmente por nombre en lugar de en la consulta
+      recursos.sort((a, b) => a.nombre.compareTo(b.nombre));
+
+      developer.log(
+        'Total recursos encontrados: ${recursos.length}',
+        name: 'ResourceService.getRecursosByProject',
+      );
+
+      return recursos;
+    } catch (e, st) {
+      developer.log(
+        'Error al obtener recursos del proyecto: $e',
+        error: e,
+        stackTrace: st,
+        name: 'ResourceService.getRecursosByProject',
+      );
+      return [];
+    }
+  }
+
+  // Obtener todos los recursos como Stream (para admin global si es necesario)
   Stream<List<RecursoMaterial>> getRecursosStream() {
     return _firestore
         .collection(_collectionName)
@@ -78,6 +138,25 @@ class ResourceService {
     }
   }
 
+  // Actualizar cantidad disponible de un recurso
+  Future<bool> actualizarCantidadDisponible(String id, int nuevaCantidad) async {
+    try {
+      await _firestore
+          .collection(_collectionName)
+          .doc(id)
+          .update({'cantidadDisponible': nuevaCantidad});
+      return true;
+    } catch (e, st) {
+      developer.log(
+        'Error al actualizar cantidad disponible: $e',
+        error: e,
+        stackTrace: st,
+        name: 'ResourceService.actualizarCantidadDisponible',
+      );
+      return false;
+    }
+  }
+
   // Eliminar un recurso
   Future<bool> eliminarRecurso(String id) async {
     try {
@@ -94,7 +173,7 @@ class ResourceService {
     }
   }
 
-  // Actualizar un recurso
+  // Actualizar un recurso completo
   Future<bool> actualizarRecurso(RecursoMaterial recurso) async {
     try {
       await _firestore

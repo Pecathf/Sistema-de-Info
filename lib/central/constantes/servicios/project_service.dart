@@ -32,18 +32,17 @@ class ProjectService {
 
     yield* collectionRef.snapshots().map((snapshot) {
       return snapshot.docs.map((doc) {
-        // ✅ CORRECCIÓN: Usar fromMap en lugar de fromFirestore
         return Proyecto.fromMap(doc.data() as Map<String, dynamic>, doc.id);
       }).toList();
     });
   }
 
-  // 2. Crea un nuevo proyecto en Firestore
-  Future<void> crearProyecto(Proyecto proyecto) async {
+  // 2. Crea un nuevo proyecto en Firestore y devuelve el ID
+  Future<String> crearProyecto(Proyecto proyecto) async {
     try {
-      // ✅ CORRECCIÓN: Usar toMap en lugar de toFirestore
       final proyectoData = proyecto.toMap();
-      await _firestore.collection('proyectos').add(proyectoData);
+      final docRef = await _firestore.collection('proyectos').add(proyectoData);
+      return docRef.id; 
     } on FirebaseException catch (e, st) {
       developer.log(
         'Error al crear proyecto: ${e.message}',
@@ -81,7 +80,6 @@ class ProjectService {
 
       final data = proyecto.toMap();
 
-      // Usa .update() para actualizar solo los campos modificados
       await proyectoRef.update(data);
     } on FirebaseException catch (e, st) {
       developer.log(
@@ -94,10 +92,42 @@ class ProjectService {
     }
   }
 
-  // 5. Eliminar un proyecto
+  // 5. Eliminar un proyecto y todos sus recursos asociados
   Future<bool> eliminarProyecto(String projectId) async {
     try {
+      // 1️. Primero eliminar todos los recursos asociados al proyecto
+      final recursosSnapshot = await _firestore
+          .collection('recursos_materiales')
+          .where('proyectoId', isEqualTo: projectId)
+          .get();
+
+      // Eliminar cada recurso en un batch
+      final batch = _firestore.batch();
+      for (var doc in recursosSnapshot.docs) {
+        batch.delete(doc.reference);
+      }
+      await batch.commit();
+
+      // 2️. Eliminar todas las tareas asociadas al proyecto
+      final tareasSnapshot = await _firestore
+          .collection('tareas')
+          .where('proyectoId', isEqualTo: projectId)
+          .get();
+
+      final batchTareas = _firestore.batch();
+      for (var doc in tareasSnapshot.docs) {
+        batchTareas.delete(doc.reference);
+      }
+      await batchTareas.commit();
+
+      // 3️. Finalmente eliminar el proyecto
       await _firestore.collection('proyectos').doc(projectId).delete();
+      
+      developer.log(
+        'Proyecto eliminado exitosamente junto con sus recursos y tareas',
+        name: 'ProjectService.eliminarProyecto',
+      );
+      
       return true;
     } on FirebaseException catch (e, st) {
       developer.log(

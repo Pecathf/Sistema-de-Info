@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart'; // Importar para usar FilteringTextInputFormatter
+import 'package:flutter/services.dart'; 
 import 'package:sistem_proyect/central/constantes/modelos/recurso_model.dart';
 
 class ResourceSelectionDialog extends StatefulWidget {

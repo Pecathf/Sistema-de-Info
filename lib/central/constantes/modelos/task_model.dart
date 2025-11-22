@@ -1,5 +1,3 @@
-// Archivo: central/constantes/modelos/task_model.dart
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sistem_proyect/central/constantes/modelos/recurso_model.dart';
 
@@ -11,6 +9,7 @@ class TaskModel {
   final String creadorUid; // Quién creó la tarea
   final List<String> miembrosUid; // UIDs de los miembros asignados
   final List<RecursoMaterial> recursosAsignados; // Lista de recursos
+  final DateTime? fechaInicio; // NUEVO CAMPO
   final DateTime? fechaVencimiento;
   final String prioridad; // 'Alta', 'Media', 'Baja'
   final String estado; // 'Pendiente', 'En Progreso', 'Completada'
@@ -24,6 +23,7 @@ class TaskModel {
     required this.creadorUid,
     required this.miembrosUid,
     required this.recursosAsignados,
+    this.fechaInicio, // NUEVO CAMPO
     this.fechaVencimiento,
     this.prioridad = 'Media',
     this.estado = 'Pendiente',
@@ -39,6 +39,9 @@ class TaskModel {
       'creadorUid': creadorUid,
       'miembrosUid': miembrosUid,
       'recursosAsignados': recursosAsignados.map((r) => r.toMap()).toList(),
+      'fechaInicio': fechaInicio != null
+          ? Timestamp.fromDate(fechaInicio!)
+          : null, // NUEVO CAMPO
       'fechaVencimiento': fechaVencimiento != null
           ? Timestamp.fromDate(fechaVencimiento!)
           : null,
@@ -62,41 +65,11 @@ class TaskModel {
           .map((r) => RecursoMaterial.fromMap(
               r as Map<String, dynamic>, r['id'] as String? ?? ''))
           .toList(),
+      fechaInicio: (map['fechaInicio'] as Timestamp?)?.toDate(), // NUEVO CAMPO
       fechaVencimiento: (map['fechaVencimiento'] as Timestamp?)?.toDate(),
       prioridad: map['prioridad'] as String? ?? 'Media',
       estado: map['estado'] as String? ?? 'Pendiente',
       fechaCreacion: (map['fechaCreacion'] as Timestamp).toDate(),
-    );
-  }
-  // Método para crear una copia con campos modificados
-  TaskModel copyWith({
-    String? id,
-    String? nombre,
-    String? descripcion,
-    String? proyectoId,
-    String? creadorUid,
-    List<String>? miembrosUid,
-    List<RecursoMaterial>? recursosAsignados,
-    DateTime? fechaVencimiento,
-    bool? fechaVencimientoNulable, // Para poder setearlo a null
-    String? prioridad,
-    String? estado,
-    DateTime? fechaCreacion,
-  }) {
-    return TaskModel(
-      id: id ?? this.id,
-      nombre: nombre ?? this.nombre,
-      descripcion: descripcion ?? this.descripcion,
-      proyectoId: proyectoId ?? this.proyectoId,
-      creadorUid: creadorUid ?? this.creadorUid,
-      miembrosUid: miembrosUid ?? this.miembrosUid,
-      recursosAsignados: recursosAsignados ?? this.recursosAsignados,
-      fechaVencimiento: fechaVencimientoNulable == true
-          ? null
-          : (fechaVencimiento ?? this.fechaVencimiento),
-      prioridad: prioridad ?? this.prioridad,
-      estado: estado ?? this.estado,
-      fechaCreacion: fechaCreacion ?? this.fechaCreacion,
     );
   }
 }

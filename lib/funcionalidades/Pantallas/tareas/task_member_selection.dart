@@ -1,11 +1,8 @@
-// Archivo: funcionalidades/Pantallas/proyectos/task_member_selection_dialog.dart
-
 import 'package:flutter/material.dart';
 import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart';
 
 class TaskMemberSelectionDialog extends StatefulWidget {
   final List<Usuario> initialSelectedMembers;
-  // ✅ NUEVO: La lista de usuarios disponibles (los miembros del proyecto)
   final List<Usuario> availableUsers;
 
   const TaskMemberSelectionDialog({

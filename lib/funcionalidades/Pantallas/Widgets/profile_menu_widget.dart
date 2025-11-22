@@ -3,13 +3,12 @@ import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/Autenticacion/pantalla_inicio_sesion.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/Autenticacion/pantalla_editar_perfil.dart';
 
-/// Helper class para mostrar el menú de perfil reutilizable en todas las pantallas
+// Helper class para mostrar el menú de perfil reutilizable en todas las pantallas
 class ProfileMenuHelper {
   static final AuthService _authService = AuthService();
 
   static Future<void> mostrarMenuPerfil(
       BuildContext context, Offset offset) async {
-    // Capture navigator & messenger synchronously to avoid using BuildContext after await
     final NavigatorState navigator = Navigator.of(context);
     final ScaffoldMessengerState messenger = ScaffoldMessenger.of(context);
 
@@ -61,13 +60,9 @@ class ProfileMenuHelper {
       }
     }
   }
-
-  // Navigation and sign-out are handled inline in mostrarMenuPerfil to avoid
-  // using BuildContext across async gaps.
 }
 
-/// Widget del avatar con hover que muestra el menú de perfil al hacer clic
-/// Este widget es reutilizable en todas las pantallas
+// Widget del avatar con hover que muestra el menú de perfil al hacer clic
 class HoverableProfileAvatar extends StatefulWidget {
   final String userInitial;
   final Color avatarColor;

@@ -6,6 +6,7 @@ import 'package:sistem_proyect/central/constantes/modelos/recurso_model.dart';
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/project_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart';
+import 'package:sistem_proyect/central/constantes/servicios/resource_service.dart';  
 import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/pantalla_listado_proyectos.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/member_selection_dialog.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/resource_selection_dialog.dart';
@@ -26,6 +27,7 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
   final ProjectService _projectService = ProjectService();
   final AuthService _authService = AuthService();
   final UserDataService _userDataService = UserDataService();
+  final ResourceService _resourceService = ResourceService(); 
 
   final TextEditingController _nombreController = TextEditingController();
   final TextEditingController _descripcionController = TextEditingController();
@@ -37,6 +39,7 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
 
   bool _isAdmin = false;
   bool _isLoadingRole = true;
+  bool _isCreating = false; 
 
   @override
   void initState() {
@@ -91,6 +94,7 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
+  // Guarda recursos en Firebase
   Future<void> _createProject() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
@@ -113,7 +117,11 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
         return;
       }
 
+      // Mostrar loading
+      setState(() => _isCreating = true);
+
       try {
+        // 1️. Primero crear el proyecto SIN recursos
         final Proyecto newProject = Proyecto(
           id: '',
           nombre: _nombreController.text,
@@ -125,10 +133,37 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
           estado: 'Activo',
           creadorUid: currentUser.uid,
           miembrosUid: _selectedMembers.map((e) => e.uid).toList(),
-          recursosMateriales: _selectedResources,
+          recursosMateriales: [], // Vacío por ahora
         );
 
-        await _projectService.crearProyecto(newProject);
+        // Crear el proyecto y obtener su ID
+        final projectId = await _projectService.crearProyecto(newProject);
+
+        // 2️. Ahora guardar cada recurso en la colección recursos_materiales
+        List<RecursoMaterial> recursosGuardados = [];
+        for (var recurso in _selectedResources) {
+          final recursoId = await _resourceService.crearRecurso(
+            recurso,
+            projectId, 
+          );
+          
+          if (recursoId != null) {
+            // Crear una copia del recurso con el ID correcto
+            recursosGuardados.add(recurso.copyWith(
+              id: recursoId,
+              proyectoId: projectId,
+            ));
+          }
+        }
+
+        // 3️. Actualizar el proyecto con los recursos guardados
+        if (recursosGuardados.isNotEmpty) {
+          final projectoActualizado = newProject.copyWith(
+            id: projectId,
+            recursosMateriales: recursosGuardados,
+          );
+          await _projectService.updateProyecto(projectoActualizado);
+        }
 
         if (!mounted) return;
 
@@ -142,6 +177,10 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(content: Text('Error al crear proyecto: $e')),
         );
+      } finally {
+        if (mounted) {
+          setState(() => _isCreating = false);
+        }
       }
     }
   }
@@ -267,7 +306,7 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
                       const SizedBox(height: 30),
                       Center(
                         child: OutlinedButton(
-                          onPressed: () {
+                          onPressed: _isCreating ? null : () {
                             Navigator.of(context).pop();
                           },
                           style: OutlinedButton.styleFrom(
@@ -363,7 +402,7 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () async {
+                      onPressed: _isCreating ? null : () async {
                         final List<Usuario>? result =
                             await showDialog<List<Usuario>>(
                           context: context,
@@ -394,7 +433,7 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
                   const SizedBox(width: 15),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () async {
+                      onPressed: _isCreating ? null : () async {
                         final List<RecursoMaterial>? result =
                             await showDialog<List<RecursoMaterial>>(
                           context: context,
@@ -426,7 +465,7 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
               const SizedBox(height: 30),
               Center(
                 child: ElevatedButton(
-                  onPressed: _createProject,
+                  onPressed: _isCreating ? null : _createProject,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryOrange,
                     padding: const EdgeInsets.symmetric(
@@ -435,11 +474,20 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
                         borderRadius: BorderRadius.circular(8)),
                     elevation: 3,
                   ),
-                  child: const Text('Crear',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold)),
+                  child: _isCreating
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : const Text('Crear',
+                          style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold)),
                 ),
               ),
             ],
