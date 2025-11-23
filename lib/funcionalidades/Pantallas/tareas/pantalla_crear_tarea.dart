@@ -7,6 +7,7 @@ import 'package:sistem_proyect/central/constantes/servicios/task_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/resource_service.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/tareas/task_member_selection.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/widgets_principal.dart';
+import 'package:sistem_proyect/central/constantes/servicios/project_service.dart';
 
 class PantallaCrearTarea extends StatefulWidget {
   final String projectId;
@@ -28,7 +29,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
   final _formKey = GlobalKey<FormState>();
   final TaskService _taskService = TaskService();
   final ResourceService _resourceService = ResourceService();
-
+  final ProjectService _projectService = ProjectService();
   final TextEditingController _nombreController = TextEditingController();
   final TextEditingController _descripcionController = TextEditingController();
 
@@ -235,6 +236,9 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
 
     try {
       final currentUserUid = FirebaseAuth.instance.currentUser!.uid;
+      final String userName = FirebaseAuth.instance.currentUser?.displayName ??
+          FirebaseAuth.instance.currentUser?.email ??
+          'Usuario';
 
       if (_isEditMode) {
         // ============================================
@@ -337,6 +341,8 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
           fechaVencimiento: _fechaVencimiento,
           prioridad: _prioridad,
         );
+        await _projectService.registrarHistorial(widget.projectId,
+            'Editó la tarea "${_nombreController.text}"', userName);
 
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(

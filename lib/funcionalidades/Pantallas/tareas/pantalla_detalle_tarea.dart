@@ -7,6 +7,7 @@ import 'package:sistem_proyect/central/constantes/servicios/user_data_service.da
 import 'package:sistem_proyect/central/constantes/servicios/task_service.dart';
 import 'package:sistem_proyect/central/constantes/colores.dart';
 import 'package:intl/intl.dart';
+import 'package:sistem_proyect/central/constantes/servicios/project_service.dart';
 
 class PantallaDetalleTarea extends StatefulWidget {
   final TaskModel tarea;
@@ -23,7 +24,7 @@ class PantallaDetalleTarea extends StatefulWidget {
 class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
   final UserDataService _userDataService = UserDataService();
   final TaskService _taskService = TaskService();
-
+  final ProjectService _projectService = ProjectService();
   // Controlador para escribir comentarios
   final TextEditingController _commentController = TextEditingController();
   final User? _currentUser = FirebaseAuth.instance.currentUser;
@@ -94,143 +95,14 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
     }
   }
 
-  void _mostrarHistorial() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true, // Para que pueda ocupar más altura
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.6,
-          minChildSize: 0.4,
-          maxChildSize: 0.9,
-          builder: (_, scrollController) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              padding: const EdgeInsets.only(top: 20, left: 20, right: 20),
-              child: Column(
-                children: [
-                  // Indicador de arrastre
-                  Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 20),
-                    decoration: BoxDecoration(
-                      color: Colors.grey.shade300,
-                      borderRadius: BorderRadius.circular(2),
-                    ),
-                  ),
-                  const Text(
-                    'Historial de la Tarea',
-                    style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.darkBackground),
-                  ),
-                  const SizedBox(height: 20),
-                  Expanded(
-                    // Escuchamos la subcolección 'historial'
-                    child: StreamBuilder<QuerySnapshot>(
-                      stream: FirebaseFirestore.instance
-                          .collection('proyectos')
-                          .doc(widget.tarea.proyectoId)
-                          .collection('tareas')
-                          .doc(widget.tarea.id)
-                          .collection('historial')
-                          .orderBy('fecha', descending: true)
-                          .snapshots(),
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                              child: CircularProgressIndicator());
-                        }
-
-                        final docs = snapshot.data?.docs ?? [];
-
-                        if (docs.isEmpty) {
-                          return Center(
-                            child: Text(
-                              'No hay movimientos registrados.',
-                              style: TextStyle(color: Colors.grey.shade500),
-                            ),
-                          );
-                        }
-
-                        return ListView.builder(
-                          controller: scrollController,
-                          itemCount: docs.length,
-                          itemBuilder: (context, index) {
-                            final data =
-                                docs[index].data() as Map<String, dynamic>;
-                            final accion = data['accion'] ?? '';
-                            final autor =
-                                data['usuarioNombre'] ?? 'Desconocido';
-                            final fecha = data['fecha'] as Timestamp?;
-
-                            // Diseño tipo "Línea de tiempo"
-                            return Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Column(
-                                  children: [
-                                    const Icon(Icons.circle,
-                                        size: 12,
-                                        color: AppColors.primaryOrange),
-                                    if (index != docs.length - 1)
-                                      Container(
-                                        width: 2,
-                                        height: 40,
-                                        color: Colors.grey.shade200,
-                                      ),
-                                  ],
-                                ),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Padding(
-                                    padding:
-                                        const EdgeInsets.only(bottom: 16.0),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(accion,
-                                            style: const TextStyle(
-                                                fontWeight: FontWeight.bold,
-                                                fontSize: 14)),
-                                        const SizedBox(height: 4),
-                                        Text(
-                                            '$autor • ${_formatCommentDate(fecha)}',
-                                            style: TextStyle(
-                                                color: Colors.grey.shade600,
-                                                fontSize: 12)),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
-  }
-
   Future<void> _updateStatus(String newStatus) async {
     try {
       await _taskService.updateTaskStatus(
           widget.tarea.id, widget.tarea.proyectoId, newStatus);
+      final user = FirebaseAuth.instance.currentUser;
+      final userName = user?.displayName ?? user?.email ?? 'Usuario';
+      await _projectService.registrarHistorial(widget.tarea.proyectoId,
+          'Cambió estado de "${widget.tarea.nombre}" a $newStatus', userName);
 
       if (mounted) {
         setState(() {
@@ -315,14 +187,6 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
           icon: const Icon(Icons.arrow_back, color: AppColors.darkBackground),
           onPressed: () => Navigator.of(context).pop(),
         ),
-        actions: [
-          IconButton(
-            icon: const Icon(Icons.history, color: AppColors.darkBackground),
-            tooltip: 'Ver Historial',
-            onPressed:
-                _mostrarHistorial, // Llama a la función que creamos antes
-          ),
-        ],
         title: Text(
           widget.tarea.nombre,
           style: const TextStyle(

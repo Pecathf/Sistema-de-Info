@@ -170,6 +170,11 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
         Navigator.of(context).pop();
 
         if (resultado['success']) {
+          final user = FirebaseAuth.instance.currentUser;
+          final userName = user?.displayName ?? user?.email ?? 'Usuario';
+
+          await _projectService.registrarHistorial(
+              widget.projectId, 'Eliminó la tarea "${tarea.nombre}"', userName);
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(resultado['message']),
@@ -290,126 +295,6 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
         ),
       );
     }
-  }
-
-  void _mostrarHistorialProyecto() {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return DraggableScrollableSheet(
-          initialChildSize: 0.6,
-          minChildSize: 0.4,
-          maxChildSize: 0.9,
-          builder: (_, scrollController) {
-            return Container(
-              decoration: const BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-              ),
-              padding: const EdgeInsets.all(20),
-              child: Column(
-                children: [
-                  // Indicador visual superior
-                  Container(
-                    width: 40,
-                    height: 4,
-                    margin: const EdgeInsets.only(bottom: 20),
-                    decoration: BoxDecoration(
-                        color: Colors.grey.shade300,
-                        borderRadius: BorderRadius.circular(2)),
-                  ),
-                  const Text('Historial del Proyecto',
-                      style: TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.darkBackground)),
-                  const SizedBox(height: 20),
-
-                  // Lista de historial
-                  Expanded(
-                    child: StreamBuilder<QuerySnapshot>(
-                      // --- RUTA CLAVE ---
-                      stream: FirebaseFirestore.instance
-                          .collection('proyectos')
-                          .doc(widget.projectId)
-                          .collection('historial')
-                          .orderBy('fecha', descending: true)
-                          .snapshots(),
-                      // ------------------
-                      builder: (context, snapshot) {
-                        if (snapshot.connectionState ==
-                            ConnectionState.waiting) {
-                          return const Center(
-                              child: CircularProgressIndicator());
-                        }
-
-                        final docs = snapshot.data?.docs ?? [];
-
-                        if (docs.isEmpty) {
-                          return Center(
-                            child: Column(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              children: [
-                                Icon(Icons.history_edu,
-                                    size: 50, color: Colors.grey.shade300),
-                                const SizedBox(height: 10),
-                                Text('Sin actividad reciente',
-                                    style:
-                                        TextStyle(color: Colors.grey.shade500)),
-                              ],
-                            ),
-                          );
-                        }
-
-                        return ListView.separated(
-                          controller: scrollController,
-                          itemCount: docs.length,
-                          separatorBuilder: (context, _) => const Divider(),
-                          itemBuilder: (context, index) {
-                            final data =
-                                docs[index].data() as Map<String, dynamic>;
-                            final accion = data['accion'] ?? 'Actualización';
-                            final autor = data['usuarioNombre'] ?? 'Sistema';
-                            final fecha = data['fecha'] as Timestamp?;
-
-                            // Formato de fecha simple
-                            String fechaStr = '';
-                            if (fecha != null) {
-                              final dt = fecha.toDate();
-                              fechaStr =
-                                  '${dt.day}/${dt.month} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
-                            }
-
-                            return ListTile(
-                              leading: CircleAvatar(
-                                backgroundColor:
-                                    AppColors.accentColor.withOpacity(0.1),
-                                child: const Icon(Icons.history,
-                                    size: 20, color: AppColors.accentColor),
-                              ),
-                              title: Text(accion,
-                                  style: const TextStyle(
-                                      fontWeight: FontWeight.bold,
-                                      fontSize: 13)),
-                              subtitle: Text('$autor • $fechaStr',
-                                  style: TextStyle(
-                                      color: Colors.grey.shade600,
-                                      fontSize: 12)),
-                            );
-                          },
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ),
-            );
-          },
-        );
-      },
-    );
   }
 
   String _formatDate(DateTime date) {
@@ -1290,6 +1175,126 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
       default:
         return Colors.grey.shade400;
     }
+  }
+
+  void _mostrarHistorialProyecto() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return DraggableScrollableSheet(
+          initialChildSize: 0.6,
+          minChildSize: 0.4,
+          maxChildSize: 0.9,
+          builder: (_, scrollController) {
+            return Container(
+              decoration: const BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+              ),
+              padding: const EdgeInsets.all(20),
+              child: Column(
+                children: [
+                  // Indicador visual superior
+                  Container(
+                    width: 40,
+                    height: 4,
+                    margin: const EdgeInsets.only(bottom: 20),
+                    decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2)),
+                  ),
+                  const Text('Historial del Proyecto',
+                      style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.darkBackground)),
+                  const SizedBox(height: 20),
+
+                  // Lista de historial
+                  Expanded(
+                    child: StreamBuilder<QuerySnapshot>(
+                      // --- RUTA CLAVE ---
+                      stream: FirebaseFirestore.instance
+                          .collection('proyectos')
+                          .doc(widget.projectId)
+                          .collection('historial')
+                          .orderBy('fecha', descending: true)
+                          .snapshots(),
+                      // ------------------
+                      builder: (context, snapshot) {
+                        if (snapshot.connectionState ==
+                            ConnectionState.waiting) {
+                          return const Center(
+                              child: CircularProgressIndicator());
+                        }
+
+                        final docs = snapshot.data?.docs ?? [];
+
+                        if (docs.isEmpty) {
+                          return Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.history_edu,
+                                    size: 50, color: Colors.grey.shade300),
+                                const SizedBox(height: 10),
+                                Text('Sin actividad reciente',
+                                    style:
+                                        TextStyle(color: Colors.grey.shade500)),
+                              ],
+                            ),
+                          );
+                        }
+
+                        return ListView.separated(
+                          controller: scrollController,
+                          itemCount: docs.length,
+                          separatorBuilder: (context, _) => const Divider(),
+                          itemBuilder: (context, index) {
+                            final data =
+                                docs[index].data() as Map<String, dynamic>;
+                            final accion = data['accion'] ?? 'Actualización';
+                            final autor = data['usuarioNombre'] ?? 'Sistema';
+                            final fecha = data['fecha'] as Timestamp?;
+
+                            // Formato de fecha simple
+                            String fechaStr = '';
+                            if (fecha != null) {
+                              final dt = fecha.toDate();
+                              fechaStr =
+                                  '${dt.day}/${dt.month} ${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')}';
+                            }
+
+                            return ListTile(
+                              leading: CircleAvatar(
+                                backgroundColor:
+                                    AppColors.accentColor.withOpacity(0.1),
+                                child: const Icon(Icons.history,
+                                    size: 20, color: AppColors.accentColor),
+                              ),
+                              title: Text(accion,
+                                  style: const TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 13)),
+                              subtitle: Text('$autor • $fechaStr',
+                                  style: TextStyle(
+                                      color: Colors.grey.shade600,
+                                      fontSize: 12)),
+                            );
+                          },
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
   }
 
   @override
