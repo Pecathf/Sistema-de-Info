@@ -37,6 +37,7 @@ class TaskService {
   }
 
   // 3. Eliminar tarea con validación y liberación de recursos
+  // 3. Eliminar tarea con validación y liberación de recursos
   Future<Map<String, dynamic>> eliminarTareaConValidacion(
     String taskId,
     String projectId,
@@ -108,15 +109,30 @@ class TaskService {
 
           recursosLiberados++;
         } catch (e) {
-          // Omitimos el logging aquí, si hay un error en un recurso,
-          // se intenta liberar el siguiente.
+          // Continuar con el siguiente recurso si hay error
         }
       }
 
-      // 4. Eliminar la tarea
+      // 🔥 4. NUEVO: Eliminar todos los comentarios de la tarea
+      final comentariosSnapshot = await _firestore
+          .collection(_collectionName)
+          .doc(taskId)
+          .collection('comentarios')
+          .get();
+
+      // Eliminar cada comentario en un batch
+      if (comentariosSnapshot.docs.isNotEmpty) {
+        final batch = _firestore.batch();
+        for (var comentarioDoc in comentariosSnapshot.docs) {
+          batch.delete(comentarioDoc.reference);
+        }
+        await batch.commit();
+      }
+
+      // 5. Eliminar la tarea
       await _firestore.collection(_collectionName).doc(taskId).delete();
 
-      // 5. Recalcular progreso
+      // 6. Recalcular progreso
       await _recalcularProgresoProyecto(projectId);
 
       return {
@@ -285,4 +301,45 @@ class TaskService {
       rethrow; // Re-lanza cualquier otra excepción
     }
   }
+  Future<Map<String, int>> getGlobalTaskStats() async {
+    try {
+      final snapshot = await _firestore.collection(_collectionName).get();
+      
+      int total = snapshot.docs.length;
+      int completadas = 0;
+      int pendientes = 0;
+      int enProgreso = 0;
+
+      for (var doc in snapshot.docs) {
+        final estado = doc['estado'] as String? ?? 'Pendiente';
+        if (estado == 'Completada') {
+          completadas++;
+        } else if (estado == 'En Progreso') {
+          enProgreso++;
+        } else {
+          pendientes++;
+        }
+      }
+
+      return {
+        'total': total,
+        'completadas': completadas,
+        'pendientes': pendientes,
+        'enProgreso': enProgreso,
+      };
+    } catch (e) {
+      return {'total': 0, 'completadas': 0, 'pendientes': 0, 'enProgreso': 0};
+    }
+  }
+  Future<List<TaskModel>> getAllTasksGlobal() async {
+    try {
+      final snapshot = await _firestore.collection(_collectionName).get();
+      return snapshot.docs
+          .map((doc) => TaskModel.fromMap(doc.data(), doc.id))
+          .toList();
+    } catch (e) {
+      return [];
+    }
+  }
+  
 }
