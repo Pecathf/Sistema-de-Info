@@ -11,6 +11,7 @@ import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/widgets_princip
 import 'package:sistem_proyect/funcionalidades/Pantallas/widgets/shared_footer_widget.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/profile_menu_widget.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/calendario/pantalla_calendario.dart';
+import 'package:sistem_proyect/funcionalidades/estadisticas/pantalla_estadisticas_admin.dart';
 import 'pantalla_detalle_proyecto.dart';
 
 class PantallaListadoProyectos extends StatefulWidget {
@@ -248,7 +249,13 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
                     child: const Text('Calendario',
                         style: TextStyle(color: Colors.black87))),
                 TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  const PantallaEstadisticasAdmin()));
+                    },
                     child: const Text('Estadísticas',
                         style: TextStyle(color: Colors.black87))),
               ],
