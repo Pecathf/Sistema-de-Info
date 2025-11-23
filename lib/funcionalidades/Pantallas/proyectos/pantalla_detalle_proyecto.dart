@@ -139,7 +139,8 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
       context,
       MaterialPageRoute(
         builder: (context) => PantallaCrearTarea(
-          proyecto: _proyecto!, // Pasas el objeto entero
+          proyecto: _proyecto!, projectId: '',
+          projectMembers: [], // Pasas el objeto entero
         ),
       ),
     );

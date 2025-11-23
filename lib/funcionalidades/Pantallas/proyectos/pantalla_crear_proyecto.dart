@@ -6,6 +6,7 @@ import 'package:sistem_proyect/central/constantes/modelos/recurso_model.dart';
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/project_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart';
+import 'package:sistem_proyect/central/constantes/servicios/resource_service.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/pantalla_listado_proyectos.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/member_selection_dialog.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/resource_selection_dialog.dart';
@@ -15,7 +16,12 @@ import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/shared_footer_w
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/profile_menu_widget.dart';
 
 class PantallaCrearProyecto extends StatefulWidget {
-  const PantallaCrearProyecto({super.key});
+  final Proyecto? proyectoExistente;
+
+  const PantallaCrearProyecto({
+    super.key,
+    this.proyectoExistente,
+  });
 
   @override
   State<PantallaCrearProyecto> createState() => _PantallaCrearProyectoState();
@@ -26,6 +32,7 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
   final ProjectService _projectService = ProjectService();
   final AuthService _authService = AuthService();
   final UserDataService _userDataService = UserDataService();
+  final ResourceService _resourceService = ResourceService();
 
   final TextEditingController _nombreController = TextEditingController();
   final TextEditingController _descripcionController = TextEditingController();
@@ -34,14 +41,22 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
   DateTime? _fechaLimite;
   List<Usuario> _selectedMembers = [];
   List<RecursoMaterial> _selectedResources = [];
+  final Map<String, int> _recursosOriginales = {};
 
   bool _isAdmin = false;
   bool _isLoadingRole = true;
+  bool _isCreating = false;
+  bool _isLoadingData = false;
+
+  bool get _isEditMode => widget.proyectoExistente != null;
 
   @override
   void initState() {
     super.initState();
     _checkIfAdmin();
+    if (_isEditMode) {
+      _cargarDatosExistentes();
+    }
   }
 
   @override
@@ -58,6 +73,51 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
         _isAdmin = (roleResult == 'admin');
         _isLoadingRole = false;
       });
+    }
+  }
+
+  Future<void> _cargarDatosExistentes() async {
+    if (!_isEditMode) return;
+
+    setState(() => _isLoadingData = true);
+
+    try {
+      final proyecto = widget.proyectoExistente!;
+
+      // Cargar miembros
+      final miembros =
+          await _userDataService.getUsuariosByIds(proyecto.miembrosUid);
+
+      // Cargar recursos del proyecto
+      final recursos = await _resourceService.getRecursosByProject(proyecto.id);
+
+      if (mounted) {
+        setState(() {
+          _nombreController.text = proyecto.nombre;
+          _descripcionController.text = proyecto.descripcion;
+          _fechaInicio = proyecto.fechaInicio;
+          _fechaLimite = proyecto.fechaLimite;
+          _selectedMembers = miembros;
+          _selectedResources = recursos;
+
+          // Guardar las cantidades originales de recursos
+          for (var recurso in recursos) {
+            _recursosOriginales[recurso.id] = recurso.cantidad;
+          }
+
+          _isLoadingData = false;
+        });
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() => _isLoadingData = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error al cargar datos del proyecto: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -91,15 +151,16 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
     return '${date.day.toString().padLeft(2, '0')}/${date.month.toString().padLeft(2, '0')}/${date.year}';
   }
 
-  Future<void> _createProject() async {
+  Future<void> _createOrUpdateProject() async {
     if (_formKey.currentState!.validate()) {
       _formKey.currentState!.save();
 
       if (_fechaInicio == null || _fechaLimite == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content:
-                  Text('Por favor, selecciona las fechas de inicio y límite.')),
+            content:
+                Text('Por favor, selecciona las fechas de inicio y límite.'),
+          ),
         );
         return;
       }
@@ -108,42 +169,156 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
       if (currentUser == null) {
         ScaffoldMessenger.of(context).showSnackBar(
           const SnackBar(
-              content: Text('Debes iniciar sesión para crear un proyecto.')),
+            content: Text('Debes iniciar sesión para realizar esta acción.'),
+          ),
         );
         return;
       }
 
-      try {
-        final Proyecto newProject = Proyecto(
-          id: '',
-          nombre: _nombreController.text,
-          descripcion: _descripcionController.text,
-          fechaCreacion: DateTime.now(),
-          fechaInicio: _fechaInicio!,
-          fechaLimite: _fechaLimite!,
-          progreso: 0,
-          estado: 'Activo',
-          creadorUid: currentUser.uid,
-          miembrosUid: _selectedMembers.map((e) => e.uid).toList(),
-          recursosMateriales: _selectedResources,
-        );
+      setState(() => _isCreating = true);
 
-        await _projectService.crearProyecto(newProject);
+      try {
+        if (_isEditMode) {
+          // ============================================
+          // MODO EDICIÓN
+          // ============================================
+          await _actualizarProyecto();
+        } else {
+          // ============================================
+          // MODO CREACIÓN
+          // ============================================
+          await _crearProyecto(currentUser.uid);
+        }
 
         if (!mounted) return;
 
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Proyecto creado exitosamente!')),
+          SnackBar(
+            content: Text(_isEditMode
+                ? 'Proyecto actualizado exitosamente!'
+                : 'Proyecto creado exitosamente!'),
+            backgroundColor: Colors.green,
+          ),
         );
 
-        Navigator.of(context).pop();
+        Navigator.of(context).pop(true); // Retornar true para indicar éxito
       } catch (e) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error al crear proyecto: $e')),
+          SnackBar(content: Text('Error: $e')),
         );
+      } finally {
+        if (mounted) {
+          setState(() => _isCreating = false);
+        }
       }
     }
+  }
+
+  Future<void> _crearProyecto(String currentUserUid) async {
+    final Proyecto newProject = Proyecto(
+      id: '',
+      nombre: _nombreController.text,
+      descripcion: _descripcionController.text,
+      fechaCreacion: DateTime.now(),
+      fechaInicio: _fechaInicio!,
+      fechaLimite: _fechaLimite!,
+      progreso: 0,
+      estado: 'Activo',
+      creadorUid: currentUserUid,
+      miembrosUid: _selectedMembers.map((e) => e.uid).toList(),
+      recursosMateriales: [],
+    );
+
+    final projectId = await _projectService.crearProyecto(newProject);
+
+    // Guardar cada recurso en la colección recursos_materiales
+    List<RecursoMaterial> recursosGuardados = [];
+    for (var recurso in _selectedResources) {
+      final recursoId = await _resourceService.crearRecurso(
+        recurso,
+        projectId,
+      );
+
+      if (recursoId != null) {
+        recursosGuardados.add(recurso.copyWith(
+          id: recursoId,
+          proyectoId: projectId,
+        ));
+      }
+    }
+
+    // Actualizar el proyecto con los recursos guardados
+    if (recursosGuardados.isNotEmpty) {
+      final projectoActualizado = newProject.copyWith(
+        id: projectId,
+        recursosMateriales: recursosGuardados,
+      );
+      await _projectService.updateProyecto(projectoActualizado);
+    }
+  }
+
+  Future<void> _actualizarProyecto() async {
+    final proyecto = widget.proyectoExistente!;
+
+    // 1. Gestionar recursos eliminados
+    for (var entry in _recursosOriginales.entries) {
+      final recursoId = entry.key;
+      // Si el recurso ya no está en la lista seleccionada, eliminarlo
+      final todaviaSeleccionado =
+          _selectedResources.any((r) => r.id == recursoId);
+      if (!todaviaSeleccionado) {
+        await _resourceService.eliminarRecurso(recursoId);
+      }
+    }
+
+    // 2. Actualizar recursos existentes y crear nuevos
+    List<RecursoMaterial> recursosActualizados = [];
+    for (var recurso in _selectedResources) {
+      if (recurso.id.isEmpty || !_recursosOriginales.containsKey(recurso.id)) {
+        // Es un recurso nuevo
+        final recursoId = await _resourceService.crearRecurso(
+          recurso,
+          proyecto.id,
+        );
+        if (recursoId != null) {
+          recursosActualizados.add(recurso.copyWith(
+            id: recursoId,
+            proyectoId: proyecto.id,
+          ));
+        }
+      } else {
+        // Es un recurso existente, actualizar si cambió la cantidad
+        final cantidadOriginal = _recursosOriginales[recurso.id]!;
+        if (cantidadOriginal != recurso.cantidad) {
+          // Calcular la diferencia
+          final diferencia = recurso.cantidad - cantidadOriginal;
+          final nuevaCantidadDisponible =
+              recurso.cantidadDisponible + diferencia;
+
+          // Actualizar tanto la cantidad total como la disponible
+          await _resourceService.actualizarRecurso(
+            recurso.copyWith(
+              cantidad: recurso.cantidad,
+              cantidadDisponible: nuevaCantidadDisponible,
+            ),
+          );
+        }
+        recursosActualizados.add(recurso);
+      }
+    }
+
+    // 3. Actualizar el proyecto
+    final proyectoActualizado = proyecto.copyWith(
+      nombre: _nombreController.text,
+      descripcion: _descripcionController.text,
+      fechaInicio: _fechaInicio!,
+      fechaLimite: _fechaLimite!,
+      miembrosUid: _selectedMembers.map((e) => e.uid).toList(),
+      recursosMateriales: recursosActualizados,
+    );
+
+    await _projectService.updateProyecto(proyectoActualizado);
   }
 
   String _getUserInitial(String? userName) {
@@ -225,9 +400,13 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
           icon: const Icon(Icons.arrow_back, color: Colors.black87),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Crear Nuevo Proyecto',
-            style:
-                TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
+        title: Text(
+          _isEditMode ? 'Editar Proyecto' : 'Crear Nuevo Proyecto',
+          style: const TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
         actions: [
           profileWidget,
         ],
@@ -240,7 +419,7 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
     final userInitial =
         _getUserInitial(FirebaseAuth.instance.currentUser?.email);
 
-    if (_isLoadingRole) {
+    if (_isLoadingRole || _isLoadingData) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
@@ -268,9 +447,11 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
                       const SizedBox(height: 30),
                       Center(
                         child: OutlinedButton(
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
+                          onPressed: _isCreating
+                              ? null
+                              : () {
+                                  Navigator.of(context).pop();
+                                },
                           style: OutlinedButton.styleFrom(
                             foregroundColor: AppColors.primaryOrange,
                             side: BorderSide(color: AppColors.primaryOrange),
@@ -331,8 +512,11 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Crear Proyecto',
-                  style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              Text(
+                _isEditMode ? 'Editar Proyecto' : 'Crear Proyecto',
+                style:
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
               const SizedBox(height: 20),
               _buildTextField(_nombreController, 'Nombre del Proyecto',
                   validator: (value) {
@@ -364,21 +548,23 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
                 children: [
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () async {
-                        final List<Usuario>? result =
-                            await showDialog<List<Usuario>>(
-                          context: context,
-                          builder: (context) => MemberSelectionDialog(
-                            userDataService: _userDataService,
-                            initialSelectedMembers: _selectedMembers,
-                          ),
-                        );
-                        if (result != null) {
-                          setState(() {
-                            _selectedMembers = result;
-                          });
-                        }
-                      },
+                      onPressed: _isCreating
+                          ? null
+                          : () async {
+                              final List<Usuario>? result =
+                                  await showDialog<List<Usuario>>(
+                                context: context,
+                                builder: (context) => MemberSelectionDialog(
+                                  userDataService: _userDataService,
+                                  initialSelectedMembers: _selectedMembers,
+                                ),
+                              );
+                              if (result != null) {
+                                setState(() {
+                                  _selectedMembers = result;
+                                });
+                              }
+                            },
                       icon: const Icon(Icons.person_add,
                           color: Colors.white, size: 20),
                       label: const Text('Agregar miembros',
@@ -397,20 +583,22 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
                   const SizedBox(width: 15),
                   Expanded(
                     child: ElevatedButton.icon(
-                      onPressed: () async {
-                        final List<RecursoMaterial>? result =
-                            await showDialog<List<RecursoMaterial>>(
-                          context: context,
-                          builder: (context) => ResourceSelectionDialog(
-                            initialSelectedResources: _selectedResources,
-                          ),
-                        );
-                        if (result != null) {
-                          setState(() {
-                            _selectedResources = result;
-                          });
-                        }
-                      },
+                      onPressed: _isCreating
+                          ? null
+                          : () async {
+                              final List<RecursoMaterial>? result =
+                                  await showDialog<List<RecursoMaterial>>(
+                                context: context,
+                                builder: (context) => ResourceSelectionDialog(
+                                  initialSelectedResources: _selectedResources,
+                                ),
+                              );
+                              if (result != null) {
+                                setState(() {
+                                  _selectedResources = result;
+                                });
+                              }
+                            },
                       icon: const Icon(Icons.inventory_2,
                           color: Colors.white, size: 20),
                       label: const Text('Agregar recursos',
@@ -431,7 +619,7 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
               const SizedBox(height: 30),
               Center(
                 child: ElevatedButton(
-                  onPressed: _createProject,
+                  onPressed: _isCreating ? null : _createOrUpdateProject,
                   style: ElevatedButton.styleFrom(
                     backgroundColor: AppColors.primaryOrange,
                     padding: const EdgeInsets.symmetric(
@@ -440,11 +628,22 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
                         borderRadius: BorderRadius.circular(8)),
                     elevation: 3,
                   ),
-                  child: const Text('Crear',
-                      style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold)),
+                  child: _isCreating
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
+                            color: Colors.white,
+                          ),
+                        )
+                      : Text(
+                          _isEditMode ? 'Guardar Cambios' : 'Crear',
+                          style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold),
+                        ),
                 ),
               ),
             ],

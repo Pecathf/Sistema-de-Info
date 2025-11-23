@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sistem_proyect/central/constantes/modelos/project_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/project_service.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/pantalla_crear_proyecto.dart';
@@ -9,6 +10,7 @@ import 'package:sistem_proyect/funcionalidades/Pantallas/pantalla_principal.dart
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/widgets_principal.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/widgets/shared_footer_widget.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/profile_menu_widget.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/calendario/pantalla_calendario.dart';
 import 'pantalla_detalle_proyecto.dart';
 
 class PantallaListadoProyectos extends StatefulWidget {
@@ -51,7 +53,21 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
     }
   }
 
-  void _navigateToProjectDetail(Proyecto proyecto) {
+  void _navigateToProjectDetail(Proyecto proyecto) async {
+    // 🔥 AGREGAR: Guardar proyecto reciente antes de navegar
+    final prefs = await SharedPreferences.getInstance();
+    List<String> recentIds = prefs.getStringList('recent_projects') ?? [];
+
+    recentIds.remove(proyecto.id);
+    recentIds.insert(0, proyecto.id);
+    if (recentIds.length > 5) {
+      recentIds = recentIds.sublist(0, 5);
+    }
+
+    await prefs.setStringList('recent_projects', recentIds);
+
+    // Navegar
+    if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => PantallaDetalleProyecto(
@@ -65,6 +81,28 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
     setState(() {
       _searchQuery = _tempSearchQuery;
     });
+  }
+
+  Future<void> _abrirPantallaEditarProyecto(Proyecto proyecto) async {
+    final bool? resultado = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PantallaCrearProyecto(
+          proyectoExistente: proyecto, // Pasamos el proyecto existente
+        ),
+      ),
+    );
+
+    if (resultado == true && mounted) {
+      // El proyecto fue actualizado exitosamente
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Proyecto actualizado exitosamente'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      // No necesitas hacer nada más, el StreamBuilder se actualizará automáticamente
+    }
   }
 
   // MÉTODO PARA ELIMINAR PROYECTO (SOLO ADMIN)
@@ -190,7 +228,13 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
                             color: AppColors.primaryOrange,
                             fontWeight: FontWeight.bold))),
                 TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  const PantallaCalendario()));
+                    },
                     child: const Text('Calendario',
                         style: TextStyle(color: Colors.black87))),
                 TextButton(
@@ -419,6 +463,11 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
               onTapView: () {
                 _navigateToProjectDetail(proyecto);
               },
+              onTapEdit: _isAdmin
+                  ? () {
+                      _abrirPantallaEditarProyecto(proyecto);
+                    }
+                  : null,
               onTapDelete: _isAdmin
                   ? () {
                       _confirmarEliminarProyecto(proyecto);

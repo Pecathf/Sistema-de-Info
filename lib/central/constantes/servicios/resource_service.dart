@@ -1,27 +1,23 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sistem_proyect/central/constantes/modelos/recurso_model.dart';
-import 'dart:developer' as developer;
 
 class ResourceService {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   final String _collectionName = 'recursos_materiales';
 
   // Crear un nuevo recurso asociado a un proyecto
-  Future<String?> crearRecurso(RecursoMaterial recurso, String projectId) async {
+  Future<String?> crearRecurso(
+      RecursoMaterial recurso, String projectId) async {
     try {
       final recursoData = recurso.toMap();
       recursoData['proyectoId'] = projectId; // Asociar al proyecto
-      recursoData['cantidadDisponible'] = recurso.cantidad; // Cantidad inicial disponible
-      
-      final docRef = await _firestore.collection(_collectionName).add(recursoData);
+      recursoData['cantidadDisponible'] =
+          recurso.cantidad; // Cantidad inicial disponible
+
+      final docRef =
+          await _firestore.collection(_collectionName).add(recursoData);
       return docRef.id;
-    } catch (e, st) {
-      developer.log(
-        'Error al crear recurso: $e',
-        error: e,
-        stackTrace: st,
-        name: 'ResourceService.crearRecurso',
-      );
+    } catch (e) {
       return null;
     }
   }
@@ -43,41 +39,23 @@ class ResourceService {
   // Obtener recursos de un proyecto específico como Future (para carga única)
   Future<List<RecursoMaterial>> getRecursosByProject(String projectId) async {
     try {
-      developer.log(
-        'Consultando recursos para proyecto: $projectId',
-        name: 'ResourceService.getRecursosByProject',
-      );
+      // Consultando recursos para proyecto: $projectId
       final querySnapshot = await _firestore
           .collection(_collectionName)
           .where('proyectoId', isEqualTo: projectId)
           .get();
 
       final recursos = querySnapshot.docs
-          .map((doc) {
-            developer.log(
-              'Recurso encontrado: ${doc.data()['nombre']} (ID: ${doc.id})',
-              name: 'ResourceService.getRecursosByProject',
-            );
-            return RecursoMaterial.fromMap(doc.data(), doc.id);
-          })
+          .map((doc) => RecursoMaterial.fromMap(doc.data(), doc.id))
           .toList();
 
       // Ordenar manualmente por nombre en lugar de en la consulta
       recursos.sort((a, b) => a.nombre.compareTo(b.nombre));
 
-      developer.log(
-        'Total recursos encontrados: ${recursos.length}',
-        name: 'ResourceService.getRecursosByProject',
-      );
+      // Total recursos encontrados: ${recursos.length}
 
       return recursos;
-    } catch (e, st) {
-      developer.log(
-        'Error al obtener recursos del proyecto: $e',
-        error: e,
-        stackTrace: st,
-        name: 'ResourceService.getRecursosByProject',
-      );
+    } catch (e) {
       return [];
     }
   }
@@ -108,13 +86,7 @@ class ResourceService {
       return querySnapshot.docs
           .map((doc) => RecursoMaterial.fromMap(doc.data(), doc.id))
           .toList();
-    } catch (e, st) {
-      developer.log(
-        'Error al obtener recursos por IDs: $e',
-        error: e,
-        stackTrace: st,
-        name: 'ResourceService.getRecursosByIds',
-      );
+    } catch (e) {
       return [];
     }
   }
@@ -127,32 +99,21 @@ class ResourceService {
         return RecursoMaterial.fromMap(doc.data()!, doc.id);
       }
       return null;
-    } catch (e, st) {
-      developer.log(
-        'Error al obtener recurso: $e',
-        error: e,
-        stackTrace: st,
-        name: 'ResourceService.getRecursoById',
-      );
+    } catch (e) {
       return null;
     }
   }
 
   // Actualizar cantidad disponible de un recurso
-  Future<bool> actualizarCantidadDisponible(String id, int nuevaCantidad) async {
+  Future<bool> actualizarCantidadDisponible(
+      String id, int nuevaCantidad) async {
     try {
       await _firestore
           .collection(_collectionName)
           .doc(id)
           .update({'cantidadDisponible': nuevaCantidad});
       return true;
-    } catch (e, st) {
-      developer.log(
-        'Error al actualizar cantidad disponible: $e',
-        error: e,
-        stackTrace: st,
-        name: 'ResourceService.actualizarCantidadDisponible',
-      );
+    } catch (e) {
       return false;
     }
   }
@@ -162,13 +123,7 @@ class ResourceService {
     try {
       await _firestore.collection(_collectionName).doc(id).delete();
       return true;
-    } catch (e, st) {
-      developer.log(
-        'Error al eliminar recurso: $e',
-        error: e,
-        stackTrace: st,
-        name: 'ResourceService.eliminarRecurso',
-      );
+    } catch (e) {
       return false;
     }
   }
@@ -181,13 +136,7 @@ class ResourceService {
           .doc(recurso.id)
           .update(recurso.toMap());
       return true;
-    } catch (e, st) {
-      developer.log(
-        'Error al actualizar recurso: $e',
-        error: e,
-        stackTrace: st,
-        name: 'ResourceService.actualizarRecurso',
-      );
+    } catch (e) {
       return false;
     }
   }

@@ -17,11 +17,15 @@ import 'package:sistem_proyect/funcionalidades/Pantallas/tareas/task_member_sele
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/widgets_principal.dart';
 
 class PantallaCrearTarea extends StatefulWidget {
-  final Proyecto proyecto;
+  final String projectId;
+  final List<Usuario> projectMembers;
+  final TaskModel? tareaExistente;
 
   const PantallaCrearTarea({
     super.key,
-    required this.proyecto,
+    required this.projectId,
+    required this.projectMembers,
+    this.tareaExistente,
   });
 
   @override
@@ -55,26 +59,61 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
   final String _prioridad =
       'Media'; // Lo mantenemos por lógica, aunque no está en la imagen
   List<Usuario> _selectedMembers = [];
-  List<RecursoMaterial> _selectedResources = [];
+  Map<String, int> _selectedResources = {};
+  final Map<String, int> _recursosOriginales = {};
+  List<RecursoMaterial> _availableResources = [];
+  bool _isCreating = false;
+  bool _isLoadingResources = true;
 
-  // Datos del Proyecto (para el panel derecho)
-  late Future<Usuario?> _creadorDelProyecto;
-  late Future<List<Usuario>> _miembrosDelProyecto;
+  final List<String> _priorities = ['Alta', 'Media', 'Baja'];
 
-  bool _isLoading = false;
+  bool get _isEditMode => widget.tareaExistente != null;
 
   @override
   void initState() {
     super.initState();
-    _loadProjectData();
-    _checkIfAdmin();
+
+    // Primero cargamos los recursos disponibles
+    _cargarRecursos().then((_) {
+      // Después de cargar recursos, si estamos en modo edición, cargamos los datos
+      if (_isEditMode && mounted) {
+        _cargarDatosExistentes();
+      }
+    });
   }
 
-  void _loadProjectData() {
-    _creadorDelProyecto =
-        _userDataService.getUsuarioById(widget.proyecto.creadorUid);
-    _miembrosDelProyecto =
-        _userDataService.getUsuariosByIds(widget.proyecto.miembrosUid);
+  void _cargarDatosExistentes() {
+    final tarea = widget.tareaExistente!;
+
+    setState(() {
+      _nombreController.text = tarea.nombre;
+      _descripcionController.text = tarea.descripcion;
+      _fechaInicio = tarea.fechaInicio;
+      _fechaVencimiento = tarea.fechaVencimiento;
+      _prioridad = tarea.prioridad;
+
+      // Cargar miembros seleccionados
+      _selectedMembers = widget.projectMembers
+          .where((m) => tarea.miembrosUid.contains(m.uid))
+          .toList();
+
+      // Cargar recursos asignados
+      for (var recurso in tarea.recursosAsignados) {
+        // Verificar que el recurso todavía existe en el proyecto
+        final existe = _availableResources.any((r) => r.id == recurso.id);
+        if (existe) {
+          _selectedResources[recurso.id] = recurso.cantidad;
+          _recursosOriginales[recurso.id] = recurso.cantidad;
+        }
+      }
+    });
+  }
+
+  @override
+  void dispose() {
+    _nombreController.dispose();
+    _descripcionController.dispose();
+    super.dispose();
   }
 
   Future<void> _checkIfAdmin() async {
@@ -101,12 +140,14 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
   Future<void> _selectDate(BuildContext context, bool isStartDate) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
+      initialDate:
+          (isFechaInicio ? _fechaInicio : _fechaVencimiento) ?? DateTime.now(),
       firstDate: DateTime(2000),
       lastDate: DateTime(2101),
       // Puedes añadir el 'builder' de estilo que tenías en mi otra respuesta si quieres
     );
     if (picked != null) {
+      if (!mounted) return;
       setState(() {
         final formattedDate = _dateFormat.format(picked);
         if (isStartDate) {
@@ -132,6 +173,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
       ),
     );
 
+    if (!mounted) return;
     if (result != null) {
       setState(() {
         _selectedMembers = result;
@@ -159,50 +201,207 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
     if (_fechaLimite == null || _fechaInicio == null) {
       // MODIFICADO
       ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Por favor, selecciona ambas fechas.')));
+        const SnackBar(
+          content:
+              Text('Por favor, selecciona las fechas de inicio y vencimiento.'),
+          backgroundColor: Colors.red,
+        ),
+      );
       return;
     }
 
-    setState(() {
-      _isLoading = true;
-    });
-
-    final user = FirebaseAuth.instance.currentUser;
-    if (user == null) {
-      ScaffoldMessenger.of(context).showSnackBar(const SnackBar(
-          content: Text('Error: No se pudo encontrar el usuario.')));
-      setState(() {
-        _isLoading = false;
-      });
-      return;
-    }
-
-    final nuevaTarea = TaskModel(
-      nombre: _nombreController.text.trim(),
-      descripcion: _descripcionController.text.trim(),
-      proyectoId: widget.proyecto.id,
-      creadorUid: user.uid,
-      miembrosUid: _selectedMembers.map((m) => m.uid).toList(),
-      recursosAsignados: _selectedResources,
-      fechaVencimiento: _fechaLimite,
-      // NOTA: El campo 'fechaInicio' no está en tu 'TaskModel' del código original.
-      // Si lo necesitas, debes añadirlo al modelo.
-      prioridad: _prioridad, // Tu lógica lo usa
-      estado: 'Pendiente',
-      fechaCreacion: DateTime.now(),
-    );
+    setState(() => _isCreating = true);
 
     try {
-      await _taskService.crearTarea(nuevaTarea);
-      // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tarea creada exitosamente')));
-      // ignore: use_build_context_synchronously
-      Navigator.of(context).pop();
+      final currentUserUid = FirebaseAuth.instance.currentUser!.uid;
+
+      if (_isEditMode) {
+        // ============================================
+        // MODO EDICIÓN
+        // ============================================
+
+        // 1. Liberar recursos que se quitaron
+        for (var entry in _recursosOriginales.entries) {
+          final recursoId = entry.key;
+          final cantidadOriginal = entry.value;
+          final cantidadNueva = _selectedResources[recursoId] ?? 0;
+
+          // Verificar que el recurso todavía existe
+          final recursoIndex =
+              _availableResources.indexWhere((r) => r.id == recursoId);
+          if (recursoIndex == -1) {
+            // El recurso ya no existe, saltarlo
+            continue;
+          }
+
+          if (cantidadNueva < cantidadOriginal) {
+            // Se liberaron recursos
+            final recurso = _availableResources[recursoIndex];
+            final cantidadALiberar = cantidadOriginal - cantidadNueva;
+            final nuevaCantidadDisponible =
+                recurso.cantidadDisponible + cantidadALiberar;
+
+            await _resourceService.actualizarCantidadDisponible(
+              recursoId,
+              nuevaCantidadDisponible,
+            );
+          }
+        }
+
+        // 2. Asignar nuevos recursos o aumentar cantidad
+        for (var entry in _selectedResources.entries) {
+          final recursoId = entry.key;
+          final cantidadNueva = entry.value;
+          final cantidadOriginal = _recursosOriginales[recursoId] ?? 0;
+
+          // Verificar que el recurso existe
+          final recursoIndex =
+              _availableResources.indexWhere((r) => r.id == recursoId);
+          if (recursoIndex == -1) {
+            // El recurso no existe, mostrar advertencia y continuar
+            if (mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                SnackBar(
+                  content: Text(
+                      'Advertencia: El recurso con ID $recursoId ya no existe'),
+                  backgroundColor: Colors.orange,
+                ),
+              );
+            }
+            continue;
+          }
+
+          if (cantidadNueva > cantidadOriginal) {
+            // Se agregaron más recursos
+            final recurso = _availableResources[recursoIndex];
+            final cantidadAAgregar = cantidadNueva - cantidadOriginal;
+            final nuevaCantidadDisponible =
+                recurso.cantidadDisponible - cantidadAAgregar;
+
+            await _resourceService.actualizarCantidadDisponible(
+              recursoId,
+              nuevaCantidadDisponible,
+            );
+          }
+        }
+
+        // 3. Preparar recursos asignados actualizados (solo los que existen)
+        List<RecursoMaterial> recursosAsignados = [];
+        for (var entry in _selectedResources.entries) {
+          final recursoIndex =
+              _availableResources.indexWhere((r) => r.id == entry.key);
+          if (recursoIndex != -1) {
+            final recurso = _availableResources[recursoIndex];
+            recursosAsignados.add(
+              RecursoMaterial(
+                id: recurso.id,
+                nombre: recurso.nombre,
+                cantidad: entry.value,
+                icono: recurso.icono,
+                proyectoId: recurso.proyectoId,
+                cantidadDisponible: recurso.cantidadDisponible,
+              ),
+            );
+          }
+        }
+
+        // 4. Actualizar la tarea
+        await _taskService.updateTarea(
+          widget.tareaExistente!.id,
+          nombre: _nombreController.text.trim(),
+          descripcion: _descripcionController.text.trim(),
+          miembrosUid: _selectedMembers.map((m) => m.uid).toList(),
+          recursosAsignados: recursosAsignados,
+          fechaInicio: _fechaInicio,
+          fechaVencimiento: _fechaVencimiento,
+          prioridad: _prioridad,
+        );
+
+        if (!mounted) return;
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Tarea actualizada exitosamente'),
+            backgroundColor: Colors.green,
+          ),
+        );
+      } else {
+        // ============================================
+        // MODO CREACIÓN (código original)
+        // ============================================
+
+        // Preparar recursos asignados
+        List<RecursoMaterial> recursosAsignados = [];
+        for (var entry in _selectedResources.entries) {
+          final recursoIndex =
+              _availableResources.indexWhere((r) => r.id == entry.key);
+          if (recursoIndex != -1) {
+            final recurso = _availableResources[recursoIndex];
+            recursosAsignados.add(
+              RecursoMaterial(
+                id: recurso.id,
+                nombre: recurso.nombre,
+                cantidad: entry.value,
+                icono: recurso.icono,
+                proyectoId: recurso.proyectoId,
+                cantidadDisponible: recurso.cantidadDisponible,
+              ),
+            );
+          }
+        }
+
+        final newTask = TaskModel(
+          nombre: _nombreController.text.trim(),
+          descripcion: _descripcionController.text.trim(),
+          proyectoId: widget.projectId,
+          creadorUid: currentUserUid,
+          miembrosUid: _selectedMembers.map((m) => m.uid).toList(),
+          recursosAsignados: recursosAsignados,
+          fechaInicio: _fechaInicio,
+          fechaVencimiento: _fechaVencimiento,
+          prioridad: _prioridad,
+          fechaCreacion: DateTime.now(),
+          estado: 'Pendiente',
+        );
+
+        final taskId = await _taskService.crearTarea(newTask);
+
+        if (taskId != null) {
+          // Actualizar cantidades disponibles de recursos
+          for (var entry in _selectedResources.entries) {
+            final recursoIndex =
+                _availableResources.indexWhere((r) => r.id == entry.key);
+            if (recursoIndex != -1) {
+              final recurso = _availableResources[recursoIndex];
+              final nuevaCantidadDisponible =
+                  recurso.cantidadDisponible - entry.value;
+              await _resourceService.actualizarCantidadDisponible(
+                entry.key,
+                nuevaCantidadDisponible,
+              );
+            }
+          }
+
+          if (!mounted) return;
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Tarea creada exitosamente'),
+              backgroundColor: Colors.green,
+            ),
+          );
+        }
+      }
+
+      if (!mounted) return;
+      Navigator.of(context).pop(true);
     } catch (e) {
-      // ignore: use_build_context_synchronously
-      ScaffoldMessenger.of(context)
-          .showSnackBar(SnackBar(content: Text('Error al crear la tarea: $e')));
+      if (!mounted) return;
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Error: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } finally {
       if (mounted) {
         setState(() {
@@ -224,205 +423,279 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
     // Usamos el NUEVO AppBar que coincide con la imagen
     final appBar = _buildCustomAppBar(userInitial, isDesktop);
 
-    return Scaffold(
-      appBar: appBar, // AppBar blanco con links
-      backgroundColor: Colors.grey, // Fondo gris claro
-      body: SingleChildScrollView(
-        child: Center(
-          // Centra el contenido
-          child: Column(
-            children: [
-              // Panel principal (UNA TARJETA)
-              Container(
-                constraints: const BoxConstraints(maxWidth: 1200),
-                padding: const EdgeInsets.symmetric(
-                    horizontal: 24.0, vertical: 24.0),
-                child: _buildTaskPanel(
-                    context), // Widget que contiene las 2 columnas
-              ),
-              const SizedBox(height: 20),
-
-              // Botón "Volver" (AÑADIDO)
-              _buildBackButton(),
-              const SizedBox(height: 30),
-
-              // Footer (AÑADIDO)
-              _buildCustomFooter(context),
-            ],
+        return Scaffold(
+          backgroundColor: Colors.grey[50],
+          appBar: AppBar(
+            backgroundColor: Colors.white,
+            elevation: 1,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.black87),
+              onPressed: () => Navigator.pop(context),
+            ),
+            title: Text(
+              _isEditMode ? 'Editar Tarea' : 'Crear Nueva Tarea',
+              style: const TextStyle(
+                  color: Colors.black87, fontWeight: FontWeight.bold),
+            ),
           ),
-        ),
-      ),
+          body: SingleChildScrollView(
+            padding: EdgeInsets.symmetric(
+              horizontal: horizontalPadding,
+              vertical: 30.0,
+            ),
+            child: Column(
+              children: [
+                isDesktop ? _buildDesktopLayout() : _buildMobileLayout(),
+                const SizedBox(height: 30),
+                Center(
+                  child: ElevatedButton(
+                    onPressed: _isCreating ? null : _createTask,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.primaryOrange,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 50, vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      elevation: 3,
+                    ),
+                    child: _isCreating
+                        ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: Colors.white,
+                            ),
+                          )
+                        : Text(
+                            _isEditMode ? 'Guardar Cambios' : 'Crear',
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 18,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                  ),
+                ),
+                const SizedBox(height: 20),
+                Center(
+                  child: OutlinedButton(
+                    onPressed:
+                        _isCreating ? null : () => Navigator.pop(context),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: AppColors.primaryOrange,
+                      side: BorderSide(color: AppColors.primaryOrange),
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 40, vertical: 15),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                    ),
+                    child: const Text(
+                      'Volver',
+                      style: TextStyle(fontWeight: FontWeight.bold),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 
-  // ---
-  // WIDGETS DE LA PANTALLA (MODIFICADOS)
-  // ---
-
-  /// MODIFICADO: Este es el AppBar blanco de tu imagen
-  PreferredSizeWidget _buildCustomAppBar(String userInitial, bool isDesktop) {
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 1,
-      automaticallyImplyLeading: false, // La imagen no tiene flecha de "atrás"
-      toolbarHeight: 70,
-      title: RichText(
-        text: const TextSpan(
-          style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-              fontFamily: 'Poppins'), // Asegúrate de tener la fuente Poppins
-          children: [
-            TextSpan(text: "Proyect"),
-            TextSpan(text: "App", style: TextStyle(color: Colors.red)),
-          ],
-        ),
-      ),
-      actions: [
-        if (isDesktop) ...[
-          _navLink("Menú"),
-          _navLink("Proyectos"),
-          _navLink("Calendario"),
-          _navLink("Estadísticas"),
-        ],
-        // Reutilizamos el 'HoverableProfileAvatar' de tu código original
-        HoverableProfileAvatar(
-          authService: _authService,
-          isAdmin: _isAdmin,
-          userInitial: userInitial,
-          isDesktop: isDesktop,
-          // Usa el color de tu app, asumo que 'accentColor' es el azul
-          avatarColor: AppColors.accentColor,
-        ),
+  Widget _buildDesktopLayout() {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Expanded(child: _buildTaskForm()),
+        const SizedBox(width: 40),
+        Expanded(child: _buildResourcesPanel()),
       ],
     );
   }
 
-  // AÑADIDO: Helper para los links del AppBar
-  Widget _navLink(String title) {
-    return TextButton(
-      onPressed: () {},
-      child: Text(
-        title,
-        style: const TextStyle(color: Colors.black54, fontSize: 16),
-      ),
-    );
-  }
-
-  /// AÑADIDO: Widget que crea la tarjeta blanca con 2 columnas
-  Widget _buildTaskPanel(BuildContext context) {
-    bool isWideScreen = MediaQuery.of(context).size.width > 800;
-
-    return Card(
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-      child: Padding(
-        padding: const EdgeInsets.all(28.0),
-        child: isWideScreen
-            ? Row(
-                // Versión ancha (Web/Tablet)
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(flex: 2, child: _buildTaskForm()), // Formulario
-                  const SizedBox(width: 28),
-                  Container(
-                      width: 1, height: 450, color: Colors.grey), // Divisor
-                  const SizedBox(width: 28),
-                  Expanded(flex: 1, child: _buildResourcesPanel()), // Recursos
-                ],
-              )
-            : Column(
-                // Versión estrecha (Móvil)
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  _buildTaskForm(),
-                  const Divider(height: 40, thickness: 1, color: Colors.grey),
-                  _buildResourcesPanel(),
-                ],
-              ),
-      ),
+  Widget _buildMobileLayout() {
+    return Column(
+      children: [
+        _buildTaskForm(),
+        const SizedBox(height: 30),
+        _buildResourcesPanel(),
+      ],
     );
   }
 
   /// MODIFICADO: Formulario (Panel Izquierdo)
   /// Limpiado para que solo tenga los campos de la imagen
   Widget _buildTaskForm() {
-    return Form(
-      key: _formKey,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text('Crear Tarea',
-              style: TextStyle(
-                  fontSize: 28,
-                  fontWeight: FontWeight.w600,
-                  color: Colors.black87)),
-          const SizedBox(height: 24),
+    return Card(
+      elevation: 3,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(30.0),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                _isEditMode ? 'Editar Tarea' : 'Crear Tarea',
+                style:
+                    const TextStyle(fontSize: 20, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 20),
+              // Nombre
+              TextFormField(
+                controller: _nombreController,
+                decoration: InputDecoration(
+                  labelText: 'Nombre de la Tarea',
+                  hintText: 'Ingresa el nombre',
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide:
+                        BorderSide(color: AppColors.primaryOrange, width: 2),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'El nombre no puede estar vacío';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 15),
 
-          _buildFormTextField(
-            label: "Nombre de la Tarea",
-            controller: _nombreController,
-            validator: (value) => (value == null || value.isEmpty)
-                ? 'El nombre es obligatorio'
-                : null,
-          ),
-          const SizedBox(height: 16),
+              // Descripción
+              TextFormField(
+                controller: _descripcionController,
+                maxLines: 3,
+                decoration: InputDecoration(
+                  labelText: 'Descripción',
+                  hintText: 'Describe la tarea',
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide:
+                        BorderSide(color: AppColors.primaryOrange, width: 2),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                ),
+                validator: (value) {
+                  if (value == null || value.isEmpty) {
+                    return 'La descripcion no puede estar vacío';
+                  }
+                  return null;
+                },
+              ),
+              const SizedBox(height: 15),
 
-          _buildFormTextField(
-            label: "Descripción",
-            controller: _descripcionController,
-            maxLines: 3, // Ajustado
-          ),
-          const SizedBox(height: 16),
+              // Prioridad
+              DropdownButtonFormField<String>(
+                initialValue: _prioridad,
+                decoration: InputDecoration(
+                  labelText: 'Prioridad',
+                  border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                  focusedBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide:
+                        BorderSide(color: AppColors.primaryOrange, width: 2),
+                  ),
+                  enabledBorder: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(8),
+                    borderSide: BorderSide(color: Colors.grey.shade300),
+                  ),
+                ),
+                items: _priorities
+                    .map((p) => DropdownMenuItem(value: p, child: Text(p)))
+                    .toList(),
+                onChanged: (value) {
+                  setState(() => _prioridad = value!);
+                },
+              ),
+              const SizedBox(height: 15),
 
-          // Campo "Fecha de inicio" (de la imagen)
-          _buildFormDateField(
-            context: context,
-            label: "Fecha de inicio",
-            controller: _fechaInicioController,
-            onTap: () => _selectDate(context, true), // true para isStartDate
-          ),
-          const SizedBox(height: 16),
-
-          // Campo "Fecha límite" (de la imagen)
-          _buildFormDateField(
-            context: context,
-            label: "Fecha límite",
-            controller: _fechaLimiteController,
-            onTap: () => _selectDate(context, false), // false para isStartDate
-          ),
-          const SizedBox(height: 16),
-
-          // --- CAMPO "AGREGAR MIEMBROS" (de la imagen) ---
-          // La lógica de selección se movió al panel derecho,
-          // pero el campo del form está en la imagen.
-          _buildFormTextField(
-            label: "Agregar miembros",
-            readOnly: true, // Este campo solo muestra
-            hintText: '${_selectedMembers.length} miembros asignados',
-            onTap: _selectMembers, // Tocarlo abre el selector
-            suffixIcon: Icon(Icons.add_circle, color: Colors.blue),
-          ),
-          const SizedBox(height: 24),
-
-          Center(
-            child: _isLoading
-                ? CircularProgressIndicator(color: AppColors.primaryOrange)
-                : ElevatedButton(
-                    child: Text('Crear'), // Texto de la imagen
-                    onPressed: _crearTarea,
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.primaryOrange,
-                      foregroundColor: Colors.white,
-                      minimumSize:
-                          const Size(double.infinity, 52), // Full width
-                      shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(4)),
+              // Fecha de Inicio
+              InkWell(
+                onTap: () => _selectDate(context, true),
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: 'Fecha de Inicio',
+                    suffixIcon: Icon(Icons.calendar_today,
+                        color: AppColors.primaryOrange),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide:
+                          BorderSide(color: AppColors.primaryOrange, width: 2),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
                     ),
                   ),
+                  child: Text(
+                    _fechaInicio == null
+                        ? 'Seleccionar fecha'
+                        : _formatDate(_fechaInicio),
+                    style: TextStyle(
+                      color: _fechaInicio == null ? Colors.grey : Colors.black,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 15),
+
+              // Fecha Límite
+              InkWell(
+                onTap: () => _selectDate(context, false),
+                child: InputDecorator(
+                  decoration: InputDecoration(
+                    labelText: 'Fecha Límite',
+                    suffixIcon: Icon(Icons.calendar_today,
+                        color: AppColors.primaryOrange),
+                    border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(8)),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide:
+                          BorderSide(color: AppColors.primaryOrange, width: 2),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(8),
+                      borderSide: BorderSide(color: Colors.grey.shade300),
+                    ),
+                  ),
+                  child: Text(
+                    _fechaVencimiento == null
+                        ? 'Seleccionar fecha'
+                        : _formatDate(_fechaVencimiento),
+                    style: TextStyle(
+                      color: _fechaVencimiento == null
+                          ? Colors.grey
+                          : Colors.black,
+                      fontSize: 16,
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
@@ -437,349 +710,240 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
             style: TextStyle(
                 fontSize: 28,
                 fontWeight: FontWeight.w600,
-                color: Colors.black87)),
-        const SizedBox(height: 24),
-
-        // 1. Observador (del código original)
-        Text('Observador (Creador)',
-            style: Theme.of(context)
-                .textTheme
-                .titleSmall
-                ?.copyWith(color: Colors.grey[600])),
-        FutureBuilder<Usuario?>(
-          future: _creadorDelProyecto,
-          builder: (context, snapshot) {
-            if (!snapshot.hasData)
-              return const ListTile(title: Text('Cargando...'));
-            final creador = snapshot.data!;
-            String initial = creador.nombre.isNotEmpty
-                ? creador.nombre.substring(0, 2).toUpperCase()
-                : "U";
-            // Estilizado como en la imagen
-            return _ResourceInfoTile(
-              title: "Observador",
-              subtitle: creador.nombre,
-              avatarContent: CircleAvatar(
-                  backgroundColor: Colors.blue,
-                  radius: 18,
-                  child: Text(initial,
-                      style: TextStyle(color: Colors.white, fontSize: 12))),
-            );
-          },
-        ),
-        const SizedBox(height: 16),
-
-        // 2. Recursos Humanos (MODIFICADO con lógica de selección)
-        _ResourceInfoTile(
-          title: "Recursos Humanos",
-          subtitle:
-              "${_selectedMembers.length} miembro(s)\n${_selectedMembers.map((e) => e.nombre).join(', ')}",
-          avatarContent: CircleAvatar(
-              backgroundColor: Colors.blue,
-              radius: 18,
-              child: Text(_selectedMembers.length.toString(),
-                  style: TextStyle(color: Colors.white, fontSize: 12))),
-          trailing: IconButton(
-            icon: Icon(Icons.add_circle, color: Colors.blue, size: 28),
-            onPressed: _selectMembers, // La lógica ya existe
-          ),
-        ),
-        const SizedBox(height: 16),
-
-        // 3. Recursos Materiales (MODIFICADO con lógica de selección)
-        _ResourceInfoTile(
-          title: "Recursos Materiales",
-          subtitle:
-              "${_selectedResources.length} recurso(s)\n${_selectedResources.map((e) => e.nombre).join(', ')}",
-          // Puedes poner un icono si quieres
-          // avatarContent: CircleAvatar(backgroundColor: Colors.blue, ...),
-          trailing: IconButton(
-            icon: Icon(Icons.add_circle, color: Colors.blue, size: 28),
-            onPressed: _selectResources, // La lógica ya existe
-          ),
-        ),
-      ],
-    );
-  }
-
-  /// AÑADIDO: Botón "Volver"
-  Widget _buildBackButton() {
-    return Center(
-      child: ElevatedButton(
-        style: ElevatedButton.styleFrom(
-          backgroundColor: Colors.orange,
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
-        ),
-        onPressed: () {
-          if (Navigator.of(context).canPop()) {
-            Navigator.of(context).pop();
-          }
-        },
-        child: const Text("Volver",
-            style: TextStyle(
-                fontSize: 16,
-                color: Colors.white,
-                fontWeight: FontWeight.w600)),
-      ),
-    );
-  }
-
-  /// AÑADIDO: Footer de dos partes (como en la imagen)
-  Widget _buildCustomFooter(BuildContext context) {
-    // Reemplaza 'SharedFooter' para que coincida con la imagen
-    return Column(
-      children: [
-        Container(
-          width: double.infinity,
-          color: Colors.black,
-          padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 30),
-          child: Center(
-            child: Container(
-              constraints: const BoxConstraints(maxWidth: 1200),
-              child: Builder(
-                builder: (context) {
-                  bool isWideScreen = MediaQuery.of(context).size.width > 800;
-                  // Contenido del footer (Brand, Links, Ayuda)
-                  Widget brand = _buildFooterBrand();
-                  Widget links = _buildFooterLinks();
-                  Widget help = _buildFooterHelp();
-
-                  if (isWideScreen) {
-                    return Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: [brand, links, help],
-                    );
-                  } else {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        brand,
-                        const SizedBox(height: 24),
-                        links,
-                        const SizedBox(height: 24),
-                        help,
-                      ],
-                    );
-                  }
-                },
+                color: Colors.grey.shade700,
               ),
             ),
-          ),
-        ),
-        // Barra naranja inferior
-        Container(
-          width: double.infinity,
-          color: Colors.orange,
-          padding: const EdgeInsets.symmetric(vertical: 15),
-          child: Center(
-            child: Text("2025 ProyectApp. UNIMET. Derechos Reservados.",
-                style: TextStyle(
-                    // ignore: deprecated_member_use
-                    color: Colors.white.withOpacity(0.8),
-                    fontSize: 13)),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // --- Helpers para el Footer (Añadidos) ---
-  Widget _buildFooterBrand() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        RichText(
-          text: const TextSpan(
-            style: TextStyle(
-                fontSize: 20,
+            const SizedBox(height: 10),
+            Text(
+              '${_selectedMembers.length}',
+              style: TextStyle(
+                fontSize: 24,
                 fontWeight: FontWeight.bold,
-                color: Colors.white,
-                fontFamily: 'Poppins'),
-            children: [
-              TextSpan(text: "Proyect"),
-              TextSpan(text: "App", style: TextStyle(color: Colors.red)),
-            ],
-          ),
-        ),
-        const SizedBox(height: 8),
-        Text(
-            "Sistema de Gestión de proyectos para Ingeniería\nen la Universidad Metropolitana",
-            style: TextStyle(color: Colors.grey[400], fontSize: 13)),
-      ],
-    );
-  }
-
-  Widget _buildFooterLinks() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text("Links",
-            style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        Text("Iniciar Sesión",
-            style: TextStyle(color: Colors.grey[400], fontSize: 13)),
-        const SizedBox(height: 4),
-        Text("Registro",
-            style: TextStyle(color: Colors.grey[400], fontSize: 13)),
-      ],
-    );
-  }
-
-  Widget _buildFooterHelp() {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        const Text("Ayuda",
-            style: TextStyle(
-                color: Colors.white,
-                fontSize: 16,
-                fontWeight: FontWeight.bold)),
-        const SizedBox(height: 8),
-        Text("Email: ayuda@proyectapp.unimet.edu.ve",
-            style: TextStyle(color: Colors.grey[400], fontSize: 13)),
-        const SizedBox(height: 4),
-        Text("Contacto: 02120000000",
-            style: TextStyle(color: Colors.grey[400], fontSize: 13)),
-        const SizedBox(height: 8),
-        const Icon(Icons.camera_alt,
-            color: Colors.white, size: 24), // Icono de Instagram
-      ],
-    );
-  }
-
-  // --- Helpers para el Formulario (Añadidos) ---
-  Widget _buildFormTextField({
-    required String label,
-    TextEditingController? controller,
-    String? hintText,
-    String? Function(String?)? validator,
-    int maxLines = 1,
-    bool readOnly = false,
-    Widget? suffixIcon,
-    void Function()? onTap,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style: const TextStyle(
-                color: Colors.black87, fontWeight: FontWeight.w500)),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          validator: validator,
-          maxLines: maxLines,
-          readOnly: readOnly,
-          onTap: onTap,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: Colors.white,
-            hintText: hintText,
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(4),
-                borderSide: BorderSide(color: Colors.grey[400]!)),
-            enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(4),
-                borderSide: BorderSide(color: Colors.grey[400]!)),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            suffixIcon: suffixIcon,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildFormDateField({
-    required BuildContext context,
-    required String label,
-    required TextEditingController controller,
-    required void Function() onTap,
-  }) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(label,
-            style: const TextStyle(
-                color: Colors.black87, fontWeight: FontWeight.w500)),
-        const SizedBox(height: 8),
-        TextFormField(
-          controller: controller,
-          readOnly: true,
-          onTap: onTap,
-          decoration: InputDecoration(
-            filled: true,
-            fillColor: Colors.white,
-            hintText: 'yyyy-mm-dd',
-            border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(4),
-                borderSide: BorderSide(color: Colors.grey[400]!)),
-            enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(4),
-                borderSide: BorderSide(color: Colors.grey[400]!)),
-            contentPadding:
-                const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-            suffixIcon:
-                const Icon(Icons.calendar_today_outlined, color: Colors.grey),
-          ),
-        ),
-      ],
-    );
-  }
-
-  // --- Helper para los items de Recursos (Añadido) ---
-  // ignore: non_constant_identifier_names
-  Widget _ResourceInfoTile({
-    required String title,
-    required String subtitle,
-    Widget? avatarContent,
-    Widget? trailing,
-  }) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8.0),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Expanded(
-            child: Row(
-              children: [
-                if (avatarContent != null) ...[
-                  avatarContent,
-                  const SizedBox(width: 16),
-                ],
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(title,
-                          style:
-                              TextStyle(fontSize: 15, color: Colors.grey[600])),
-                      if (subtitle.isNotEmpty)
-                        Text(
-                          subtitle,
-                          style: const TextStyle(
-                              fontSize: 16, // Ajustado
-                              fontWeight: FontWeight.w600,
-                              color: Colors.black87),
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                    ],
-                  ),
-                ),
-              ],
+                color: AppColors.primaryOrange,
+              ),
             ),
-          ),
-          if (trailing != null) ...[
-            const SizedBox(width: 8),
-            trailing,
-          ]
-        ],
+            const SizedBox(height: 15),
+
+            if (_selectedMembers.isNotEmpty)
+              Column(
+                children: _selectedMembers.map((member) {
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 5.0),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundColor: member.uid.hashCode.isEven
+                              ? AppColors.accentColor
+                              : AppColors.primaryOrange,
+                          child: Text(
+                            member.nombre.isNotEmpty
+                                ? member.nombre[0].toUpperCase()
+                                : (member.email.isNotEmpty
+                                    ? member.email[0].toUpperCase()
+                                    : '?'),
+                            style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            member.nombre.isNotEmpty
+                                ? member.nombre
+                                : member.email,
+                            style: TextStyle(
+                                fontSize: 15, color: Colors.grey.shade800),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              )
+            else
+              Text(
+                'No se han asignado miembros.',
+                style: TextStyle(color: Colors.grey.shade600),
+              ),
+
+            const SizedBox(height: 20),
+
+            // Botón Agregar miembros
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: _selectMembers,
+                icon:
+                    const Icon(Icons.person_add, color: Colors.white, size: 20),
+                label: const Text('Agregar miembros',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.primaryOrange,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
+
+            const SizedBox(height: 30),
+
+            // Recursos Materiales
+            Text(
+              'Recursos Materiales',
+              style: TextStyle(
+                fontSize: 16,
+                fontWeight: FontWeight.w600,
+                color: Colors.grey.shade700,
+              ),
+            ),
+            const SizedBox(height: 10),
+            Text(
+              '${_selectedResources.length}',
+              style: TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: AppColors.primaryOrange,
+              ),
+            ),
+            if (!_isLoadingResources && _availableResources.isNotEmpty)
+              Padding(
+                padding: const EdgeInsets.only(top: 4.0),
+                child: Text(
+                  '${_availableResources.where((r) => r.cantidadDisponible > 0).length} disponibles en el proyecto',
+                  style: TextStyle(fontSize: 11, color: Colors.grey.shade600),
+                ),
+              ),
+            const SizedBox(height: 15),
+
+            if (_isLoadingResources)
+              const Center(child: CircularProgressIndicator())
+            else if (_availableResources.isEmpty)
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.grey.shade100,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.grey.shade300),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.inventory_2_outlined,
+                        size: 48, color: Colors.grey.shade400),
+                    const SizedBox(height: 12),
+                    Text(
+                      'No hay recursos en este proyecto',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (_availableResources
+                .every((r) => r.cantidadDisponible == 0))
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.orange.shade200),
+                ),
+                child: Column(
+                  children: [
+                    Icon(Icons.warning_amber_rounded,
+                        size: 48, color: Colors.orange.shade400),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Todos los recursos están agotados',
+                      style: TextStyle(
+                        color: Colors.orange.shade700,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'No hay cantidad disponible para asignar',
+                      style: TextStyle(
+                        color: Colors.grey.shade600,
+                        fontSize: 12,
+                      ),
+                    ),
+                  ],
+                ),
+              )
+            else if (_selectedResources.isNotEmpty)
+              Column(
+                children: _selectedResources.entries.map((entry) {
+                  final recurso =
+                      _availableResources.firstWhere((r) => r.id == entry.key);
+                  return Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 5.0),
+                    child: Row(
+                      children: [
+                        CircleAvatar(
+                          radius: 18,
+                          backgroundColor:
+                              AppColors.accentColor.withValues(alpha: 0.2),
+                          child: Text(recurso.icono,
+                              style: const TextStyle(fontSize: 20)),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            '${recurso.nombre} (${entry.value} unidades)',
+                            style: TextStyle(
+                                fontSize: 15, color: Colors.grey.shade800),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }).toList(),
+              )
+            else
+              Text(
+                'No se han asignado recursos materiales.',
+                style: TextStyle(color: Colors.grey.shade600),
+              ),
+
+            const SizedBox(height: 20),
+
+            // Botón Agregar recursos
+            SizedBox(
+              width: double.infinity,
+              child: ElevatedButton.icon(
+                onPressed: (_isLoadingResources ||
+                        _availableResources.isEmpty ||
+                        _availableResources
+                            .every((r) => r.cantidadDisponible == 0))
+                    ? null
+                    : _showResourceSelector,
+                icon: const Icon(Icons.inventory_2,
+                    color: Colors.white, size: 20),
+                label: const Text('Agregar recursos',
+                    style: TextStyle(
+                        color: Colors.white, fontWeight: FontWeight.bold)),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.accentColor,
+                  disabledBackgroundColor: Colors.grey.shade300,
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 20, vertical: 15),
+                  shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8)),
+                ),
+              ),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -813,48 +977,145 @@ class _HoverableProfileAvatarState extends State<HoverableProfileAvatar> {
 
   @override
   Widget build(BuildContext context) {
-    return MouseRegion(
-      onEnter: (_) => setState(() => _isHovered = true),
-      onExit: (_) => setState(() => _isHovered = false),
-      cursor: SystemMouseCursors.click,
-      child: GestureDetector(
-        onTapDown: (details) {
-          // Asumo que 'ProfileMenuHelper' existe en tu 'profile_menu_widget.dart'
-          ProfileMenuHelper.mostrarMenuPerfil(context, details.globalPosition);
-        },
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.all(8),
-          margin: EdgeInsets.only(right: widget.isDesktop ? 20 : 16),
-          decoration: BoxDecoration(
-            color: widget.avatarColor,
-            shape: BoxShape.circle,
-            boxShadow: _isHovered
-                ? [
-                    BoxShadow(
-                      // ignore: deprecated_member_use
-                      color: widget.avatarColor.withOpacity(0.5),
-                      blurRadius: 12,
-                      offset: const Offset(0, 4),
+    return AlertDialog(
+      title: const Text('Asignar Recursos'),
+      content: SizedBox(
+        width: double.maxFinite,
+        height: MediaQuery.of(context).size.height * 0.6,
+        child: widget.availableResources.isEmpty
+            ? const Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.inventory_2_outlined,
+                        size: 64, color: Colors.grey),
+                    SizedBox(height: 16),
+                    Text(
+                      'No hay recursos disponibles en este proyecto',
+                      textAlign: TextAlign.center,
                     ),
-                  ]
-                : [],
-          ),
-          transform: Matrix4.diagonal3Values(
-            _isHovered ? 1.05 : 1.0,
-            _isHovered ? 1.05 : 1.0,
-            1.0,
-          ),
-          child: Text(
-            widget.userInitial,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        ),
+                  ],
+                ),
+              )
+            : ListView.builder(
+                itemCount: widget.availableResources.length,
+                itemBuilder: (context, index) {
+                  final recurso = widget.availableResources[index];
+                  final controller = _controllers[recurso.id]!;
+                  final error = _errors[recurso.id];
+
+                  return Card(
+                    margin: const EdgeInsets.only(bottom: 12),
+                    child: Padding(
+                      padding: const EdgeInsets.all(16.0),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.accentColor
+                                      .withValues(alpha: 0.1),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: Text(
+                                  recurso.icono,
+                                  style: const TextStyle(fontSize: 32),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      recurso.nombre,
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 16,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.check_circle,
+                                          size: 14,
+                                          color: Colors.green.shade600,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Text(
+                                          '${recurso.cantidadDisponible} disponibles',
+                                          style: TextStyle(
+                                            color: Colors.green.shade700,
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w500,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Text(
+                                          'de ${recurso.cantidad} totales',
+                                          style: TextStyle(
+                                            color: Colors.grey.shade600,
+                                            fontSize: 12,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 12),
+                          TextField(
+                            controller: controller,
+                            keyboardType: TextInputType.number,
+                            decoration: InputDecoration(
+                              labelText: 'Cantidad a asignar',
+                              hintText: 'Ej: ${recurso.cantidadDisponible}',
+                              errorText: error,
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              prefixIcon: const Icon(Icons.edit),
+                              helperText:
+                                  'Máximo: ${recurso.cantidadDisponible}',
+                              helperStyle: TextStyle(
+                                color: Colors.grey.shade600,
+                                fontSize: 11,
+                              ),
+                            ),
+                            onChanged: (value) =>
+                                _validateAndUpdateAssignment(recurso, value),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
       ),
+      actions: [
+        TextButton(
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Cancelar', style: TextStyle(color: Colors.red)),
+        ),
+        ElevatedButton(
+          onPressed: _hasErrors()
+              ? null
+              : () {
+                  widget.onConfirm(_assignments);
+                  Navigator.of(context).pop();
+                },
+          style: ElevatedButton.styleFrom(
+            backgroundColor: AppColors.primaryOrange,
+          ),
+          child: const Text('Confirmar', style: TextStyle(color: Colors.white)),
+        ),
+      ],
     );
   }
 }
