@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sistem_proyect/central/constantes/modelos/project_model.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/project_service.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/pantalla_crear_proyecto.dart';
@@ -52,7 +53,21 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
     }
   }
 
-  void _navigateToProjectDetail(Proyecto proyecto) {
+  void _navigateToProjectDetail(Proyecto proyecto) async {
+    // 🔥 AGREGAR: Guardar proyecto reciente antes de navegar
+    final prefs = await SharedPreferences.getInstance();
+    List<String> recentIds = prefs.getStringList('recent_projects') ?? [];
+
+    recentIds.remove(proyecto.id);
+    recentIds.insert(0, proyecto.id);
+    if (recentIds.length > 5) {
+      recentIds = recentIds.sublist(0, 5);
+    }
+
+    await prefs.setStringList('recent_projects', recentIds);
+
+    // Navegar
+    if (!mounted) return;
     Navigator.of(context).push(
       MaterialPageRoute(
         builder: (context) => PantallaDetalleProyecto(
@@ -458,7 +473,7 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
               onTapView: () {
                 _navigateToProjectDetail(proyecto);
               },
-              onTapEdit: _isAdmin 
+              onTapEdit: _isAdmin
                   ? () {
                       _abrirPantallaEditarProyecto(proyecto);
                     }
