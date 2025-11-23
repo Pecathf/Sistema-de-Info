@@ -2,9 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sistem_proyect/central/constantes/colores.dart';
-import 'package:sistem_proyect/central/constantes/modelos/task_model.dart';
+import 'package:sistem_proyect/central/constantes/modelos/project_model.dart'; // Importamos el modelo de proyecto
 import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart';
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
+import 'package:sistem_proyect/central/constantes/servicios/project_service.dart'; // Importamos el servicio de proyecto
 import 'package:sistem_proyect/central/constantes/servicios/task_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/profile_menu_widget.dart';
@@ -22,20 +23,22 @@ class PantallaEstadisticasAdmin extends StatefulWidget {
 }
 
 class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
+  // Servicios
+  final ProjectService _projectService = ProjectService();
   final TaskService _taskService = TaskService();
   final UserDataService _userDataService = UserDataService();
-  // final AuthService _authService = AuthService(); // Ya no se usa aquí directamente porque lo maneja el widget del perfil
 
-  List<TaskModel> _allTasks = [];
+  // Datos
+  List<Proyecto> _allProjects = []; // Lista de PROYECTOS
   bool _isLoading = true;
 
-  // Variables para contadores
-  int _total = 0;
-  int _completed = 0;
-  int _inProgress = 0;
-  int _pending = 0;
+  // Variables para contadores de PROYECTOS
+  int _totalProjects = 0;
+  int _completedProjects = 0;
+  int _runningProjects = 0; // En Progreso
+  int _pendingProjects = 0; // Activos/Pendientes
 
-  // Variables para Top Performers
+  // Variables para Top Performers (Basado en tareas completadas)
   List<Usuario> _topUsers = [];
   Map<String, int> _userScores = {};
 
@@ -46,9 +49,14 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
   }
 
   Future<void> _loadData() async {
+    // 1. Cargar Proyectos (Para KPIs y Gráficas)
+    // Usamos 'first' para obtener el snapshot actual del stream
+    final projects = await _projectService.getProyectosStream().first;
+
+    // 2. Cargar Tareas (SOLO para calcular los mejores miembros)
     final tasks = await _taskService.getAllTasksGlobal();
-    
-    // Calcular Top Performers
+
+    // Lógica para Top Performers (Miembros)
     Map<String, int> scores = {};
     for (var task in tasks) {
       if (task.estado == 'Completada') {
@@ -58,25 +66,28 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
       }
     }
 
-    // Ordenar usuarios por puntaje (descendente) y tomar los top 5
     var sortedKeys = scores.keys.toList(growable: false)
       ..sort((k1, k2) => scores[k2]!.compareTo(scores[k1]!));
     
     List<String> topUids = sortedKeys.take(5).toList();
     List<Usuario> topUsersList = [];
-
     if (topUids.isNotEmpty) {
       topUsersList = await _userDataService.getUsuariosByIds(topUids);
     }
 
     if (mounted) {
       setState(() {
-        _allTasks = tasks;
-        _total = tasks.length;
-        _completed = tasks.where((t) => t.estado == 'Completada').length;
-        _inProgress = tasks.where((t) => t.estado == 'En Progreso').length;
-        _pending = tasks.where((t) => t.estado == 'Pendiente').length;
+        // Asignar Proyectos
+        _allProjects = projects;
         
+        // Calcular KPIs de PROYECTOS
+        _totalProjects = projects.length;
+        _completedProjects = projects.where((p) => p.estado == 'Completado').length;
+        _runningProjects = projects.where((p) => p.estado == 'En Progreso').length;
+        // Consideramos 'Activo' como Pendiente (no ha terminado ni está full en progreso)
+        _pendingProjects = projects.where((p) => p.estado == 'Activo' || p.estado == 'Pendiente').length; 
+
+        // Asignar Top Users
         _userScores = scores;
         _topUsers = topUsersList;
         
@@ -93,7 +104,6 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
   PreferredSizeWidget _buildAppBar(bool isDesktop) {
     final userInitial = _getUserInitial(FirebaseAuth.instance.currentUser?.email);
     
-    // CORRECCIÓN: Quitamos el parámetro onLogout porque HoverableProfileAvatar no lo tiene
     final profileWidget = HoverableProfileAvatar(
       userInitial: userInitial,
       avatarColor: AppColors.accentColor,
@@ -132,7 +142,6 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
                           MaterialPageRoute(builder: (_) => const PantallaCalendario())),
                       child: const Text('Calendario', style: TextStyle(color: Colors.black87))),
                   const SizedBox(width: 30),
-                  // Botón Activo
                   TextButton(
                       onPressed: () {},
                       child: const Text('Estadísticas',
@@ -153,7 +162,7 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
           icon: const Icon(Icons.arrow_back, color: Colors.black87),
           onPressed: () => Navigator.pop(context),
         ),
-        title: const Text('Dashboard',
+        title: const Text('Dashboard Proyectos',
             style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold)),
         actions: [profileWidget, const SizedBox(width: 10)],
       );
@@ -178,58 +187,73 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          const Text("Resumen General", 
+                          const Text("Estadísticas de Proyectos", 
                             style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
                           const SizedBox(height: 20),
                           
-                          // 1. SECCIÓN DE TARJETAS (KPIs)
-                          Wrap(
-                            spacing: 16,
-                            runSpacing: 16,
-                            children: [
-                              _buildKpiCard("Total Tareas", "$_total",
-                                  Icons.folder_copy_outlined, Colors.blueAccent, constraints.maxWidth),
-                              _buildKpiCard("Completadas", "$_completed",
-                                  Icons.check_circle_outline, Colors.green, constraints.maxWidth),
-                              _buildKpiCard("En Progreso", "$_inProgress",
-                                  Icons.trending_up, AppColors.primaryOrange, constraints.maxWidth),
-                              _buildKpiCard("Pendientes", "$_pending",
-                                  Icons.access_time, Colors.redAccent, constraints.maxWidth),
-                            ],
-                          ),
+                          // 1. SECCIÓN DE TARJETAS (KPIs de Proyectos)
+                          if (isDesktop)
+                            Row(
+                              children: [
+                                Expanded(child: _buildKpiCard("Total Proyectos", "$_totalProjects",
+                                    Icons.folder_special, Colors.blueAccent)),
+                                const SizedBox(width: 16),
+                                Expanded(child: _buildKpiCard("Completados", "$_completedProjects",
+                                    Icons.check_circle, Colors.green)),
+                                const SizedBox(width: 16),
+                                Expanded(child: _buildKpiCard("En Progreso", "$_runningProjects",
+                                    Icons.trending_up, AppColors.primaryOrange)),
+                                const SizedBox(width: 16),
+                                Expanded(child: _buildKpiCard("Pendientes", "$_pendingProjects",
+                                    Icons.hourglass_empty, Colors.redAccent)),
+                              ],
+                            )
+                          else
+                            Wrap(
+                              spacing: 16,
+                              runSpacing: 16,
+                              children: [
+                                _buildKpiCard("Total Proyectos", "$_totalProjects",
+                                    Icons.folder_special, Colors.blueAccent, width: (constraints.maxWidth - 48) / 2),
+                                _buildKpiCard("Completados", "$_completedProjects",
+                                    Icons.check_circle, Colors.green, width: (constraints.maxWidth - 48) / 2),
+                                _buildKpiCard("En Progreso", "$_runningProjects",
+                                    Icons.trending_up, AppColors.primaryOrange, width: (constraints.maxWidth - 48) / 2),
+                                _buildKpiCard("Pendientes", "$_pendingProjects",
+                                    Icons.hourglass_empty, Colors.redAccent, width: (constraints.maxWidth - 48) / 2),
+                              ],
+                            ),
 
                           const SizedBox(height: 30),
 
-                          // 2. SECCIÓN DE GRÁFICOS + TOP PERFORMERS
+                          // 2. SECCIÓN DE GRÁFICOS
                           if (isDesktop)
                             Row(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                // Columna Izquierda: Gráficos
                                 Expanded(
                                   flex: 2,
                                   child: Column(
                                     children: [
-                                      _buildActivityChart(),
+                                      _buildProjectsActivityChart(), // Gráfico de Proyectos
                                       const SizedBox(height: 24),
                                       _buildTopPerformersCard(),
                                     ],
                                   ),
                                 ),
                                 const SizedBox(width: 24),
-                                // Columna Derecha: Dona
                                 Expanded(
                                   flex: 1,
-                                  child: _buildStatusPieChart(),
+                                  child: _buildProjectStatusPieChart(), // Gráfico de Proyectos
                                 ),
                               ],
                             )
                           else
                             Column(
                               children: [
-                                _buildActivityChart(),
+                                _buildProjectsActivityChart(),
                                 const SizedBox(height: 24),
-                                _buildStatusPieChart(),
+                                _buildProjectStatusPieChart(),
                                 const SizedBox(height: 24),
                                 _buildTopPerformersCard(),
                               ],
@@ -238,7 +262,6 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
                       ),
                     ),
                     
-                    // 3. FOOTER
                     SharedFooter(
                       primaryOrange: AppColors.primaryOrange,
                       accentBlue: AppColors.accentColor,
@@ -252,14 +275,10 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
 
   // --- WIDGETS DE DISEÑO ---
 
-  // 1. Tarjeta KPI
   Widget _buildKpiCard(String title, String value, IconData icon, Color color,
-      double parentWidth) {
-    double cardWidth =
-        (parentWidth > 600) ? (parentWidth - 72) / 4 : (parentWidth - 48) / 2;
-
+      {double? width}) {
     return Container(
-      width: cardWidth,
+      width: width,
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
         color: Colors.white,
@@ -299,16 +318,21 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
     );
   }
 
-  // 2. Gráfico de Barras (Activity)
-  Widget _buildActivityChart() {
-    Map<int, int> tasksPerDay = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0};
-    for (var task in _allTasks) {
-      int weekday = task.fechaCreacion.weekday;
-      tasksPerDay[weekday] = (tasksPerDay[weekday] ?? 0) + 1;
+  // Gráfico de Barras: PROYECTOS CREADOS
+  Widget _buildProjectsActivityChart() {
+    // 1. Cambiamos la lógica para contar PROYECTOS por día
+    Map<int, int> projectsPerDay = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0};
+    
+    // Usamos _allProjects en lugar de _allTasks
+    for (var project in _allProjects) {
+      int weekday = project.fechaCreacion.weekday;
+      projectsPerDay[weekday] = (projectsPerDay[weekday] ?? 0) + 1;
     }
 
     int maxY = 5;
-    tasksPerDay.forEach((_, v) { if (v > maxY) maxY = v; });
+    projectsPerDay.forEach((_, v) {
+      if (v > maxY) maxY = v;
+    });
 
     return Container(
       height: 350,
@@ -326,10 +350,10 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Actividad Semanal",
+          const Text("",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 5),
-          Text("Nuevas tareas creadas",
+          Text("",
               style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
           const SizedBox(height: 30),
           Expanded(
@@ -347,6 +371,9 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
                   bottomTitles: AxisTitles(
                     sideTitles: SideTitles(
                       showTitles: true,
+                      // --- ESTA ES LA CLAVE PARA QUE NO SE MONTEN ---
+                      reservedSize: 40, // Reservamos 40px de espacio abajo para las letras
+                      // ---------------------------------------------
                       getTitlesWidget: (double value, TitleMeta meta) {
                         const style = TextStyle(
                           color: Colors.grey,
@@ -365,7 +392,9 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
                           default: text = '';
                         }
                         return SideTitleWidget(
-                            axisSide: meta.axisSide, child: Text(text, style: style));
+                            axisSide: meta.axisSide,
+                            space: 8, // Espacio extra entre la barra y el texto
+                            child: Text(text, style: style));
                       },
                     ),
                   ),
@@ -377,7 +406,7 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
                 borderData: FlBorderData(show: false),
                 barGroups: [
                   for (int i = 1; i <= 7; i++)
-                    _makeBarGroup(i, tasksPerDay[i]?.toDouble() ?? 0),
+                    _makeBarGroup(i, projectsPerDay[i]?.toDouble() ?? 0),
                 ],
               ),
             ),
@@ -396,7 +425,6 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
           color: AppColors.darkBackground,
           width: 16,
           borderRadius: BorderRadius.circular(4),
-          // Si te da error aqui, borra estas lineas hasta la coma
           backDrawRodData: BackgroundBarChartRodData(
             show: true,
             toY: 10,
@@ -407,8 +435,8 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
     );
   }
 
-  // 3. Gráfico de Pastel
-  Widget _buildStatusPieChart() {
+  // Gráfico de Pastel: ESTADO DE PROYECTOS
+  Widget _buildProjectStatusPieChart() {
     return Container(
       height: 350,
       padding: const EdgeInsets.all(24),
@@ -425,7 +453,7 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          const Text("Estado de Tareas",
+          const Text("Estado de Proyectos",
               style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
           const SizedBox(height: 20),
           Expanded(
@@ -438,22 +466,22 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
                     sections: [
                       PieChartSectionData(
                         color: Colors.green,
-                        value: _completed.toDouble(),
-                        title: '${_calculatePercentage(_completed)}%',
+                        value: _completedProjects.toDouble(),
+                        title: '${_calculatePercentage(_completedProjects)}%',
                         radius: 50,
                         titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
                       PieChartSectionData(
                         color: AppColors.primaryOrange,
-                        value: _inProgress.toDouble(),
-                        title: '${_calculatePercentage(_inProgress)}%',
+                        value: _runningProjects.toDouble(),
+                        title: '${_calculatePercentage(_runningProjects)}%',
                         radius: 50,
                         titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
                       PieChartSectionData(
                         color: Colors.redAccent,
-                        value: _pending.toDouble(),
-                        title: '${_calculatePercentage(_pending)}%',
+                        value: _pendingProjects.toDouble(),
+                        title: '${_calculatePercentage(_pendingProjects)}%',
                         radius: 50,
                         titleStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Colors.white),
                       ),
@@ -464,7 +492,7 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      Text("$_total",
+                      Text("$_totalProjects",
                           style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
                       const Text("Total", style: TextStyle(fontSize: 10)),
                     ],
@@ -474,7 +502,7 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
             ),
           ),
           const SizedBox(height: 20),
-          _buildLegendItem(Colors.green, "Completadas"),
+          _buildLegendItem(Colors.green, "Completados"),
           _buildLegendItem(AppColors.primaryOrange, "En Progreso"),
           _buildLegendItem(Colors.redAccent, "Pendientes"),
         ],
@@ -482,7 +510,7 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
     );
   }
   
-  // 4. Sección "Top Performing Members"
+  // Top Performing Members (Sigue basándose en Tareas, porque los miembros hacen tareas)
   Widget _buildTopPerformersCard() {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -508,7 +536,7 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
             ],
           ),
           const SizedBox(height: 5),
-          Text("Basado en tareas completadas",
+          Text("Basado en tareas individuales completadas",
               style: TextStyle(fontSize: 12, color: Colors.grey.shade500)),
           const SizedBox(height: 20),
           
@@ -589,7 +617,7 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
   }
 
   int _calculatePercentage(int value) {
-    if (_total == 0) return 0;
-    return ((value / _total) * 100).round();
+    if (_totalProjects == 0) return 0;
+    return ((value / _totalProjects) * 100).round();
   }
 }
