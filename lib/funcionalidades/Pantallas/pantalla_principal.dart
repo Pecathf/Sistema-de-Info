@@ -16,6 +16,8 @@ import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
 
+import 'package:sistem_proyect/funcionalidades/estadisticas/pantalla_estadisticas_admin.dart';
+
 class PantallaPrincipal extends StatefulWidget {
   const PantallaPrincipal({super.key});
 
@@ -186,7 +188,13 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                     child: const Text('Calendario',
                         style: TextStyle(color: Colors.black87))),
                 TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  const PantallaEstadisticasAdmin()));
+                    },
                     child: const Text('Estadísticas',
                         style: TextStyle(color: Colors.black87))),
               ],
@@ -619,7 +627,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
           return TaskModel.fromMap(doc.data() as Map<String, dynamic>, doc.id);
         }).toList();
 
-        // Ordenar por fecha de vencimiento 
+        // Ordenar por fecha de vencimiento
         tareas.sort((a, b) {
           if (a.fechaVencimiento == null) return 1;
           if (b.fechaVencimiento == null) return -1;
