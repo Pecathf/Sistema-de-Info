@@ -25,7 +25,7 @@ class _PantallaCalendarioState extends State<PantallaCalendario> {
   final ProjectService _projectService = ProjectService();
   final AuthService _authService = AuthService();
 
-  CalendarFormat _calendarFormat = CalendarFormat.month;
+  final CalendarFormat _calendarFormat = CalendarFormat.month;
   DateTime _focusedDay = DateTime.now();
   DateTime? _selectedDay;
   Map<DateTime, List<Proyecto>> _proyectosPorFecha = {};
@@ -189,8 +189,9 @@ class _PantallaCalendarioState extends State<PantallaCalendario> {
     final userInitial =
         _getUserInitial(FirebaseAuth.instance.currentUser?.email);
 
-    if (_isLoadingRole)
+    if (_isLoadingRole) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -322,7 +323,7 @@ class _PantallaCalendarioState extends State<PantallaCalendario> {
         isSelected ? AppColors.primaryOrange : Colors.grey.shade300;
     double borderWidth = isSelected ? 2.5 : 0.5;
     Color? bgColor =
-        isToday ? AppColors.primaryOrange.withOpacity(0.05) : Colors.white;
+        isToday ? AppColors.primaryOrange.withValues(alpha: 0.05) : Colors.white;
 
     return Container(
       margin: const EdgeInsets.all(0),
@@ -447,7 +448,7 @@ class _PantallaCalendarioState extends State<PantallaCalendario> {
           width: 14,
           height: 14,
           decoration: BoxDecoration(
-            color: isCircle ? color : color.withOpacity(0.2),
+            color: isCircle ? color : color.withValues(alpha: 0.2),
             shape: isCircle ? BoxShape.circle : BoxShape.rectangle,
             borderRadius: isCircle ? null : BorderRadius.circular(3),
             border: isCircle ? null : Border.all(color: color, width: 1.5),

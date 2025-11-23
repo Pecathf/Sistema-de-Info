@@ -68,6 +68,28 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
     });
   }
 
+  Future<void> _abrirPantallaEditarProyecto(Proyecto proyecto) async {
+    final bool? resultado = await Navigator.push<bool>(
+      context,
+      MaterialPageRoute(
+        builder: (context) => PantallaCrearProyecto(
+          proyectoExistente: proyecto, // Pasamos el proyecto existente
+        ),
+      ),
+    );
+
+    if (resultado == true && mounted) {
+      // El proyecto fue actualizado exitosamente
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Proyecto actualizado exitosamente'),
+          backgroundColor: Colors.green,
+        ),
+      );
+      // No necesitas hacer nada más, el StreamBuilder se actualizará automáticamente
+    }
+  }
+
   // MÉTODO PARA ELIMINAR PROYECTO (SOLO ADMIN)
   Future<void> _confirmarEliminarProyecto(Proyecto proyecto) async {
     // Verificar que sea admin
@@ -436,6 +458,11 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
               onTapView: () {
                 _navigateToProjectDetail(proyecto);
               },
+              onTapEdit: _isAdmin 
+                  ? () {
+                      _abrirPantallaEditarProyecto(proyecto);
+                    }
+                  : null,
               onTapDelete: _isAdmin
                   ? () {
                       _confirmarEliminarProyecto(proyecto);
