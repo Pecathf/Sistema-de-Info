@@ -41,15 +41,13 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
   DateTime? _fechaLimite;
   List<Usuario> _selectedMembers = [];
   List<RecursoMaterial> _selectedResources = [];
-  final Map<String, int> _recursosOriginales =
-      {}; 
+  final Map<String, int> _recursosOriginales = {};
 
   bool _isAdmin = false;
   bool _isLoadingRole = true;
   bool _isCreating = false;
   bool _isLoadingData = false;
 
-  
   bool get _isEditMode => widget.proyectoExistente != null;
 
   @override
@@ -185,6 +183,11 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
           // MODO EDICIÓN
           // ============================================
           await _actualizarProyecto();
+          final user = FirebaseAuth.instance.currentUser;
+          final userName = user?.displayName ?? user?.email ?? 'Usuario';
+
+          await _projectService.registrarHistorial(widget.proyectoExistente!.id,
+              'Actualizó los detalles del proyecto', userName);
         } else {
           // ============================================
           // MODO CREACIÓN

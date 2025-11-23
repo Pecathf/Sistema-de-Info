@@ -305,7 +305,7 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('tareas')
-          .where('proyectoId', isEqualTo: widget.projectId)
+          .where('proyecto.id', isEqualTo: widget.projectId)
           .snapshots(),
       builder: (context, snapshot) {
         int tareasTotales = 0;
@@ -1220,7 +1220,6 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
                           .collection('proyectos')
                           .doc(widget.projectId)
                           .collection('historial')
-                          .orderBy('fecha', descending: true)
                           .snapshots(),
                       // ------------------
                       builder: (context, snapshot) {
@@ -1228,6 +1227,17 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
                             ConnectionState.waiting) {
                           return const Center(
                               child: CircularProgressIndicator());
+                        }
+                        if (snapshot.hasError) {
+                          return Center(
+                            child: Text(
+                              'ERROR: ${snapshot.error}',
+                              style: const TextStyle(
+                                  color: Colors.red,
+                                  fontWeight: FontWeight.bold),
+                              textAlign: TextAlign.center,
+                            ),
+                          );
                         }
 
                         final docs = snapshot.data?.docs ?? [];

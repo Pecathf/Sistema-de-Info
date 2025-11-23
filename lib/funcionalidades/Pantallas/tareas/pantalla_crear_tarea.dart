@@ -236,9 +236,7 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
 
     try {
       final currentUserUid = FirebaseAuth.instance.currentUser!.uid;
-      final String userName = FirebaseAuth.instance.currentUser?.displayName ??
-          FirebaseAuth.instance.currentUser?.email ??
-          'Usuario';
+      FirebaseAuth.instance.currentUser?.email ?? 'Usuario';
 
       if (_isEditMode) {
         // ============================================
@@ -341,6 +339,10 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
           fechaVencimiento: _fechaVencimiento,
           prioridad: _prioridad,
         );
+        final String userName =
+            FirebaseAuth.instance.currentUser?.displayName ??
+                FirebaseAuth.instance.currentUser?.email ??
+                'Usuario';
         await _projectService.registrarHistorial(widget.projectId,
             'Editó la tarea "${_nombreController.text}"', userName);
 
@@ -407,6 +409,13 @@ class _PantallaCrearTareaState extends State<PantallaCrearTarea> {
               );
             }
           }
+          final String userName =
+              FirebaseAuth.instance.currentUser?.displayName ??
+                  FirebaseAuth.instance.currentUser?.email ??
+                  'Usuario';
+
+          await _projectService.registrarHistorial(widget.projectId,
+              'Creó la tarea "${_nombreController.text}"', userName);
 
           if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
