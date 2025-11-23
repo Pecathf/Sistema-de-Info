@@ -1,11 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/widgets_principal.dart';
-import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/pantalla_listado_proyectos.dart'; 
+import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/pantalla_listado_proyectos.dart';
 import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/shared_footer_widget.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/profile_menu_widget.dart';
-
+import 'package:sistem_proyect/funcionalidades/Pantallas/calendario/pantalla_calendario.dart';
 
 class PantallaPrincipal extends StatefulWidget {
   const PantallaPrincipal({super.key});
@@ -35,18 +35,18 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     }
   }
 
-
   String _getUserInitial(String? userName) =>
       userName?.isNotEmpty == true ? userName![0].toUpperCase() : 'U';
 
   PreferredSizeWidget _buildAppBar(String userInitial, bool isDesktop) {
-    final Color avatarColor = _isAdmin ? AppColors.accentColor : AppColors.primaryOrange;
+    final Color avatarColor =
+        _isAdmin ? AppColors.accentColor : AppColors.primaryOrange;
 
     final profileWidget = HoverableProfileAvatar(
-    userInitial: userInitial,
-    avatarColor: avatarColor,
-    isDesktop: isDesktop,
-  );
+      userInitial: userInitial,
+      avatarColor: avatarColor,
+      isDesktop: isDesktop,
+    );
 
     if (isDesktop) {
       return AppBar(
@@ -74,11 +74,17 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                           MaterialPageRoute(
                               builder: (context) =>
                                   const PantallaListadoProyectos()));
-                    }, 
+                    },
                     child: const Text('Proyectos',
                         style: TextStyle(color: Colors.black87))),
                 TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  const PantallaCalendario()));
+                    },
                     child: const Text('Calendario',
                         style: TextStyle(color: Colors.black87))),
                 TextButton(
@@ -128,7 +134,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: AppColors.accentColor.withValues(alpha:0.1),
+                  color: AppColors.accentColor.withValues(alpha: 0.1),
                   borderRadius: BorderRadius.circular(4),
                   border: Border.all(color: AppColors.accentColor, width: 1),
                 ),
@@ -165,7 +171,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
         border: Border.all(color: AppColors.lightGrey),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha:0.1),
+            color: Colors.grey.withValues(alpha: 0.1),
             blurRadius: 4,
             offset: const Offset(0, 1),
           ),
@@ -259,7 +265,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
             borderRadius: BorderRadius.circular(8),
             boxShadow: [
               BoxShadow(
-                color: Colors.grey.withValues(alpha:0.1),
+                color: Colors.grey.withValues(alpha: 0.1),
                 blurRadius: 8,
                 offset: const Offset(0, 2),
               ),

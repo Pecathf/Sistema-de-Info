@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:cloud_firestore/cloud_firestore.dart'; 
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sistem_proyect/central/constantes/modelos/project_model.dart';
 import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart';
 import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart';
@@ -10,6 +10,8 @@ class ProjectCardWidget extends StatelessWidget {
   final Proyecto proyecto;
   final VoidCallback? onTapView;
   final VoidCallback? onTapDelete;
+  final VoidCallback?
+      onTapEdit; // <--- 1. AGREGADO: Variable para la acción de editar
   final bool isAdmin;
 
   final UserDataService _userDataService = UserDataService();
@@ -18,6 +20,7 @@ class ProjectCardWidget extends StatelessWidget {
     required this.proyecto,
     this.onTapView,
     this.onTapDelete,
+    this.onTapEdit, // <--- 2. AGREGADO: En el constructor
     this.isAdmin = false,
     super.key,
   });
@@ -25,16 +28,16 @@ class ProjectCardWidget extends StatelessWidget {
   Color _getStatusColor(String estado) {
     switch (estado.toLowerCase()) {
       case 'activo':
-        return AppColors.estadoActivo;          
+        return AppColors.estadoActivo;
       case 'completado':
-        return AppColors.estadoCompletado;      
+        return AppColors.estadoCompletado;
       case 'en progreso':
-        return AppColors.estadoEnProgreso;       
+        return AppColors.estadoEnProgreso;
       case 'en pausa':
-        return AppColors.estadoPausado;        
+        return AppColors.estadoPausado;
       case 'pendiente':
       default:
-        return AppColors.estadoActivo;           
+        return AppColors.estadoActivo;
     }
   }
 
@@ -127,9 +130,7 @@ class ProjectCardWidget extends StatelessWidget {
                   Icons.calendar_today,
                   'Límite: ${_formatDate(proyecto.fechaLimite)}',
                 ),
-                
-                // --- AQUI COMIENZA EL CAMBIO IMPORTANTE ---
-                // Usamos StreamBuilder para calcular el progreso EN VIVO
+
                 const SizedBox(height: 5),
                 StreamBuilder<QuerySnapshot>(
                   stream: FirebaseFirestore.instance
@@ -148,7 +149,7 @@ class ProjectCardWidget extends StatelessWidget {
                       completed = docs
                           .where((doc) => doc['estado'] == 'Completada')
                           .length;
-                      
+
                       if (total > 0) {
                         progress = completed / total;
                       }
@@ -183,7 +184,6 @@ class ProjectCardWidget extends StatelessWidget {
                     );
                   },
                 ),
-                // --- FIN DEL CAMBIO ---
 
                 const SizedBox(height: 15),
 
@@ -218,11 +218,12 @@ class ProjectCardWidget extends StatelessWidget {
 
                 const SizedBox(height: 15),
 
-                // BOTONES DE ACCION
+                // BOTONES DE ACCION (MODIFICADOS)
                 isMobile && isAdmin
                     ? Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
+                          // Botón VER
                           OutlinedButton(
                             onPressed: onTapView,
                             style: OutlinedButton.styleFrom(
@@ -238,6 +239,29 @@ class ProjectCardWidget extends StatelessWidget {
                               style: TextStyle(fontWeight: FontWeight.bold),
                             ),
                           ),
+
+                          // 3. AGREGADO: Botón EDITAR (Móvil)
+                          if (isAdmin) ...[
+                            const SizedBox(height: 8),
+                            OutlinedButton(
+                              onPressed: onTapEdit,
+                              style: OutlinedButton.styleFrom(
+                                foregroundColor: Colors.orange.shade800,
+                                side: BorderSide(color: Colors.orange.shade800),
+                                padding:
+                                    const EdgeInsets.symmetric(vertical: 12),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                              ),
+                              child: const Text(
+                                'Editar',
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                              ),
+                            ),
+                          ],
+
+                          // Botón ELIMINAR
                           const SizedBox(height: 8),
                           OutlinedButton(
                             onPressed: onTapDelete,
@@ -258,6 +282,7 @@ class ProjectCardWidget extends StatelessWidget {
                       )
                     : Row(
                         children: [
+                          // Botón VER
                           Expanded(
                             child: OutlinedButton(
                               onPressed: onTapView,
@@ -276,8 +301,32 @@ class ProjectCardWidget extends StatelessWidget {
                               ),
                             ),
                           ),
+
+                          // 4. AGREGADO: Botón EDITAR y ELIMINAR (Escritorio)
                           if (isAdmin) ...[
                             const SizedBox(width: 10),
+                            // Botón EDITAR
+                            Expanded(
+                              child: OutlinedButton(
+                                onPressed: onTapEdit,
+                                style: OutlinedButton.styleFrom(
+                                  foregroundColor: Colors.orange.shade800,
+                                  side:
+                                      BorderSide(color: Colors.orange.shade800),
+                                  padding:
+                                      const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                ),
+                                child: const Text(
+                                  'Editar',
+                                  style: TextStyle(fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            // Botón ELIMINAR
                             Expanded(
                               child: OutlinedButton(
                                 onPressed: onTapDelete,

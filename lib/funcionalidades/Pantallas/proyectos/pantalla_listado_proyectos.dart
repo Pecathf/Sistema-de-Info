@@ -9,6 +9,7 @@ import 'package:sistem_proyect/funcionalidades/Pantallas/pantalla_principal.dart
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/widgets_principal.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/widgets/shared_footer_widget.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/profile_menu_widget.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/calendario/pantalla_calendario.dart';
 import 'pantalla_detalle_proyecto.dart';
 
 class PantallaListadoProyectos extends StatefulWidget {
@@ -111,7 +112,6 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
     if (confirmar == true) {
       if (!mounted) return;
 
-      
       showDialog(
         context: context,
         barrierDismissible: false,
@@ -201,7 +201,13 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
                             color: AppColors.primaryOrange,
                             fontWeight: FontWeight.bold))),
                 TextButton(
-                    onPressed: () {},
+                    onPressed: () {
+                      Navigator.push(
+                          context,
+                          MaterialPageRoute(
+                              builder: (context) =>
+                                  const PantallaCalendario()));
+                    },
                     child: const Text('Calendario',
                         style: TextStyle(color: Colors.black87))),
                 TextButton(
