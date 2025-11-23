@@ -51,17 +51,10 @@ class _PantallaDetalleTareaState extends State<PantallaDetalleTarea> {
   }
 
   Future<void> _verificarAdmin() async {
-    // --- NUEVO: Preguntamos el rol exacto para verlo en consola ---
-    String? rolReal = await _authService.getUserRole();
-    print("🕵️ CLAVE DE MISTERIO: El rol en Firebase es: '$rolReal'");
-
-    bool admin = await _authService.isAdmin();
-    print("🕵️ RESULTADO: ¿La App cree que soy admin?: $admin");
-    // -------------------------------------------------------------
-
+    bool admin = await _authService.isAdmin(); // Aquí se usa _authService
     if (mounted) {
       setState(() {
-        _esAdmin = admin;
+        _esAdmin = admin; // Aquí se actualiza _esAdmin
       });
     }
   }
