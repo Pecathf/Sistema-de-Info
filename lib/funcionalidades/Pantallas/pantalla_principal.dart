@@ -15,7 +15,6 @@ import 'package:sistem_proyect/central/constantes/colores.dart';
 import 'package:intl/intl.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:async';
-
 import 'package:sistem_proyect/funcionalidades/estadisticas/pantalla_estadisticas_admin.dart';
 
 class PantallaPrincipal extends StatefulWidget {
@@ -34,7 +33,6 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   List<String> _recentProjectIds = [];
   Stream<QuerySnapshot>? _tareasStream;
 
-  // 🔥 VARIABLES DE ESTADO PARA EL CONTEO DE TAREAS (Soluciona el error de 0 en el grid)
   int _tareasPendientesCount = 0;
   int _tareasCompletadasCount = 0;
   StreamSubscription<QuerySnapshot>? _tareasSubscription;
@@ -45,12 +43,8 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
     _checkIfAdmin();
     _loadRecentProjects();
     _initializeTareasStream();
-
-    // 🔥 OPCIONAL: LLAMA ESTA FUNCIÓN UNA VEZ PARA SOLUCIONAR EL ERROR DE PERMISOS DE PROYECTOS RECIENTES
-    // _clearRecentProjectsCache();
   }
 
-  // 🔥 MÉTODO DISPOSE PARA CANCELAR LA SUBSCRIPCIÓN
   @override
   void dispose() {
     _tareasSubscription?.cancel();
@@ -70,15 +64,22 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
   void _initializeTareasStream() {
     final currentUser = FirebaseAuth.instance.currentUser;
     if (currentUser != null) {
-      final query = FirebaseFirestore.instance
+      // Query GENERAL para estadísticas (TODAS las tareas del usuario)
+      final queryGeneral = FirebaseFirestore.instance
           .collection('tareas')
           .where('miembrosUid', arrayContains: currentUser.uid);
 
-      // 1. Definir el stream para la lista de tareas
-      _tareasStream = query.snapshots();
+      // Query ESPECÍFICO para la lista (SOLO tareas pendientes)
+      final queryPendientes = FirebaseFirestore.instance
+          .collection('tareas')
+          .where('miembrosUid', arrayContains: currentUser.uid)
+          .where('estado', isEqualTo: 'Pendiente');
 
-      // 2. Suscribirse para calcular las estadísticas y actualizar el estado
-      _tareasSubscription = query.snapshots().listen((snapshot) {
+      // 1. Stream para MOSTRAR en la lista (solo pendientes)
+      _tareasStream = queryPendientes.snapshots();
+
+      // 2. Suscripción para ESTADÍSTICAS (todas las tareas)
+      _tareasSubscription = queryGeneral.snapshots().listen((snapshot) {
         if (mounted) {
           int pendientes = 0;
           int completadas = 0;
@@ -86,7 +87,7 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
           if (snapshot.docs.isNotEmpty) {
             for (var doc in snapshot.docs) {
               final estado = (doc['estado'] as String).toLowerCase().trim();
-              if (estado == 'pendiente' || estado == 'en progreso') {
+              if (estado == 'pendiente') {
                 pendientes++;
               } else if (estado == 'completada') {
                 completadas++;
@@ -187,16 +188,18 @@ class _PantallaPrincipalState extends State<PantallaPrincipal> {
                     },
                     child: const Text('Calendario',
                         style: TextStyle(color: Colors.black87))),
-                TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) =>
-                                  const PantallaEstadisticasAdmin()));
-                    },
-                    child: const Text('Estadísticas',
-                        style: TextStyle(color: Colors.black87))),
+                // ⚠️ AGREGAR CONDICIÓN if (_isAdmin)
+                if (_isAdmin)
+                  TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    const PantallaEstadisticasAdmin()));
+                      },
+                      child: const Text('Estadísticas',
+                          style: TextStyle(color: Colors.black87))),
               ],
             ),
           ),

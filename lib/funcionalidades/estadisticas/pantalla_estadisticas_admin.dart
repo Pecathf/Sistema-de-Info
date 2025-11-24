@@ -2,10 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:fl_chart/fl_chart.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:sistem_proyect/central/constantes/colores.dart';
-import 'package:sistem_proyect/central/constantes/modelos/project_model.dart'; // Importamos el modelo de proyecto
+import 'package:sistem_proyect/central/constantes/modelos/project_model.dart'; 
 import 'package:sistem_proyect/central/constantes/modelos/usuario_model.dart';
-import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
-import 'package:sistem_proyect/central/constantes/servicios/project_service.dart'; // Importamos el servicio de proyecto
+import 'package:sistem_proyect/central/constantes/servicios/project_service.dart'; 
 import 'package:sistem_proyect/central/constantes/servicios/task_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/profile_menu_widget.dart';
@@ -29,16 +28,14 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
   final UserDataService _userDataService = UserDataService();
 
   // Datos
-  List<Proyecto> _allProjects = []; // Lista de PROYECTOS
+  List<Proyecto> _allProjects = []; 
   bool _isLoading = true;
 
   // Variables para contadores de PROYECTOS
   int _totalProjects = 0;
   int _completedProjects = 0;
-  int _runningProjects = 0; // En Progreso
-  int _pendingProjects = 0; // Activos/Pendientes
-
-  // Variables para Top Performers (Basado en tareas completadas)
+  int _runningProjects = 0; 
+  int _pendingProjects = 0; 
   List<Usuario> _topUsers = [];
   Map<String, int> _userScores = {};
 
@@ -49,8 +46,8 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
   }
 
   Future<void> _loadData() async {
+
     // 1. Cargar Proyectos (Para KPIs y Gráficas)
-    // Usamos 'first' para obtener el snapshot actual del stream
     final projects = await _projectService.getProyectosStream().first;
 
     // 2. Cargar Tareas (SOLO para calcular los mejores miembros)
@@ -84,7 +81,6 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
         _totalProjects = projects.length;
         _completedProjects = projects.where((p) => p.estado == 'Completado').length;
         _runningProjects = projects.where((p) => p.estado == 'En Progreso').length;
-        // Consideramos 'Activo' como Pendiente (no ha terminado ni está full en progreso)
         _pendingProjects = projects.where((p) => p.estado == 'Activo' || p.estado == 'Pendiente').length; 
 
         // Asignar Top Users
@@ -285,7 +281,7 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
         borderRadius: BorderRadius.circular(16),
         boxShadow: [
           BoxShadow(
-              color: Colors.grey.withOpacity(0.05),
+              color: Colors.grey.withValues(alpha: 0.05),
               blurRadius: 10,
               offset: const Offset(0, 4))
         ],
@@ -296,7 +292,7 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
           Container(
             padding: const EdgeInsets.all(10),
             decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
+              color: color.withValues(alpha:0.1),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, color: color, size: 24),
@@ -342,7 +338,7 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-              color: Colors.grey.withOpacity(0.05),
+              color: Colors.grey.withValues(alpha:0.05),
               blurRadius: 10,
               offset: const Offset(0, 4))
         ],
@@ -445,7 +441,7 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-              color: Colors.grey.withOpacity(0.05),
+              color: Colors.grey.withValues(alpha:0.05),
               blurRadius: 10,
               offset: const Offset(0, 4))
         ],
@@ -519,7 +515,7 @@ class _PantallaEstadisticasAdminState extends State<PantallaEstadisticasAdmin> {
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-              color: Colors.grey.withOpacity(0.05),
+              color: Colors.grey.withValues(alpha:0.05),
               blurRadius: 10,
               offset: const Offset(0, 4))
         ],

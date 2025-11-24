@@ -3,6 +3,12 @@ import 'package:flutter/services.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:sistem_proyect/central/constantes/colores.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/pantalla_principal.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/pantalla_listado_proyectos.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/calendario/pantalla_calendario.dart';
+import 'package:sistem_proyect/funcionalidades/estadisticas/pantalla_estadisticas_admin.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/profile_menu_widget.dart';
+import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
 
 class PantallaEditarPerfil extends StatefulWidget {
   const PantallaEditarPerfil({super.key});
@@ -22,6 +28,9 @@ class _PantallaEditarPerfilState extends State<PantallaEditarPerfil> {
       TextEditingController();
   final TextEditingController _confirmarContrasenaController =
       TextEditingController();
+  final AuthService _authService = AuthService();
+  bool _isAdmin = false;
+  bool _isLoadingRole = true;
 
   bool _isLoading = true;
   bool _isSaving = false;
@@ -32,7 +41,18 @@ class _PantallaEditarPerfilState extends State<PantallaEditarPerfil> {
   @override
   void initState() {
     super.initState();
+    _checkIfAdmin();
     _cargarDatosUsuario();
+  }
+
+  Future<void> _checkIfAdmin() async {
+    final isAdmin = await _authService.isAdmin();
+    if (mounted) {
+      setState(() {
+        _isAdmin = isAdmin;
+        _isLoadingRole = false;
+      });
+    }
   }
 
   // Carga los datos del usuario desde Firebase Auth y Firestore
@@ -350,56 +370,140 @@ class _PantallaEditarPerfilState extends State<PantallaEditarPerfil> {
 
   // Construye el AppBar con navegación adaptativa
   PreferredSizeWidget _buildAppBar(bool isDesktop) {
-    return AppBar(
-      backgroundColor: Colors.white,
-      elevation: 0,
-      toolbarHeight: 60,
-      leading: IconButton(
-        icon: const Icon(Icons.arrow_back, color: Colors.black87),
-        onPressed: () => Navigator.pop(context),
-      ),
-      title: Text(
-        'ProyectApp',
-        style: TextStyle(
-          color: AppColors.primaryOrange,
-          fontWeight: FontWeight.bold,
-          fontSize: 20,
-        ),
-      ),
-      centerTitle: false,
-      actions: isDesktop
-          ? [
-              Expanded(
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    TextButton(
-                      onPressed: () => Navigator.pop(context),
-                      child: const Text('Inicio',
-                          style: TextStyle(color: Colors.black87)),
-                    ),
-                    TextButton(
-                      onPressed: () {},
-                      child: const Text('Proyectos',
-                          style: TextStyle(color: Colors.black87)),
-                    ),
-                    TextButton(
-                      onPressed: () {},
-                      child: const Text('Calendario',
-                          style: TextStyle(color: Colors.black87)),
-                    ),
-                    TextButton(
-                      onPressed: () {},
-                      child: const Text('Estadísticas',
-                          style: TextStyle(color: Colors.black87)),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(width: 20),
-            ]
-          : null,
+    final user = FirebaseAuth.instance.currentUser;
+    final String userInitial =
+        user?.email?.isNotEmpty == true ? user!.email![0].toUpperCase() : 'U';
+
+    final Color avatarColor =
+        _isAdmin ? AppColors.accentColor : AppColors.primaryOrange;
+
+    final profileWidget = HoverableProfileAvatar(
+      userInitial: userInitial,
+      avatarColor: avatarColor,
+      isDesktop: isDesktop,
     );
+
+    if (isDesktop) {
+      return AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        toolbarHeight: 60,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: Text(
+          'ProyectApp',
+          style: TextStyle(
+            color: AppColors.primaryOrange,
+            fontWeight: FontWeight.bold,
+            fontSize: 20,
+          ),
+        ),
+        centerTitle: false,
+        actions: [
+          Expanded(
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Botón Menú
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (context) => const PantallaPrincipal(),
+                      ),
+                      (Route<dynamic> route) => false,
+                    );
+                  },
+                  child: const Text(
+                    'Menú',
+                    style: TextStyle(color: Colors.black87),
+                  ),
+                ),
+                const SizedBox(width: 20),
+
+                // Botón Proyectos
+                TextButton(
+                  onPressed: () {
+                    Navigator.of(context).pushAndRemoveUntil(
+                      MaterialPageRoute(
+                        builder: (context) => const PantallaListadoProyectos(),
+                      ),
+                      (Route<dynamic> route) => false,
+                    );
+                  },
+                  child: const Text(
+                    'Proyectos',
+                    style: TextStyle(color: Colors.black87),
+                  ),
+                ),
+                const SizedBox(width: 20),
+
+                // Botón Calendario
+                TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const PantallaCalendario(),
+                      ),
+                    );
+                  },
+                  child: const Text(
+                    'Calendario',
+                    style: TextStyle(color: Colors.black87),
+                  ),
+                ),
+
+                // Botón Estadísticas (SOLO ADMIN)
+                if (_isAdmin) ...[
+                  const SizedBox(width: 20),
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) =>
+                              const PantallaEstadisticasAdmin(),
+                        ),
+                      );
+                    },
+                    child: const Text(
+                      'Estadísticas',
+                      style: TextStyle(color: Colors.black87),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          profileWidget,
+          const SizedBox(width: 20),
+        ],
+      );
+    } else {
+      // APPBAR MÓVIL
+      return AppBar(
+        backgroundColor: Colors.white,
+        elevation: 1,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back, color: Colors.black87),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Editar Perfil',
+          style: TextStyle(
+            color: Colors.black87,
+            fontWeight: FontWeight.bold,
+          ),
+        ),
+        actions: [
+          profileWidget,
+          const SizedBox(width: 10),
+        ],
+      );
+    }
   }
 
   // Campo de texto genérico reutilizable
@@ -889,6 +993,17 @@ class _PantallaEditarPerfilState extends State<PantallaEditarPerfil> {
 
   @override
   Widget build(BuildContext context) {
+    // Mostrar loading mientras se verifica el rol
+    if (_isLoadingRole) {
+      return const Scaffold(
+        body: Center(
+          child: CircularProgressIndicator(
+            color: AppColors.primaryOrange,
+          ),
+        ),
+      );
+    }
+
     return LayoutBuilder(
       builder: (context, constraints) {
         final bool isDesktop = constraints.maxWidth > 800;

@@ -165,18 +165,14 @@ class ProjectService {
 
   Future<void> registrarHistorial(
       String projectId, String accion, String usuarioNombre) async {
-    try {
-      await _firestore
-          .collection('proyectos')
-          .doc(projectId)
-          .collection('historial')
-          .add({
-        'accion': accion,
-        'usuarioNombre': usuarioNombre,
-        'fecha': FieldValue.serverTimestamp(),
-      });
-    } catch (e) {
-      print('Error al registrar historial: $e');
-    }
+    await _firestore
+        .collection('proyectos')
+        .doc(projectId)
+        .collection('historial')
+        .add({
+      'accion': accion,
+      'usuarioNombre': usuarioNombre,
+      'fecha': FieldValue.serverTimestamp(),
+    });
   }
 }

@@ -39,6 +39,7 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
 
   Proyecto? _proyecto;
   List<Usuario> _miembros = [];
+  List<TaskModel> _tareasFiltradas = [];
   List<TaskModel> _tareas = [];
   List<RecursoMaterial> _recursos = [];
   bool _isLoading = true;
@@ -175,6 +176,8 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
 
           await _projectService.registrarHistorial(
               widget.projectId, 'Eliminó la tarea "${tarea.nombre}"', userName);
+
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(resultado['message']),
@@ -182,8 +185,10 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
             ),
           );
 
+          if (!mounted) return;
           _cargarDatosProyecto();
         } else {
+          if (!mounted) return;
           ScaffoldMessenger.of(context).showSnackBar(
             SnackBar(
               content: Text(resultado['message']),
@@ -242,6 +247,7 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
           _proyecto = proyecto;
           _miembros = miembros;
           _tareas = tareasFiltradas;
+          _tareasFiltradas = _aplicarFiltro(tareasFiltradas); // ← NUEVO
           _recursos = recursos;
           _isLoading = false;
         });
@@ -257,6 +263,24 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
         _errorMessage = 'Error al cargar los datos: $e';
         _isLoading = false;
       });
+    }
+  }
+
+  List<TaskModel> _aplicarFiltro(List<TaskModel> tareas) {
+    switch (_selectedFilter) {
+      case 'Pendientes':
+        return tareas.where((t) => t.estado == 'Pendiente').toList();
+      case 'Completadas':
+        return tareas.where((t) => t.estado == 'Completada').toList();
+      case 'Vencidas':
+        return tareas.where((t) {
+          if (t.estado == 'Completada') return false;
+          if (t.fechaVencimiento == null) return false;
+          return t.fechaVencimiento!.isBefore(DateTime.now());
+        }).toList();
+      case 'Todas':
+      default:
+        return tareas;
     }
   }
 
@@ -305,7 +329,7 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('tareas')
-          .where('proyecto.id', isEqualTo: widget.projectId)
+          .where('proyectoId', isEqualTo: widget.projectId)
           .snapshots(),
       builder: (context, snapshot) {
         int tareasTotales = 0;
@@ -314,18 +338,29 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
 
         if (snapshot.hasData && snapshot.data!.docs.isNotEmpty) {
           final docs = snapshot.data!.docs;
-          tareasTotales = docs.length;
-          tareasCompletadas =
-              docs.where((doc) => doc['estado'] == 'Completada').length;
+
+          // Si NO es admin, filtrar solo las tareas del usuario actual
+          List<QueryDocumentSnapshot> docsFiltrados = docs;
+          if (!_isAdmin) {
+            final currentUserUid = FirebaseAuth.instance.currentUser?.uid;
+            docsFiltrados = docs.where((doc) {
+              final miembrosUid = List<String>.from(doc['miembrosUid'] ?? []);
+              return miembrosUid.contains(currentUserUid);
+            }).toList();
+          }
+
+          tareasTotales = docsFiltrados.length;
+          tareasCompletadas = docsFiltrados
+              .where((doc) => doc['estado'] == 'Completada')
+              .length;
           tareasPendientes =
-              docs.where((doc) => doc['estado'] == 'Pendiente').length;
+              docsFiltrados.where((doc) => doc['estado'] == 'Pendiente').length;
         }
 
         final miembrosCount = _miembros.length;
 
         // Cambia el label dependiendo de si es admin o usuario
-        final String tareasLabel =
-            _isAdmin ? 'TAREAS TOTALES' : 'TAREAS DEL PROYECTO';
+        final String tareasLabel = _isAdmin ? 'TAREAS TOTALES' : 'MIS TAREAS';
 
         return Row(
           children: [
@@ -540,6 +575,7 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
             onTap: () {
               setState(() {
                 _selectedFilter = filter;
+                _tareasFiltradas = _aplicarFiltro(_tareas); // ← APLICAR FILTRO
               });
             },
             child: Container(
@@ -570,12 +606,12 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
   }
 
   Widget _buildTasksDataTable() {
-    final tareasFiltradas = _tareas;
+    final tareasFiltradas = _tareasFiltradas;
 
     if (tareasFiltradas.isEmpty) {
       final String mensaje = _isAdmin
-          ? 'Este proyecto aún no tiene tareas.'
-          : 'No tienes tareas asignadas en este proyecto.';
+          ? 'No hay tareas que coincidan con el filtro seleccionado.'
+          : 'No tienes tareas asignadas que coincidan con el filtro.';
 
       return Container(
         decoration: BoxDecoration(
@@ -1279,8 +1315,8 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
 
                             return ListTile(
                               leading: CircleAvatar(
-                                backgroundColor:
-                                    AppColors.accentColor.withOpacity(0.1),
+                                backgroundColor: AppColors.accentColor
+                                    .withValues(alpha: 0.1),
                                 child: const Icon(Icons.history,
                                     size: 20, color: AppColors.accentColor),
                               ),
@@ -1378,40 +1414,12 @@ class _PantallaDetalleProyectoState extends State<PantallaDetalleProyecto> {
         actions: [
           Padding(
             padding: const EdgeInsets.only(right: 16.0),
-            child: Row(
-              children: [
-                IconButton(
-                  icon: const Icon(Icons.history,
-                      color: AppColors.darkBackground),
-                  tooltip: 'HISTORIAL',
-                  onPressed: () {
-                    _mostrarHistorialProyecto();
-                  },
-                ),
-                Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.grey.shade300),
-                    borderRadius: BorderRadius.circular(4),
-                  ),
-                  child: Row(
-                    children: [
-                      Icon(Icons.insert_drive_file_outlined,
-                          size: 16, color: Colors.grey.shade700),
-                      const SizedBox(width: 6),
-                      Text(
-                        'HISTORIAL',
-                        style: TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w500,
-                          color: Colors.grey.shade700,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
+            child: IconButton(
+              icon: const Icon(Icons.history, color: AppColors.darkBackground),
+              tooltip: 'HISTORIAL',
+              onPressed: () {
+                _mostrarHistorialProyecto();
+              },
             ),
           ),
         ],

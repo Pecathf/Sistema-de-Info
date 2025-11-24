@@ -248,16 +248,18 @@ class _PantallaListadoProyectosState extends State<PantallaListadoProyectos> {
                     },
                     child: const Text('Calendario',
                         style: TextStyle(color: Colors.black87))),
-                TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                              builder: (context) =>
-                                  const PantallaEstadisticasAdmin()));
-                    },
-                    child: const Text('Estadísticas',
-                        style: TextStyle(color: Colors.black87))),
+                // ⚠️ AGREGAR CONDICIÓN if (_isAdmin)
+                if (_isAdmin)
+                  TextButton(
+                      onPressed: () {
+                        Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) =>
+                                    const PantallaEstadisticasAdmin()));
+                      },
+                      child: const Text('Estadísticas',
+                          style: TextStyle(color: Colors.black87))),
               ],
             ),
           ),

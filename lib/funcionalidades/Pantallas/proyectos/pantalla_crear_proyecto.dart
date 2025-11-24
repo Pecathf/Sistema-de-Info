@@ -14,6 +14,8 @@ import 'package:sistem_proyect/funcionalidades/Pantallas/pantalla_principal.dart
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/widgets_principal.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/shared_footer_widget.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/Widgets/profile_menu_widget.dart';
+import 'package:sistem_proyect/funcionalidades/Pantallas/calendario/pantalla_calendario.dart';
+import 'package:sistem_proyect/funcionalidades/estadisticas/pantalla_estadisticas_admin.dart';
 
 class PantallaCrearProyecto extends StatefulWidget {
   final Proyecto? proyectoExistente;
@@ -342,61 +344,74 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
     );
 
     if (isDesktop) {
-      return AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        toolbarHeight: 60,
-        title: Text('ProyectApp',
-            style: TextStyle(
-                color: AppColors.primaryOrange,
-                fontWeight: FontWeight.bold,
-                fontSize: 20)),
-        centerTitle: false,
-        actions: [
-          Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(
-                          builder: (context) => const PantallaPrincipal()),
-                      (Route<dynamic> route) => false,
-                    );
-                  },
-                  child: const Text('Menú',
-                      style: TextStyle(color: Colors.black87)),
-                ),
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(
-                          builder: (context) =>
-                              const PantallaListadoProyectos()),
-                      (Route<dynamic> route) => false,
-                    );
-                  },
-                  child: Text('Proyecto',
-                      style: TextStyle(
-                          color: AppColors.primaryOrange,
-                          fontWeight: FontWeight.bold)),
-                ),
-                TextButton(
-                    onPressed: () {},
-                    child: const Text('Calendario',
-                        style: TextStyle(color: Colors.black87))),
-                TextButton(
-                    onPressed: () {},
-                    child: const Text('Estadísticas',
-                        style: TextStyle(color: Colors.black87))),
-              ],
+  return AppBar(
+    backgroundColor: Colors.white,
+    elevation: 0,
+    toolbarHeight: 60,
+    title: Text('ProyectApp',
+        style: TextStyle(
+            color: AppColors.primaryOrange,
+            fontWeight: FontWeight.bold,
+            fontSize: 20)),
+    centerTitle: false,
+    actions: [
+      Expanded(
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                      builder: (context) => const PantallaPrincipal()),
+                  (Route<dynamic> route) => false,
+                );
+              },
+              child: const Text('Menú',
+                  style: TextStyle(color: Colors.black87)),
             ),
-          ),
-          profileWidget,
-        ],
-      );
-    } else {
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pushAndRemoveUntil(
+                  MaterialPageRoute(
+                      builder: (context) =>
+                          const PantallaListadoProyectos()),
+                  (Route<dynamic> route) => false,
+                );
+              },
+              child: Text('Proyecto',
+                  style: TextStyle(
+                      color: AppColors.primaryOrange,
+                      fontWeight: FontWeight.bold)),
+            ),
+            TextButton(
+                onPressed: () {
+                  Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (context) => const PantallaCalendario()));
+                },
+                child: const Text('Calendario',
+                    style: TextStyle(color: Colors.black87))),
+          
+            if (_isAdmin)
+              TextButton(
+                  onPressed: () {
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) =>
+                                const PantallaEstadisticasAdmin()));
+                  },
+                  child: const Text('Estadísticas',
+                      style: TextStyle(color: Colors.black87))),
+          ],
+        ),
+      ),
+      profileWidget,
+    ],
+  );
+} else {
       return AppBar(
         backgroundColor: Colors.white,
         elevation: 1,
