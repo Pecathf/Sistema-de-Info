@@ -3,8 +3,6 @@ import 'package:table_calendar/table_calendar.dart';
 import 'package:intl/intl.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:firebase_auth/firebase_auth.dart';
-
-// IMPORTS
 import 'package:sistem_proyect/central/constantes/modelos/project_model.dart';
 import 'package:sistem_proyect/central/constantes/servicios/project_service.dart';
 import 'package:sistem_proyect/central/constantes/colores.dart';
@@ -94,92 +92,186 @@ class _PantallaCalendarioState extends State<PantallaCalendario> {
     );
 
     if (isDesktop) {
-      return AppBar(
-        backgroundColor: Colors.white,
-        elevation: 0,
-        toolbarHeight: 60,
-        automaticallyImplyLeading: false,
-        title: Text(
-          'ProyectApp',
-          style: TextStyle(
-            color: AppColors.primaryOrange,
-            fontWeight: FontWeight.bold,
-            fontSize: 20,
-          ),
-        ),
-        centerTitle: false,
-        actions: [
-          Expanded(
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                // Botón Menú
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(
-                        builder: (context) => const PantallaPrincipal(),
-                      ),
-                      (Route<dynamic> route) => false,
-                    );
-                  },
-                  child: const Text(
-                    'Menú',
-                    style: TextStyle(color: Colors.black87),
-                  ),
-                ),
+      return PreferredSize(
+        preferredSize: const Size.fromHeight(60),
+        child: AppBar(
+          backgroundColor: Colors.white,
+          elevation: 0,
+          automaticallyImplyLeading: false,
+          flexibleSpace: SafeArea(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final showMenu = constraints.maxWidth < 700;
 
-                // Botón Proyectos
-                TextButton(
-                  onPressed: () {
-                    Navigator.of(context).pushAndRemoveUntil(
-                      MaterialPageRoute(
-                        builder: (context) => const PantallaListadoProyectos(),
-                      ),
-                      (Route<dynamic> route) => false,
-                    );
-                  },
-                  child: const Text(
-                    'Proyectos',
-                    style: TextStyle(color: Colors.black87),
-                  ),
-                ),
-
-                // Botón Calendario
-                TextButton(
-                  onPressed: () {},
-                  child: Text(
-                    'Calendario',
-                    style: TextStyle(
-                      color: AppColors.primaryOrange,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-
-                // Botón Estadísticas
-                if (_isAdmin)
-                  TextButton(
-                    onPressed: () {
-                      Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                          builder: (context) =>
-                              const PantallaEstadisticasAdmin(),
+                return Container(
+                  height: 60,
+                  padding: const EdgeInsets.symmetric(horizontal: 16),
+                  child: Row(
+                    children: [
+                      Text(
+                        'ProyectApp',
+                        style: TextStyle(
+                          color: AppColors.primaryOrange,
+                          fontWeight: FontWeight.bold,
+                          fontSize: 20,
                         ),
-                      );
-                    },
-                    child: const Text(
-                      'Estadísticas',
-                      style: TextStyle(color: Colors.black87),
-                    ),
+                      ),
+                      const Spacer(),
+                      if (showMenu) ...[
+                        PopupMenuButton<String>(
+                          icon: const Icon(Icons.menu, color: Colors.black87),
+                          offset: const Offset(0, 50),
+                          itemBuilder: (BuildContext context) => [
+                            const PopupMenuItem<String>(
+                              value: 'menu',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.home,
+                                      size: 20, color: Colors.black87),
+                                  SizedBox(width: 12),
+                                  Text('Menú'),
+                                ],
+                              ),
+                            ),
+                            const PopupMenuItem<String>(
+                              value: 'proyectos',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.folder,
+                                      size: 20, color: Colors.black87),
+                                  SizedBox(width: 12),
+                                  Text('Proyectos'),
+                                ],
+                              ),
+                            ),
+                            if (_isAdmin)
+                              const PopupMenuItem<String>(
+                                value: 'estadisticas',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.bar_chart,
+                                        size: 20, color: Colors.black87),
+                                    SizedBox(width: 12),
+                                    Text('Estadísticas'),
+                                  ],
+                                ),
+                              ),
+                          ],
+                          onSelected: (String value) {
+                            switch (value) {
+                              case 'menu':
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const PantallaPrincipal(),
+                                  ),
+                                  (Route<dynamic> route) => false,
+                                );
+                                break;
+                              case 'proyectos':
+                                Navigator.of(context).pushAndRemoveUntil(
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const PantallaListadoProyectos(),
+                                  ),
+                                  (Route<dynamic> route) => false,
+                                );
+                                break;
+                              case 'estadisticas':
+                                Navigator.push(
+                                  context,
+                                  MaterialPageRoute(
+                                    builder: (context) =>
+                                        const PantallaEstadisticasAdmin(),
+                                  ),
+                                );
+                                break;
+                            }
+                          },
+                        ),
+                      ] else ...[
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (context) => const PantallaPrincipal(),
+                              ),
+                              (Route<dynamic> route) => false,
+                            );
+                          },
+                          child: const Text(
+                            'Menú',
+                            style: TextStyle(
+                              color: Colors.black87,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.of(context).pushAndRemoveUntil(
+                              MaterialPageRoute(
+                                builder: (context) =>
+                                    const PantallaListadoProyectos(),
+                              ),
+                              (Route<dynamic> route) => false,
+                            );
+                          },
+                          child: const Text(
+                            'Proyectos',
+                            style: TextStyle(
+                              color: Colors.black87,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        TextButton(
+                          onPressed: () {},
+                          child: Text(
+                            'Calendario',
+                            style: TextStyle(
+                              color: AppColors.primaryOrange,
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                        if (_isAdmin) ...[
+                          const SizedBox(width: 8),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                  builder: (context) =>
+                                      const PantallaEstadisticasAdmin(),
+                                ),
+                              );
+                            },
+                            child: const Text(
+                              'Estadísticas',
+                              style: TextStyle(
+                                color: Colors.black87,
+                                fontSize: 15,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ],
+                      const Spacer(),
+                      profileWidget,
+                    ],
                   ),
-              ],
+                );
+              },
             ),
           ),
-          profileWidget,
-          const SizedBox(width: 20),
-        ],
+        ),
       );
     } else {
       return AppBar(
@@ -197,21 +289,75 @@ class _PantallaCalendarioState extends State<PantallaCalendario> {
           ),
         ),
         actions: [
-          if (_isAdmin)
-            IconButton(
-              tooltip: "Ver Estadísticas",
-              icon: const Icon(Icons.bar_chart, color: AppColors.primaryOrange),
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const PantallaEstadisticasAdmin(),
+          PopupMenuButton<String>(
+            icon: const Icon(Icons.menu, color: Colors.black87),
+            offset: const Offset(0, 50),
+            itemBuilder: (BuildContext context) => [
+              const PopupMenuItem<String>(
+                value: 'menu',
+                child: Row(
+                  children: [
+                    Icon(Icons.home, size: 20, color: Colors.black87),
+                    SizedBox(width: 12),
+                    Text('Menú'),
+                  ],
+                ),
+              ),
+              const PopupMenuItem<String>(
+                value: 'proyectos',
+                child: Row(
+                  children: [
+                    Icon(Icons.folder, size: 20, color: Colors.black87),
+                    SizedBox(width: 12),
+                    Text('Proyectos'),
+                  ],
+                ),
+              ),
+              if (_isAdmin)
+                const PopupMenuItem<String>(
+                  value: 'estadisticas',
+                  child: Row(
+                    children: [
+                      Icon(Icons.bar_chart, size: 20, color: Colors.black87),
+                      SizedBox(width: 12),
+                      Text('Estadísticas'),
+                    ],
                   ),
-                );
-              },
-            ),
-          profileWidget,
-          const SizedBox(width: 10),
+                ),
+            ],
+            onSelected: (String value) {
+              switch (value) {
+                case 'menu':
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (context) => const PantallaPrincipal(),
+                    ),
+                    (Route<dynamic> route) => false,
+                  );
+                  break;
+                case 'proyectos':
+                  Navigator.of(context).pushAndRemoveUntil(
+                    MaterialPageRoute(
+                      builder: (context) => const PantallaListadoProyectos(),
+                    ),
+                    (Route<dynamic> route) => false,
+                  );
+                  break;
+                case 'estadisticas':
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) => const PantallaEstadisticasAdmin(),
+                    ),
+                  );
+                  break;
+              }
+            },
+          ),
+          Padding(
+            padding: const EdgeInsets.only(right: 8.0),
+            child: profileWidget,
+          ),
         ],
       );
     }

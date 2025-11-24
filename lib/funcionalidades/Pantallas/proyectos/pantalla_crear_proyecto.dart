@@ -7,7 +7,6 @@ import 'package:sistem_proyect/central/constantes/servicios/auth_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/project_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/user_data_service.dart';
 import 'package:sistem_proyect/central/constantes/servicios/resource_service.dart';
-import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/pantalla_listado_proyectos.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/member_selection_dialog.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/proyectos/resource_selection_dialog.dart';
 import 'package:sistem_proyect/funcionalidades/Pantallas/pantalla_principal.dart';
@@ -334,104 +333,268 @@ class _PantallaCrearProyectoState extends State<PantallaCrearProyecto> {
   }
 
   PreferredSizeWidget _buildAppBar(String userInitial, bool isDesktop) {
-    final Color avatarColor =
-        _isAdmin ? AppColors.accentColor : AppColors.primaryOrange;
+  final Color avatarColor =
+      _isAdmin ? AppColors.accentColor : AppColors.primaryOrange;
 
-    final profileWidget = HoverableProfileAvatar(
-      userInitial: userInitial,
-      avatarColor: avatarColor,
-      isDesktop: isDesktop,
+  final profileWidget = HoverableProfileAvatar(
+    userInitial: userInitial,
+    avatarColor: avatarColor,
+    isDesktop: isDesktop,
+  );
+
+  if (isDesktop) {
+    return PreferredSize(
+      preferredSize: const Size.fromHeight(60),
+      child: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        automaticallyImplyLeading: false,
+        flexibleSpace: SafeArea(
+          child: LayoutBuilder(
+            builder: (context, constraints) {
+              final showMenu = constraints.maxWidth < 700;
+
+              return Container(
+                height: 60,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                child: Row(
+                  children: [
+                    Text(
+                      'ProyectApp',
+                      style: TextStyle(
+                        color: AppColors.primaryOrange,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 20,
+                      ),
+                    ),
+                    const Spacer(),
+                    
+                    if (showMenu) ...[
+                      PopupMenuButton<String>(
+                        icon: const Icon(Icons.menu, color: Colors.black87),
+                        offset: const Offset(0, 50),
+                        itemBuilder: (BuildContext context) => [
+                          const PopupMenuItem<String>(
+                            value: 'menu',
+                            child: Row(
+                              children: [
+                                Icon(Icons.home, size: 20, color: Colors.black87),
+                                SizedBox(width: 12),
+                                Text('Menú'),
+                              ],
+                            ),
+                          ),
+                          const PopupMenuItem<String>(
+                            value: 'calendario',
+                            child: Row(
+                              children: [
+                                Icon(Icons.calendar_today, size: 20, color: Colors.black87),
+                                SizedBox(width: 12),
+                                Text('Calendario'),
+                              ],
+                            ),
+                          ),
+                          if (_isAdmin)
+                            const PopupMenuItem<String>(
+                              value: 'estadisticas',
+                              child: Row(
+                                children: [
+                                  Icon(Icons.bar_chart, size: 20, color: Colors.black87),
+                                  SizedBox(width: 12),
+                                  Text('Estadísticas'),
+                                ],
+                              ),
+                            ),
+                        ],
+                        onSelected: (String value) {
+                          switch (value) {
+                            case 'menu':
+                              Navigator.of(context).pushAndRemoveUntil(
+                                MaterialPageRoute(
+                                    builder: (context) => const PantallaPrincipal()),
+                                (Route<dynamic> route) => false,
+                              );
+                              break;
+                            case 'calendario':
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => const PantallaCalendario()),
+                              );
+                              break;
+                            case 'estadisticas':
+                              Navigator.push(
+                                context,
+                                MaterialPageRoute(
+                                    builder: (context) => const PantallaEstadisticasAdmin()),
+                              );
+                              break;
+                          }
+                        },
+                      ),
+                    ] else ...[
+                      TextButton(
+                        onPressed: () {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(
+                                builder: (context) => const PantallaPrincipal()),
+                            (Route<dynamic> route) => false,
+                          );
+                        },
+                        child: const Text(
+                          'Menú',
+                          style: TextStyle(
+                            color: Colors.black87,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton(
+                        onPressed: () {},
+                        child: Text(
+                          'Proyectos',
+                          style: TextStyle(
+                            color: AppColors.primaryOrange,
+                            fontSize: 15,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      TextButton(
+                        onPressed: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                                builder: (context) => const PantallaCalendario()),
+                          );
+                        },
+                        child: const Text(
+                          'Calendario',
+                          style: TextStyle(
+                            color: Colors.black87,
+                            fontSize: 15,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ),
+                      if (_isAdmin) ...[
+                        const SizedBox(width: 8),
+                        TextButton(
+                          onPressed: () {
+                            Navigator.push(
+                              context,
+                              MaterialPageRoute(
+                                  builder: (context) => const PantallaEstadisticasAdmin()),
+                            );
+                          },
+                          child: const Text(
+                            'Estadísticas',
+                            style: TextStyle(
+                              color: Colors.black87,
+                              fontSize: 15,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                    
+                    const Spacer(),
+                    profileWidget,
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      ),
     );
-
-    if (isDesktop) {
-  return AppBar(
-    backgroundColor: Colors.white,
-    elevation: 0,
-    toolbarHeight: 60,
-    title: Text('ProyectApp',
-        style: TextStyle(
-            color: AppColors.primaryOrange,
-            fontWeight: FontWeight.bold,
-            fontSize: 20)),
-    centerTitle: false,
-    actions: [
-      Expanded(
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            TextButton(
-              onPressed: () {
+  } else {
+    return AppBar(
+      backgroundColor: Colors.white,
+      elevation: 1,
+      leading: IconButton(
+        icon: const Icon(Icons.arrow_back, color: Colors.black87),
+        onPressed: () => Navigator.pop(context),
+      ),
+      title: const Text(
+        'Gestión de Proyectos',
+        style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
+      ),
+      actions: [
+        PopupMenuButton<String>(
+          icon: const Icon(Icons.menu, color: Colors.black87),
+          offset: const Offset(0, 50),
+          itemBuilder: (BuildContext context) => [
+            const PopupMenuItem<String>(
+              value: 'menu',
+              child: Row(
+                children: [
+                  Icon(Icons.home, size: 20, color: Colors.black87),
+                  SizedBox(width: 12),
+                  Text('Menú'),
+                ],
+              ),
+            ),
+            const PopupMenuItem<String>(
+              value: 'calendario',
+              child: Row(
+                children: [
+                  Icon(Icons.calendar_today, size: 20, color: Colors.black87),
+                  SizedBox(width: 12),
+                  Text('Calendario'),
+                ],
+              ),
+            ),
+            if (_isAdmin)
+              const PopupMenuItem<String>(
+                value: 'estadisticas',
+                child: Row(
+                  children: [
+                    Icon(Icons.bar_chart, size: 20, color: Colors.black87),
+                    SizedBox(width: 12),
+                    Text('Estadísticas'),
+                  ],
+                ),
+              ),
+          ],
+          onSelected: (String value) {
+            switch (value) {
+              case 'menu':
                 Navigator.of(context).pushAndRemoveUntil(
                   MaterialPageRoute(
                       builder: (context) => const PantallaPrincipal()),
                   (Route<dynamic> route) => false,
                 );
-              },
-              child: const Text('Menú',
-                  style: TextStyle(color: Colors.black87)),
-            ),
-            TextButton(
-              onPressed: () {
-                Navigator.of(context).pushAndRemoveUntil(
+                break;
+              case 'calendario':
+                Navigator.push(
+                  context,
                   MaterialPageRoute(
-                      builder: (context) =>
-                          const PantallaListadoProyectos()),
-                  (Route<dynamic> route) => false,
+                      builder: (context) => const PantallaCalendario()),
                 );
-              },
-              child: Text('Proyecto',
-                  style: TextStyle(
-                      color: AppColors.primaryOrange,
-                      fontWeight: FontWeight.bold)),
-            ),
-            TextButton(
-                onPressed: () {
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => const PantallaCalendario()));
-                },
-                child: const Text('Calendario',
-                    style: TextStyle(color: Colors.black87))),
-          
-            if (_isAdmin)
-              TextButton(
-                  onPressed: () {
-                    Navigator.push(
-                        context,
-                        MaterialPageRoute(
-                            builder: (context) =>
-                                const PantallaEstadisticasAdmin()));
-                  },
-                  child: const Text('Estadísticas',
-                      style: TextStyle(color: Colors.black87))),
-          ],
+                break;
+              case 'estadisticas':
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                      builder: (context) => const PantallaEstadisticasAdmin()),
+                );
+                break;
+            }
+          },
         ),
-      ),
-      profileWidget,
-    ],
-  );
-} else {
-      return AppBar(
-        backgroundColor: Colors.white,
-        elevation: 1,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.black87),
-          onPressed: () => Navigator.pop(context),
+        Padding(
+          padding: const EdgeInsets.only(right: 8.0),
+          child: profileWidget,
         ),
-        title: Text(
-          _isEditMode ? 'Editar Proyecto' : 'Crear Nuevo Proyecto',
-          style: const TextStyle(
-            color: Colors.black87,
-            fontWeight: FontWeight.bold,
-          ),
-        ),
-        actions: [
-          profileWidget,
-        ],
-      );
-    }
+      ],
+    );
   }
+}
 
   @override
   Widget build(BuildContext context) {

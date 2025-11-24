@@ -76,7 +76,7 @@ class SharedFooter extends StatelessWidget {
                 ),
                 SizedBox(height: isMobile ? 30 : 0, width: isMobile ? 0 : 50),
                 _buildFooterSection(
-                  'Links',
+                  'Funcionalidades',
                   ['Proyectos', 'Calendario', 'Estadísticas'],
                   isMobile,
                 ),
